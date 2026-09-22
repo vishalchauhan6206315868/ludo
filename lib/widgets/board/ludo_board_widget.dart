@@ -18,48 +18,107 @@ class LudoBoardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cellSize = size / 15;
+    const double borderWidth = 3.5;
+    final boardInnerSize = size - (borderWidth * 2);
+    final cellSize = boardInnerSize / 15;
 
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: LudoColors.boardBg,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 18,
-            spreadRadius: 3,
-            offset: const Offset(0, 8),
-          ),
-        ],
-        border: Border.all(
-          color: LudoColors.boardBorder,
-          width: 3.5,
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Stack(
-          children: [
-            // 1. Board Background Layout
-            _buildBoardBackground(cellSize),
-
-            // 2. Center Finish Triangle (3x3)
-            Positioned(
-              left: 6 * cellSize,
-              top: 6 * cellSize,
-              width: 3 * cellSize,
-              height: 3 * cellSize,
-              child: CustomPaint(
-                painter: HomeTrianglePainter(),
-              ),
+    return Transform.translate(
+      offset: Offset(controller.boardShakeOffset, 0),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: LudoColors.boardBg,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 18,
+              spreadRadius: 3,
+              offset: const Offset(0, 8),
             ),
-
-            // 3. Tokens Overlay with smart stacking
-            ..._buildTokenWidgets(cellSize),
           ],
+          border: Border.all(
+            color: LudoColors.boardBorder,
+            width: borderWidth,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: boardInnerSize,
+            height: boardInnerSize,
+            child: Stack(
+              children: [
+                // 1. Board Background Layout (Track grid)
+                _buildBoardBackground(cellSize),
+
+                // 2. Four Base Corners (6x6 each)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  width: 6 * cellSize,
+                  height: 6 * cellSize,
+                  child: _buildBaseCorner(
+                    PlayerColor.red,
+                    LudoColors.red,
+                    LudoColors.redBg,
+                    cellSize,
+                  ),
+                ),
+                Positioned(
+                  left: 9 * cellSize,
+                  top: 0,
+                  width: 6 * cellSize,
+                  height: 6 * cellSize,
+                  child: _buildBaseCorner(
+                    PlayerColor.green,
+                    LudoColors.green,
+                    LudoColors.greenBg,
+                    cellSize,
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  top: 9 * cellSize,
+                  width: 6 * cellSize,
+                  height: 6 * cellSize,
+                  child: _buildBaseCorner(
+                    PlayerColor.blue,
+                    LudoColors.blue,
+                    LudoColors.blueBg,
+                    cellSize,
+                  ),
+                ),
+                Positioned(
+                  left: 9 * cellSize,
+                  top: 9 * cellSize,
+                  width: 6 * cellSize,
+                  height: 6 * cellSize,
+                  child: _buildBaseCorner(
+                    PlayerColor.yellow,
+                    LudoColors.yellow,
+                    LudoColors.yellowBg,
+                    cellSize,
+                  ),
+                ),
+
+                // 3. Center Finish Triangle (3x3)
+                Positioned(
+                  left: 6 * cellSize,
+                  top: 6 * cellSize,
+                  width: 3 * cellSize,
+                  height: 3 * cellSize,
+                  child: CustomPaint(
+                    painter: HomeTrianglePainter(),
+                  ),
+                ),
+
+                // 4. Tokens Overlay with smart stacking and smooth hop interpolation
+                ..._buildTokenWidgets(cellSize),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -68,74 +127,29 @@ class LudoBoardWidget extends StatelessWidget {
   Widget _buildBoardBackground(double cellSize) {
     return Column(
       children: List.generate(15, (row) {
-        return Row(
-          children: List.generate(15, (col) {
-            return SizedBox(
-              width: cellSize,
-              height: cellSize,
-              child: _buildCell(col, row, cellSize),
-            );
-          }),
+        return Expanded(
+          child: Row(
+            children: List.generate(15, (col) {
+              return Expanded(
+                child: _buildCell(col, row, cellSize),
+              );
+            }),
+          ),
         );
       }),
     );
   }
 
   Widget _buildCell(int col, int row, double cellSize) {
-    // 1. Four Corner Bases (6x6 each)
-    // Red Base: Top-Left (cols 0..5, rows 0..5)
-    if (col < 6 && row < 6) {
-      if (col == 0 && row == 0) {
-        return _buildBaseCorner(
-          PlayerColor.red,
-          LudoColors.red,
-          LudoColors.redBg,
-          cellSize,
-        );
-      }
-      return const SizedBox.shrink(); // Covered by 6x6 widget
-    }
-
-    // Green Base: Top-Right (cols 9..14, rows 0..5)
-    if (col >= 9 && row < 6) {
-      if (col == 9 && row == 0) {
-        return _buildBaseCorner(
-          PlayerColor.green,
-          LudoColors.green,
-          LudoColors.greenBg,
-          cellSize,
-        );
-      }
+    // 1. Four Corner Bases (6x6 each) - rendered as Positioned overlays in Stack
+    if ((col < 6 && row < 6) ||
+        (col >= 9 && row < 6) ||
+        (col < 6 && row >= 9) ||
+        (col >= 9 && row >= 9)) {
       return const SizedBox.shrink();
     }
 
-    // Blue Base: Bottom-Left (cols 0..5, rows 9..14)
-    if (col < 6 && row >= 9) {
-      if (col == 0 && row == 9) {
-        return _buildBaseCorner(
-          PlayerColor.blue,
-          LudoColors.blue,
-          LudoColors.blueBg,
-          cellSize,
-        );
-      }
-      return const SizedBox.shrink();
-    }
-
-    // Yellow Base: Bottom-Right (cols 9..14, rows 9..14)
-    if (col >= 9 && row >= 9) {
-      if (col == 9 && row == 9) {
-        return _buildBaseCorner(
-          PlayerColor.yellow,
-          LudoColors.yellow,
-          LudoColors.yellowBg,
-          cellSize,
-        );
-      }
-      return const SizedBox.shrink();
-    }
-
-    // Center 3x3 area
+    // Center 3x3 area - rendered as Positioned HomeTrianglePainter in Stack
     if (col >= 6 && col <= 8 && row >= 6 && row <= 8) {
       return const SizedBox.shrink();
     }
@@ -199,12 +213,28 @@ class LudoBoardWidget extends StatelessWidget {
       ),
       child: isStar
           ? Center(
-              child: SizedBox(
-                width: cellSize * 0.7,
-                height: cellSize * 0.7,
-                child: CustomPaint(
-                  painter: SafeStarPainter(color: starColor),
-                ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: cellSize * 0.46,
+                    height: cellSize * 0.46,
+                    child: CustomPaint(
+                      painter: SafeStarPainter(color: starColor),
+                    ),
+                  ),
+                  Text(
+                    "STOP",
+                    style: TextStyle(
+                      fontSize: (cellSize * 0.19).clamp(4.0, 6.5),
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.4,
+                      color: starColor == Colors.white
+                          ? Colors.white.withValues(alpha: 0.95)
+                          : const Color(0xFF424242),
+                    ),
+                  ),
+                ],
               ),
             )
           : null,
@@ -217,6 +247,10 @@ class LudoBoardWidget extends StatelessWidget {
     Color bgColor,
     double cellSize,
   ) {
+    final slotSize = cellSize * 1.3;
+    final slotOffset1 = 2.0 * cellSize - (slotSize / 2);
+    final slotOffset2 = 4.0 * cellSize - (slotSize / 2);
+
     return Container(
       width: cellSize * 6,
       height: cellSize * 6,
@@ -224,53 +258,50 @@ class LudoBoardWidget extends StatelessWidget {
         color: primaryColor,
         border: Border.all(color: LudoColors.boardBorder, width: 1.5),
       ),
-      padding: EdgeInsets.all(cellSize * 0.75),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(cellSize * 0.5),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 4,
-              offset: Offset(1, 2),
+      child: Stack(
+        children: [
+          // White rounded container
+          Positioned(
+            left: cellSize * 0.75,
+            top: cellSize * 0.75,
+            width: cellSize * 4.5,
+            height: cellSize * 4.5,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(cellSize * 0.5),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 4,
+                    offset: Offset(1, 2),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(cellSize * 0.35),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildBaseSlot(primaryColor, cellSize),
-                  _buildBaseSlot(primaryColor, cellSize),
-                ],
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildBaseSlot(primaryColor, cellSize),
-                  _buildBaseSlot(primaryColor, cellSize),
-                ],
-              ),
-            ],
           ),
-        ),
+          // 4 Base slots centered under tokens (centers at 2.0 * cellSize and 4.0 * cellSize)
+          _buildBaseSlot(slotOffset1, slotOffset1, slotSize, primaryColor),
+          _buildBaseSlot(slotOffset2, slotOffset1, slotSize, primaryColor),
+          _buildBaseSlot(slotOffset1, slotOffset2, slotSize, primaryColor),
+          _buildBaseSlot(slotOffset2, slotOffset2, slotSize, primaryColor),
+        ],
       ),
     );
   }
 
-  Widget _buildBaseSlot(Color color, double cellSize) {
-    return Container(
-      width: cellSize * 1.3,
-      height: cellSize * 1.3,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color.withValues(alpha: 0.15),
-        border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
+  Widget _buildBaseSlot(double left, double top, double size, Color color) {
+    return Positioned(
+      left: left,
+      top: top,
+      width: size,
+      height: size,
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color.withValues(alpha: 0.18),
+          border: Border.all(color: color.withValues(alpha: 0.55), width: 1.5),
+        ),
       ),
     );
   }
@@ -326,11 +357,16 @@ class LudoBoardWidget extends StatelessWidget {
         final left = coord.col * cellSize + (cellSize - tokenSize) / 2 + offset.dx;
         final top = coord.row * cellSize + (cellSize - tokenSize) / 2 + offset.dy;
 
+        // Smooth translation duration: 380ms on capture return, 210ms during normal step hop
+        final animDuration = entry.token.animStage == TokenAnimStage.captured
+            ? const Duration(milliseconds: 380)
+            : const Duration(milliseconds: 210);
+
         widgets.add(
           AnimatedPositioned(
             key: ValueKey('${entry.token.color.name}_${entry.token.id}'),
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeInOut,
+            duration: animDuration,
+            curve: Curves.easeInOutCubic,
             left: left,
             top: top,
             child: TokenWidget(
@@ -340,7 +376,7 @@ class LudoBoardWidget extends StatelessWidget {
               size: total > 1 && !entry.token.isInBase
                   ? tokenSize * 0.82
                   : tokenSize,
-              onTap: () => controller.moveToken(entry.token),
+              onTap: () => controller.onTokenTapped(entry.token),
             ),
           ),
         );

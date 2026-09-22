@@ -7,15 +7,26 @@ enum TokenStatus {
   reachedGoal,
 }
 
+enum TokenAnimStage {
+  idle,
+  throwing,
+  hopping,
+  captured,
+  safeGlow,
+  goalCelebration,
+}
+
 class Token {
   final int id; // 0..3
   final PlayerColor color;
   int step; // -1 = base, 0..50 = common track, 51..55 = home stretch, 56 = goal
+  TokenAnimStage animStage;
 
   Token({
     required this.id,
     required this.color,
     this.step = -1,
+    this.animStage = TokenAnimStage.idle,
   });
 
   TokenStatus get status {
@@ -44,11 +55,12 @@ class Token {
     return (step + diceValue) <= 56;
   }
 
-  Token copyWith({int? step}) {
+  Token copyWith({int? step, TokenAnimStage? animStage}) {
     return Token(
       id: id,
       color: color,
       step: step ?? this.step,
+      animStage: animStage ?? this.animStage,
     );
   }
 }

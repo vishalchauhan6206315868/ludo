@@ -9,6 +9,7 @@ enum GameMode {
 
 enum TurnPhase {
   waitingForRoll,
+  throwingDice,
   waitingForMove,
   animatingMove,
   gameOver,
@@ -40,6 +41,7 @@ class GameState {
   LudoPlayer get currentPlayer => players[currentPlayerIndex];
 
   bool get isWaitingForRoll => phase == TurnPhase.waitingForRoll;
+  bool get isThrowingDice => phase == TurnPhase.throwingDice;
   bool get isWaitingForMove => phase == TurnPhase.waitingForMove;
   bool get isGameOver => phase == TurnPhase.gameOver;
 

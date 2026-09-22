@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../constants/ludo_colors.dart';
 import '../models/game_state.dart';
 import '../services/auth_service.dart';
+import '../services/game_storage_service.dart';
+import '../widgets/settings_dialog.dart';
 import 'game_screen.dart';
 import 'login_screen.dart';
 
@@ -14,11 +16,14 @@ class HomeMenuScreen extends StatefulWidget {
 
 class _HomeMenuScreenState extends State<HomeMenuScreen> {
   String _userName = 'Player';
+  bool _hasSavedMatch = false;
+  GameState? _savedState;
 
   @override
   void initState() {
     super.initState();
     _loadUserInfo();
+    _checkSavedGame();
   }
 
   Future<void> _loadUserInfo() async {
@@ -27,6 +32,26 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
       setState(() {
         _userName = name;
       });
+    }
+  }
+
+  Future<void> _checkSavedGame() async {
+    final hasGame = await GameStorageService.hasSavedGame();
+    if (hasGame) {
+      final state = await GameStorageService.loadSavedGame();
+      if (mounted) {
+        setState(() {
+          _hasSavedMatch = state != null;
+          _savedState = state;
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _hasSavedMatch = false;
+          _savedState = null;
+        });
+      }
     }
   }
 
@@ -70,6 +95,41 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
     }
   }
 
+  Future<void> _discardSavedMatch() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: LudoColors.surfaceDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text("Discard Saved Match?",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text(
+          "Are you sure you want to discard your saved match progress?",
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel", style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("Discard"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await GameStorageService.clearSavedGame();
+      _checkSavedGame();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,6 +163,16 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
         ),
         actions: [
           IconButton(
+            tooltip: "Settings",
+            icon: const Icon(Icons.settings_rounded, color: Colors.white70),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => const SettingsDialog(),
+              );
+            },
+          ),
+          IconButton(
             tooltip: "Logout",
             icon: const Icon(Icons.logout_rounded, color: Colors.white70),
             onPressed: _handleLogout,
@@ -121,8 +191,8 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                 children: [
                   // Game Logo & App Icon
                   Container(
-                    width: 104,
-                    height: 104,
+                    width: 100,
+                    height: 100,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
@@ -143,7 +213,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 18),
 
                   // Title
                   const Text(
@@ -165,7 +235,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
                   // Four Player Color Dots Indicator
                   Row(
@@ -178,7 +248,13 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                     ],
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
+
+                  // Resume Saved Match Card (if any saved game exists)
+                  if (_hasSavedMatch && _savedState != null) ...[
+                    _buildResumeCard(context, _savedState!),
+                    const SizedBox(height: 16),
+                  ],
 
                   // Menu Buttons
                   _buildMenuCard(
@@ -193,7 +269,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                     onTap: () => _startGame(context, GameMode.vsComputer),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   _buildMenuCard(
                     context: context,
@@ -207,7 +283,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                     onTap: () => _startGame(context, GameMode.twoPlayer),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   _buildMenuCard(
                     context: context,
@@ -221,7 +297,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                     onTap: () => _startGame(context, GameMode.fourPlayer),
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
                   // Quick How to Play Dialog
                   TextButton.icon(
@@ -243,6 +319,100 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildResumeCard(BuildContext context, GameState state) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          colors: [
+            Colors.amber.shade700,
+            Colors.amber.shade900,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.amber.withValues(alpha: 0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => _startGame(context, state.mode, state),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.play_arrow_rounded,
+                      color: Colors.white, size: 30),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Text(
+                            "RESUME SAVED MATCH",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        "${_getModeName(state.mode)} • ${state.currentPlayer.name}'s turn",
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: "Discard Match",
+                  icon: const Icon(Icons.delete_outline_rounded,
+                      color: Colors.white70, size: 20),
+                  onPressed: _discardSavedMatch,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getModeName(GameMode mode) {
+    switch (mode) {
+      case GameMode.twoPlayer:
+        return "2 Players";
+      case GameMode.fourPlayer:
+        return "4 Players";
+      case GameMode.vsComputer:
+        return "Vs Computer";
+    }
   }
 
   Widget _buildColorDot(Color color) {
@@ -351,11 +521,18 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
     );
   }
 
-  void _startGame(BuildContext context, GameMode mode) {
-    Navigator.push(
+  Future<void> _startGame(BuildContext context, GameMode mode,
+      [GameState? state]) async {
+    await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => GameScreen(mode: mode)),
+      MaterialPageRoute(
+        builder: (_) => GameScreen(
+          mode: mode,
+          restoredState: state,
+        ),
+      ),
     );
+    _checkSavedGame();
   }
 
   void _showRules(BuildContext context) {
