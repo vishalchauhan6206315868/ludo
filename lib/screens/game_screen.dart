@@ -153,12 +153,16 @@ class _GameScreenState extends State<GameScreen> {
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                _getModeTitle(),
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+              Flexible(
+                child: Text(
+                  _getModeTitle(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -200,13 +204,34 @@ class _GameScreenState extends State<GameScreen> {
               final availableWidth = constraints.maxWidth;
               final availableHeight = constraints.maxHeight;
 
+              final isFourPlayer = state.mode == GameMode.fourPlayer;
+              final isMobileFourPlayer = isFourPlayer && availableWidth < 460;
+              final isCompact = isMobileFourPlayer || availableWidth < 370;
+
+              // Calculate responsive dice size based on device screen & board scale:
+              // Mobile (< 600px width): 46.0 (or 38.0 for 4-player mobile)
+              // Tablet (600 - 1024px width): 56.0
+              // Web / Linux Desktop (> 1024px width): 66.0
+              final double diceSize;
+              if (availableWidth >= 1024) {
+                diceSize = 66.0;
+              } else if (availableWidth >= 600) {
+                diceSize = 56.0;
+              } else if (isMobileFourPlayer) {
+                diceSize = 38.0;
+              } else {
+                diceSize = (availableWidth * 0.11).clamp(42.0, 46.0);
+              }
+              final cardVerticalOffset = diceSize > 56.0 ? 76.0 : (isCompact ? 52.0 : 62.0);
+
               // Calculate board size to fit gracefully on both mobile & desktop
-              final maxBoardByHeight = availableHeight - 200;
+              final reservedHeight = isCompact ? 144.0 : (diceSize > 56.0 ? 190.0 : 164.0);
+              final maxBoardByHeight = availableHeight - reservedHeight;
               final maxBoardByWidth = availableWidth - 24;
               final boardSize = (maxBoardByHeight < maxBoardByWidth
                       ? maxBoardByHeight
                       : maxBoardByWidth)
-                  .clamp(280.0, 520.0);
+                  .clamp(availableHeight < 560 ? 240.0 : 270.0, 520.0);
 
               return SingleChildScrollView(
                 clipBehavior: Clip.none,
@@ -222,7 +247,7 @@ class _GameScreenState extends State<GameScreen> {
                       Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const SizedBox(height: 62),
+                          SizedBox(height: cardVerticalOffset),
                           Center(
                             child: LudoBoardWidget(
                               controller: _controller,
@@ -231,7 +256,7 @@ class _GameScreenState extends State<GameScreen> {
                           ),
                           const SizedBox(height: 8),
                           _buildStatusBanner(state),
-                          const SizedBox(height: 62),
+                          SizedBox(height: cardVerticalOffset),
                         ],
                       ),
 
@@ -240,7 +265,7 @@ class _GameScreenState extends State<GameScreen> {
                         top: 0,
                         left: 0,
                         right: 0,
-                        child: _buildTopPlayersBar(state, boardSize),
+                        child: _buildTopPlayersBar(state, boardSize, diceSize, isCompact),
                       ),
 
                       // Layer 2: Bottom Player Cards (Painted ON TOP of the board so throwing dice floats over board)
@@ -248,7 +273,7 @@ class _GameScreenState extends State<GameScreen> {
                         bottom: 0,
                         left: 0,
                         right: 0,
-                        child: _buildBottomPlayersBar(state, boardSize),
+                        child: _buildBottomPlayersBar(state, boardSize, diceSize, isCompact),
                       ),
                     ],
                   ),
@@ -300,24 +325,33 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildTopPlayersBar(GameState state, [double boardSize = 360]) {
+  Widget _buildTopPlayersBar(GameState state,
+      [double boardSize = 360, double diceSize = 46, bool isCompact = false]) {
     final bSize = Size(boardSize, boardSize);
     if (state.mode == GameMode.fourPlayer) {
       // Show Red (idx 0) and Green (idx 1) at top
       return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          PlayerCard(
-            player: state.players[0],
-            isCurrentTurn: state.currentPlayerIndex == 0,
-            controller: _controller,
-            boardSize: bSize,
+          Expanded(
+            child: PlayerCard(
+              player: state.players[0],
+              isCurrentTurn: state.currentPlayerIndex == 0,
+              controller: _controller,
+              boardSize: bSize,
+              diceSize: diceSize,
+              isCompact: isCompact,
+            ),
           ),
-          PlayerCard(
-            player: state.players[1],
-            isCurrentTurn: state.currentPlayerIndex == 1,
-            controller: _controller,
-            boardSize: bSize,
+          const SizedBox(width: 8),
+          Expanded(
+            child: PlayerCard(
+              player: state.players[1],
+              isCurrentTurn: state.currentPlayerIndex == 1,
+              controller: _controller,
+              boardSize: bSize,
+              diceSize: diceSize,
+              isCompact: isCompact,
+            ),
           ),
         ],
       );
@@ -329,29 +363,40 @@ class _GameScreenState extends State<GameScreen> {
           isCurrentTurn: state.currentPlayerIndex == 1,
           controller: _controller,
           boardSize: bSize,
+          diceSize: diceSize,
+          isCompact: isCompact,
         ),
       );
     }
   }
 
-  Widget _buildBottomPlayersBar(GameState state, [double boardSize = 360]) {
+  Widget _buildBottomPlayersBar(GameState state,
+      [double boardSize = 360, double diceSize = 46, bool isCompact = false]) {
     final bSize = Size(boardSize, boardSize);
     if (state.mode == GameMode.fourPlayer) {
       // Show Blue (idx 3) and Yellow (idx 2) at bottom
       return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          PlayerCard(
-            player: state.players[3],
-            isCurrentTurn: state.currentPlayerIndex == 3,
-            controller: _controller,
-            boardSize: bSize,
+          Expanded(
+            child: PlayerCard(
+              player: state.players[3],
+              isCurrentTurn: state.currentPlayerIndex == 3,
+              controller: _controller,
+              boardSize: bSize,
+              diceSize: diceSize,
+              isCompact: isCompact,
+            ),
           ),
-          PlayerCard(
-            player: state.players[2],
-            isCurrentTurn: state.currentPlayerIndex == 2,
-            controller: _controller,
-            boardSize: bSize,
+          const SizedBox(width: 8),
+          Expanded(
+            child: PlayerCard(
+              player: state.players[2],
+              isCurrentTurn: state.currentPlayerIndex == 2,
+              controller: _controller,
+              boardSize: bSize,
+              diceSize: diceSize,
+              isCompact: isCompact,
+            ),
           ),
         ],
       );
@@ -363,6 +408,8 @@ class _GameScreenState extends State<GameScreen> {
           isCurrentTurn: state.currentPlayerIndex == 0,
           controller: _controller,
           boardSize: bSize,
+          diceSize: diceSize,
+          isCompact: isCompact,
         ),
       );
     }
@@ -390,9 +437,15 @@ class _GameScreenState extends State<GameScreen> {
           children: [
             Icon(Icons.menu_book_rounded, color: Colors.amber),
             SizedBox(width: 8),
-            Text("Ludo Rules",
+            Flexible(
+              child: Text(
+                "Ludo Rules",
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
+                    color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
         ),
         content: const SingleChildScrollView(

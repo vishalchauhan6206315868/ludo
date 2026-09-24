@@ -80,9 +80,10 @@ class _SplashScreenState extends State<SplashScreen>
               opacity: _fadeAnimation,
               child: ScaleTransition(
                 scale: _scaleAnimation,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
                     // App Icon with gold glow
                     Container(
                       width: 120,
@@ -144,6 +145,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ],
                 ),
+              ),
               ),
             );
           },

@@ -151,12 +151,16 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
               child: const Icon(Icons.person, color: Colors.black87, size: 18),
             ),
             const SizedBox(width: 8),
-            Text(
-              "Hi, $_userName",
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
+            Flexible(
+              child: Text(
+                "Hi, $_userName",
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -365,22 +369,24 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Row(
-                        children: [
-                          Text(
-                            "RESUME SAVED MATCH",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.0,
-                            ),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: const Text(
+                          "RESUME SAVED MATCH",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.6,
                           ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         "${_getModeName(state.mode)} • ${state.currentPlayer.name}'s turn",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 12,
@@ -392,6 +398,9 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                 ),
                 IconButton(
                   tooltip: "Discard Match",
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 36, minHeight: 36),
                   icon: const Icon(Icons.delete_outline_rounded,
                       color: Colors.white70, size: 20),
                   onPressed: _discardSavedMatch,
@@ -545,7 +554,14 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
           children: [
             Icon(Icons.menu_book_rounded, color: Colors.amber),
             SizedBox(width: 8),
-            Text("Ludo Rules", style: TextStyle(color: Colors.white)),
+            Flexible(
+              child: Text(
+                "Ludo Rules",
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
           ],
         ),
         content: const SingleChildScrollView(

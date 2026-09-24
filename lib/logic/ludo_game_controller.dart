@@ -363,10 +363,23 @@ class LudoGameController extends ChangeNotifier {
       // Human turn: start move timer
       _startTurnTimer();
 
-      if (movable.length == 1 && movable.first.isInBase) {
-        // Auto-move single token coming out of base for fast gameplay
-        await Future.delayed(const Duration(milliseconds: 400));
-        if (_disposed) return;
+      // Smart Auto-Move Logic:
+      // When roll is not 6 (1..5) and there is exactly 1 movable token (e.g. only 1 open goti),
+      // auto-move it so the player doesn't have to tap unnecessarily.
+      // If roll is 6, player gets to decide which goti to move (unlock goti vs advance open goti).
+      if (roll != 6 && movable.length == 1) {
+        state.statusMessage =
+            "${state.currentPlayer.name} rolled $roll! Auto-moving goti...";
+        state.selectedTokenId = movable.first.id;
+        _safeNotifyListeners();
+
+        await Future.delayed(_stepDelay(400));
+        if (_disposed || state.isGameOver) return;
+        await moveToken(movable.first);
+      } else if (roll == 6 && movable.length == 1 && movable.first.isInBase) {
+        // Single remaining token in base with no other movable tokens
+        await Future.delayed(_stepDelay(400));
+        if (_disposed || state.isGameOver) return;
         await moveToken(movable.first);
       }
     }

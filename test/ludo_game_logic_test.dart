@@ -88,6 +88,71 @@ void main() {
       expect(redToken.isPlaying, true);
       controller.dispose();
     });
+
+    test('Single open token auto-moves on dice roll 1-5 without requiring manual tap', () async {
+      LudoGameController.isFastBotForTesting = true;
+      final controller = LudoGameController(mode: GameMode.twoPlayer);
+      final redPlayer = controller.state.players[0];
+
+      // 1 token open at step 5, other 3 remain in base
+      redPlayer.tokens[0].step = 5;
+      expect(redPlayer.tokens.where((t) => t.isPlaying).length, 1);
+      expect(redPlayer.tokens.where((t) => t.isInBase).length, 3);
+
+      controller.state.phase = TurnPhase.waitingForRoll;
+
+      // Simulate dice throw complete with roll = 4
+      await controller.onPhysicalDiceThrowComplete(4);
+
+      // Token should automatically advance by 4 steps (from 5 to 9)
+      expect(redPlayer.tokens[0].step, 9);
+      controller.dispose();
+      LudoGameController.isFastBotForTesting = false;
+    });
+
+    test('Single open token does NOT auto-move on dice roll 6 (waits for player decision)', () async {
+      LudoGameController.isFastBotForTesting = true;
+      final controller = LudoGameController(mode: GameMode.twoPlayer);
+      final redPlayer = controller.state.players[0];
+
+      // 1 token open at step 5, 3 tokens in base
+      redPlayer.tokens[0].step = 5;
+
+      controller.state.phase = TurnPhase.waitingForRoll;
+
+      // Simulate dice throw complete with roll = 6
+      await controller.onPhysicalDiceThrowComplete(6);
+
+      // Player has multiple choices (unlock goti vs advance open goti), so must NOT auto-move
+      expect(controller.state.phase, TurnPhase.waitingForMove);
+      expect(redPlayer.tokens[0].step, 5); // has not moved yet
+      expect(redPlayer.tokens.where((t) => t.isInBase).length, 3); // no token unlocked yet
+
+      controller.dispose();
+      LudoGameController.isFastBotForTesting = false;
+    });
+
+    test('Multiple open tokens do NOT auto-move on dice roll 1-5 (waits for player decision)', () async {
+      LudoGameController.isFastBotForTesting = true;
+      final controller = LudoGameController(mode: GameMode.twoPlayer);
+      final redPlayer = controller.state.players[0];
+
+      // 2 tokens open on track
+      redPlayer.tokens[0].step = 5;
+      redPlayer.tokens[1].step = 10;
+
+      controller.state.phase = TurnPhase.waitingForRoll;
+
+      await controller.onPhysicalDiceThrowComplete(3);
+
+      // Multiple choices -> waits for player
+      expect(controller.state.phase, TurnPhase.waitingForMove);
+      expect(redPlayer.tokens[0].step, 5);
+      expect(redPlayer.tokens[1].step, 10);
+
+      controller.dispose();
+      LudoGameController.isFastBotForTesting = false;
+    });
   });
 
   group('Match Persistence & Storage Tests', () {

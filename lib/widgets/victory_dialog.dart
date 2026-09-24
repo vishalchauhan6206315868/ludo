@@ -63,7 +63,7 @@ class _VictoryDialogState extends State<VictoryDialog>
           // Main Card
           Container(
             constraints: const BoxConstraints(maxWidth: 380),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             decoration: BoxDecoration(
               color: LudoColors.surfaceDark,
               borderRadius: BorderRadius.circular(24),
@@ -76,8 +76,9 @@ class _VictoryDialogState extends State<VictoryDialog>
                 ),
               ],
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
               children: [
                 // Trophy icon
                 Container(
@@ -222,6 +223,7 @@ class _VictoryDialogState extends State<VictoryDialog>
                 ),
               ],
             ),
+          ),
           ),
         ],
       ),

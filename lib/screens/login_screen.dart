@@ -364,11 +364,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                     fontSize: 12,
                                   ),
                                 ),
-                                Text(
-                                  "admin@ludo.com  /  password123",
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 11,
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    "admin@ludo.com  /  password123",
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 11,
+                                    ),
                                   ),
                                 ),
                               ],

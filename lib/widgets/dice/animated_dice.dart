@@ -842,22 +842,27 @@ class _AnimatedDiceState extends State<AnimatedDice>
           offset: currentPos,
           child: Transform.scale(
             scale: currentScale,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _handleHumanTap,
-              onPanStart: _onPanStart,
-              onPanUpdate: _onPanUpdate,
-              onPanEnd: _onPanEnd,
-              child: _DiceCube3D(
-                size: widget.size,
-                rotX: rotX,
-                rotY: rotY,
-                rotZ: rotZ,
-                diceColor: widget.diceColor,
-                isGlow: isCurrentlyActive,
-                shadowBlur: shadowBlur,
-                shadowSpread: shadowSpread,
-                shadowOffset: shadowOffset,
+            child: MouseRegion(
+              cursor: widget.canRoll && widget.isHuman
+                  ? SystemMouseCursors.click
+                  : SystemMouseCursors.basic,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _handleHumanTap,
+                onPanStart: _onPanStart,
+                onPanUpdate: _onPanUpdate,
+                onPanEnd: _onPanEnd,
+                child: _DiceCube3D(
+                  size: widget.size,
+                  rotX: rotX,
+                  rotY: rotY,
+                  rotZ: rotZ,
+                  diceColor: widget.diceColor,
+                  isGlow: isCurrentlyActive,
+                  shadowBlur: shadowBlur,
+                  shadowSpread: shadowSpread,
+                  shadowOffset: shadowOffset,
+                ),
               ),
             ),
           ),

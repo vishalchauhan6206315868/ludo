@@ -2,8 +2,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ludo/logic/ludo_game_controller.dart';
+import 'package:ludo/models/game_state.dart';
 import 'package:ludo/services/sound_haptic_service.dart';
 import 'package:ludo/widgets/dice/animated_dice.dart';
+import 'package:ludo/widgets/player_card.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -126,6 +129,77 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(completedValue, 5, reason: 'Animation must settle on the authoritative dice value');
+    });
+
+    testWidgets('AnimatedDice renders cleanly across Mobile, Tablet, and Web/Linux desktop sizes', (WidgetTester tester) async {
+      for (final size in [46.0, 56.0, 66.0]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: AnimatedDice(
+                  value: 3,
+                  size: size,
+                  canRoll: true,
+                  isHuman: true,
+                  boardSize: const Size(360, 360),
+                ),
+              ),
+            ),
+          ),
+        );
+        expect(find.byType(AnimatedDice), findsOneWidget);
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    });
+
+    testWidgets('Two PlayerCards side-by-side render without overflow on 360px and 320px screens', (WidgetTester tester) async {
+      final controller = LudoGameController(mode: GameMode.fourPlayer);
+      final p1 = controller.state.players[0];
+      final p2 = controller.state.players[1];
+
+      for (final screenWidth in [360.0, 320.0]) {
+        tester.view.physicalSize = Size(screenWidth, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: PlayerCard(
+                        player: p1,
+                        isCurrentTurn: true,
+                        controller: controller,
+                        isCompact: true,
+                        diceSize: 38,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: PlayerCard(
+                        player: p2,
+                        isCurrentTurn: false,
+                        controller: controller,
+                        isCompact: true,
+                        diceSize: 38,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        expect(tester.takeException(), isNull, reason: 'Must not trigger RenderFlex overflow on ${screenWidth}px screen');
+        expect(find.byType(PlayerCard), findsNWidgets(2));
+      }
+      controller.dispose();
     });
 
     testWidgets('SoundHapticService methods for dice throw execute without throwing exceptions', (WidgetTester tester) async {

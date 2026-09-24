@@ -11,6 +11,8 @@ class PlayerCard extends StatelessWidget {
   final bool isCurrentTurn;
   final LudoGameController controller;
   final Size? boardSize;
+  final double? diceSize;
+  final bool isCompact;
 
   const PlayerCard({
     super.key,
@@ -18,6 +20,8 @@ class PlayerCard extends StatelessWidget {
     required this.isCurrentTurn,
     required this.controller,
     this.boardSize,
+    this.diceSize,
+    this.isCompact = false,
   });
 
   @override
@@ -41,15 +45,33 @@ class PlayerCard extends StatelessWidget {
                 player.color == PlayerColor.green)) ||
         (state.mode != GameMode.fourPlayer && player.color != PlayerColor.red);
 
+    final effectiveDiceSize = isCompact
+        ? (diceSize != null ? diceSize!.clamp(30.0, 36.0) : 36.0)
+        : (diceSize ?? 46.0);
+    final horizontalPad = isCompact
+        ? 6.0
+        : (effectiveDiceSize > 56.0 ? 16.0 : 12.0);
+    final verticalPad = isCompact
+        ? 5.0
+        : (effectiveDiceSize > 56.0 ? 12.0 : 9.0);
+
+    final avatarOuterSize = isCompact ? 32.0 : 44.0;
+    final avatarInnerSize = isCompact ? 26.0 : 36.0;
+    final avatarIconSize = isCompact ? 14.0 : 20.0;
+    final innerSpacing = isCompact ? 4.0 : 10.0;
+
     return AnimatedContainer(
       clipBehavior: Clip.none,
       duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPad,
+        vertical: verticalPad,
+      ),
       decoration: BoxDecoration(
         color: isCurrentTurn
             ? player.primaryColor.withValues(alpha: 0.15)
             : LudoColors.surfaceDark,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(isCompact ? 10 : 16),
         border: Border.all(
           color: isCurrentTurn ? player.primaryColor : Colors.white12,
           width: isCurrentTurn ? 2.5 : 1.0,
@@ -64,7 +86,7 @@ class PlayerCard extends StatelessWidget {
         ],
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: isCompact ? MainAxisSize.max : MainAxisSize.min,
         children: [
           // Player Avatar Circle with circular countdown timer ring
           Stack(
@@ -73,109 +95,133 @@ class PlayerCard extends StatelessWidget {
             children: [
               if (isCurrentTurn && !state.isGameOver)
                 SizedBox(
-                  width: 44,
-                  height: 44,
+                  width: avatarOuterSize,
+                  height: avatarOuterSize,
                   child: CircularProgressIndicator(
                     value: progress,
-                    strokeWidth: 2.8,
+                    strokeWidth: isCompact ? 2.0 : 2.8,
                     valueColor: AlwaysStoppedAnimation<Color>(timerColor),
                     backgroundColor: Colors.white12,
                   ),
                 ),
               Container(
-                width: 36,
-                height: 36,
+                width: avatarInnerSize,
+                height: avatarInnerSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: player.primaryColor,
                   boxShadow: [
                     if (isCurrentTurn)
                       BoxShadow(
-                        color: player.primaryColor
-                            .withValues(alpha: 0.8),
-                        blurRadius: 10,
-                        spreadRadius: 2,
+                        color: player.primaryColor.withValues(alpha: 0.8),
+                        blurRadius: 8,
+                        spreadRadius: 1,
                       ),
                   ],
                 ),
                 child: Icon(
                   player.isBot ? Icons.smart_toy_rounded : Icons.person_rounded,
                   color: Colors.white,
-                  size: 20,
+                  size: avatarIconSize,
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: innerSpacing),
 
-          // Player Name & Progress & Timer
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    player.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (isCurrentTurn && !state.isGameOver) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: timerColor.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: timerColor.withValues(alpha: 0.6),
-                          width: 0.8,
+          // Player Name & Progress & Timer (Wrapped in Expanded to prevent any overflow)
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        player.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isCompact ? 10 : 13,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.timer_rounded,
-                              size: 10, color: timerColor),
-                          const SizedBox(width: 3),
-                          Text(
-                            "${controller.turnSecondsRemaining}s",
-                            style: TextStyle(
-                              color: timerColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                    ),
+                    if (isCurrentTurn && !state.isGameOver) ...[
+                      const SizedBox(width: 3),
+                      if (isCompact)
+                        Text(
+                          "${controller.turnSecondsRemaining}s",
+                          style: TextStyle(
+                            color: timerColor,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: timerColor.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: timerColor.withValues(alpha: 0.6),
+                              width: 0.8,
                             ),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.timer_rounded,
+                                  size: 10, color: timerColor),
+                              const SizedBox(width: 2),
+                              Text(
+                                "${controller.turnSecondsRemaining}s",
+                                style: TextStyle(
+                                  color: timerColor,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        isCompact
+                            ? "${player.finishedCount}/4"
+                            : "${player.finishedCount}/4 Home",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white60,
+                          fontSize: isCompact ? 9 : 11,
+                        ),
                       ),
                     ),
+                    if (player.hasFinished) ...[
+                      const SizedBox(width: 2),
+                      Icon(Icons.emoji_events_rounded,
+                          color: Colors.amber, size: isCompact ? 10 : 14),
+                    ]
                   ],
-                ],
-              ),
-              const SizedBox(height: 3),
-              Row(
-                children: [
-                  Text(
-                    "${player.finishedCount}/4 In Home",
-                    style: const TextStyle(
-                      color: Colors.white60,
-                      fontSize: 11,
-                    ),
-                  ),
-                  if (player.hasFinished) ...[
-                    const SizedBox(width: 4),
-                    const Icon(Icons.emoji_events_rounded,
-                        color: Colors.amber, size: 14),
-                  ]
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
 
-          const SizedBox(width: 12),
+          SizedBox(width: innerSpacing),
 
           // Physical 3D Dice area
           if (isCurrentTurn)
@@ -192,18 +238,23 @@ class PlayerCard extends StatelessWidget {
                   controller.onPhysicalDiceThrowComplete(finalValue);
                 }
               },
-              size: 46,
+              size: effectiveDiceSize,
             )
           else
             Container(
-              width: 40,
-              height: 40,
+              width: (effectiveDiceSize - 6.0).clamp(32.0, 62.0),
+              height: (effectiveDiceSize - 6.0).clamp(32.0, 62.0),
               decoration: BoxDecoration(
                 color: Colors.white10,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(
+                  ((effectiveDiceSize - 6.0) * 0.22).clamp(6.0, 14.0),
+                ),
               ),
-              child: const Icon(Icons.casino_outlined,
-                  color: Colors.white38, size: 22),
+              child: Icon(
+                Icons.casino_outlined,
+                color: Colors.white38,
+                size: (effectiveDiceSize * 0.48).clamp(16.0, 32.0),
+              ),
             ),
         ],
       ),

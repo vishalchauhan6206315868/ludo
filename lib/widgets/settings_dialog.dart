@@ -29,8 +29,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
             children: [
               // Title
               Row(
@@ -135,6 +136,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
               ],
             ],
           ),
+        ),
         ),
       ),
     );
