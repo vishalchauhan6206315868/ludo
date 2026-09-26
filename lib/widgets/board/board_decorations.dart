@@ -100,10 +100,47 @@ class HomeTrianglePainter extends CustomPainter {
     canvas.drawPath(pathRed, pRed);
     canvas.drawPath(pathRed, borderPaint);
 
-    // Center circular badge
-    final centerCirclePaint = Paint()..color = Colors.white;
-    canvas.drawCircle(center, w * 0.12, centerCirclePaint);
-    canvas.drawCircle(center, w * 0.12, borderPaint);
+    // Center Royal Golden Medallion
+    final goldFillPaint = Paint()
+      ..color = const Color(0xFFFFD700)
+      ..style = PaintingStyle.fill;
+    final goldBorderPaint = Paint()
+      ..color = const Color(0xFFB8860B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    canvas.drawCircle(center, w * 0.16, goldFillPaint);
+    canvas.drawCircle(center, w * 0.16, goldBorderPaint);
+
+    // Inner bright ring
+    final innerRingPaint = Paint()
+      ..color = const Color(0xFFFFF176)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawCircle(center, w * 0.13, innerRingPaint);
+
+    // Mini center star in medallion
+    final starPaint = Paint()
+      ..color = const Color(0xFF8D6E12)
+      ..style = PaintingStyle.fill;
+    final starPath = Path();
+    const int pts = 4;
+    final double step = pi / pts;
+    final outR = w * 0.08;
+    final inR = outR * 0.35;
+    for (int i = 0; i < 2 * pts; i++) {
+      final r = (i % 2 == 0) ? outR : inR;
+      final angle = i * step - pi / 2;
+      final x = center.dx + r * cos(angle);
+      final y = center.dy + r * sin(angle);
+      if (i == 0) {
+        starPath.moveTo(x, y);
+      } else {
+        starPath.lineTo(x, y);
+      }
+    }
+    starPath.close();
+    canvas.drawPath(starPath, starPaint);
   }
 
   @override

@@ -23,17 +23,19 @@ class LudoColors {
   static const Color blueBg = Color(0xFFE3F2FD);
 
   // Board & UI Colors
-  static const Color boardBg = Color(0xFFFDFDFD);
-  static const Color boardBorder = Color(0xFF263238);
+  static const Color boardBg = Color(0xFFFCFBF7);
+  static const Color boardBorder = Color(0xFFD4AF37);
   static const Color pathBorder = Color(0xFFCFD8DC);
   static const Color cellBg = Colors.white;
   static const Color safeStar = Color(0xFFFFB300);
 
-  // App Theme
-  static const Color backgroundDark = Color(0xFF0F172A);
-  static const Color surfaceDark = Color(0xFF1E293B);
-  static const Color cardDark = Color(0xFF334155);
+  // App Theme - Luxury Midnight Royal & Gold
+  static const Color backgroundDark = Color(0xFF060B19);
+  static const Color surfaceDark = Color(0xFF10192D);
+  static const Color cardDark = Color(0xFF16223B);
   static const Color textPrimary = Color(0xFFF8FAFC);
   static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color accentGold = Color(0xFFFFC107);
+  static const Color accentGold = Color(0xFFFFD700);
+  static const Color goldMetallic = Color(0xFFFFD700);
+  static const Color goldDark = Color(0xFFB8860B);
 }

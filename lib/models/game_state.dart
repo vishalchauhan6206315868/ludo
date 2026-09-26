@@ -3,8 +3,10 @@ import 'token.dart';
 
 enum GameMode {
   twoPlayer,
+  threePlayer,
   fourPlayer,
   vsComputer,
+  passNPlay,
 }
 
 enum TurnPhase {
@@ -12,6 +14,7 @@ enum TurnPhase {
   throwingDice,
   waitingForMove,
   animatingMove,
+  waitingForPlayerHandoff,
   gameOver,
 }
 
@@ -43,6 +46,7 @@ class GameState {
   bool get isWaitingForRoll => phase == TurnPhase.waitingForRoll;
   bool get isThrowingDice => phase == TurnPhase.throwingDice;
   bool get isWaitingForMove => phase == TurnPhase.waitingForMove;
+  bool get isWaitingForPlayerHandoff => phase == TurnPhase.waitingForPlayerHandoff;
   bool get isGameOver => phase == TurnPhase.gameOver;
 
   bool isTokenMovable(Token token) {

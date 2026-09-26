@@ -71,9 +71,11 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 secondary: const Icon(Icons.volume_up_rounded, color: Colors.white70),
                 onChanged: (val) async {
                   await SoundHapticService.toggleSound();
-                  setState(() {
-                    _sound = SoundHapticService.isSoundEnabled;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _sound = SoundHapticService.isSoundEnabled;
+                    });
+                  }
                 },
               ),
 
@@ -89,9 +91,11 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 secondary: const Icon(Icons.vibration_rounded, color: Colors.white70),
                 onChanged: (val) async {
                   await SoundHapticService.toggleHaptics();
-                  setState(() {
-                    _haptics = SoundHapticService.isHapticsEnabled;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _haptics = SoundHapticService.isHapticsEnabled;
+                    });
+                  }
                 },
               ),
 

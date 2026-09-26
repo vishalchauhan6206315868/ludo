@@ -9,6 +9,7 @@ class LudoPlayer {
   final bool isBot;
   final List<Token> tokens;
   int? rank; // 1 for 1st place, 2 for 2nd, etc.
+  bool hasEverOpenedToken;
 
   LudoPlayer({
     required this.color,
@@ -16,11 +17,19 @@ class LudoPlayer {
     this.isBot = false,
     List<Token>? tokens,
     this.rank,
+    this.hasEverOpenedToken = false,
   }) : tokens = tokens ??
             List.generate(
               4,
               (index) => Token(id: index, color: color),
             );
+
+  bool get hasOpenedFirstToken =>
+      hasEverOpenedToken || tokens.any((t) => t.step >= 0);
+
+  set hasOpenedFirstToken(bool value) {
+    hasEverOpenedToken = value;
+  }
 
   Color get primaryColor {
     switch (color) {

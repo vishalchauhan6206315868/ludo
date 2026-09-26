@@ -18,7 +18,7 @@ class LudoBoardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double borderWidth = 3.5;
+    const double borderWidth = 4.0;
     final boardInnerSize = size - (borderWidth * 2);
     final cellSize = boardInnerSize / 15;
 
@@ -28,32 +28,52 @@ class LudoBoardWidget extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: LudoColors.boardBg,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFFFFE082),
+              Color(0xFFFFB300),
+              Color(0xFFFFA000),
+              Color(0xFFE65100),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.35),
-              blurRadius: 18,
+              color: const Color(0xFFFFD700).withValues(alpha: 0.35),
+              blurRadius: 24,
               spreadRadius: 3,
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.65),
+              blurRadius: 18,
+              spreadRadius: 1,
               offset: const Offset(0, 8),
             ),
           ],
-          border: Border.all(
-            color: LudoColors.boardBorder,
-            width: borderWidth,
-          ),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            width: boardInnerSize,
-            height: boardInnerSize,
-            child: Stack(
-              children: [
-                // 1. Board Background Layout (Track grid)
-                _buildBoardBackground(cellSize),
+        padding: const EdgeInsets.all(borderWidth),
+        child: Container(
+          decoration: BoxDecoration(
+            color: LudoColors.boardBg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: const Color(0xFF10192D),
+              width: 1.2,
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: boardInnerSize,
+              height: boardInnerSize,
+              child: Stack(
+                children: [
+                  // 1. Board Background Layout (Track grid)
+                  _buildBoardBackground(cellSize),
 
-                // 2. Four Base Corners (6x6 each)
+                  // 2. Four Base Corners (6x6 each)
                 Positioned(
                   left: 0,
                   top: 0,
@@ -121,8 +141,9 @@ class LudoBoardWidget extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildBoardBackground(double cellSize) {
     return Column(
@@ -299,8 +320,18 @@ class LudoBoardWidget extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: color.withValues(alpha: 0.18),
-          border: Border.all(color: color.withValues(alpha: 0.55), width: 1.5),
+          color: color.withValues(alpha: 0.16),
+          border: Border.all(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.8),
+            width: 1.6,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.25),
+              blurRadius: 4,
+              spreadRadius: 0.5,
+            ),
+          ],
         ),
       ),
     );

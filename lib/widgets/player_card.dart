@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../constants/ludo_colors.dart';
 import '../constants/ludo_path.dart';
 import '../logic/ludo_game_controller.dart';
 import '../models/ludo_player.dart';
@@ -40,10 +39,24 @@ class PlayerCard extends StatelessWidget {
         : (secondsRemaining > 2 ? Colors.amber : Colors.redAccent);
 
     // Determine if this player's card is on the top row of the screen
-    final isTop = (state.mode == GameMode.fourPlayer &&
-            (player.color == PlayerColor.red ||
-                player.color == PlayerColor.green)) ||
-        (state.mode != GameMode.fourPlayer && player.color != PlayerColor.red);
+    final bool isTop;
+    switch (state.mode) {
+      case GameMode.fourPlayer:
+      case GameMode.threePlayer:
+        isTop = (player.color == PlayerColor.red || player.color == PlayerColor.green);
+        break;
+      case GameMode.twoPlayer:
+      case GameMode.vsComputer:
+        isTop = (player.color != PlayerColor.red);
+        break;
+      case GameMode.passNPlay:
+        if (state.players.length >= 3) {
+          isTop = (player.color == PlayerColor.red || player.color == PlayerColor.green);
+        } else {
+          isTop = (player.color != PlayerColor.red);
+        }
+        break;
+    }
 
     final effectiveDiceSize = isCompact
         ? (diceSize != null ? diceSize!.clamp(30.0, 36.0) : 36.0)
@@ -69,20 +82,33 @@ class PlayerCard extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: isCurrentTurn
-            ? player.primaryColor.withValues(alpha: 0.15)
-            : LudoColors.surfaceDark,
-        borderRadius: BorderRadius.circular(isCompact ? 10 : 16),
+            ? const Color(0xFF14203D)
+            : const Color(0xFF10192D).withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(isCompact ? 12 : 16),
         border: Border.all(
-          color: isCurrentTurn ? player.primaryColor : Colors.white12,
-          width: isCurrentTurn ? 2.5 : 1.0,
+          color: isCurrentTurn
+              ? const Color(0xFFFFD700)
+              : Colors.white.withValues(alpha: 0.12),
+          width: isCurrentTurn ? 2.0 : 1.0,
         ),
         boxShadow: [
-          if (isCurrentTurn)
+          if (isCurrentTurn) ...[
             BoxShadow(
-              color: player.primaryColor.withValues(alpha: 0.35),
-              blurRadius: 14,
+              color: const Color(0xFFFFD700).withValues(alpha: 0.40),
+              blurRadius: 16,
               spreadRadius: 2,
             ),
+            BoxShadow(
+              color: player.primaryColor.withValues(alpha: 0.35),
+              blurRadius: 10,
+            ),
+          ] else ...[
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ],
       ),
       child: Row(
@@ -109,11 +135,19 @@ class PlayerCard extends StatelessWidget {
                 height: avatarInnerSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: player.primaryColor,
+                  color: player.isBot
+                      ? const Color(0xFF4361EE)
+                      : player.primaryColor,
+                  border: Border.all(
+                    color: isCurrentTurn
+                        ? const Color(0xFFFFD700)
+                        : Colors.white70,
+                    width: 1.5,
+                  ),
                   boxShadow: [
                     if (isCurrentTurn)
                       BoxShadow(
-                        color: player.primaryColor.withValues(alpha: 0.8),
+                        color: const Color(0xFFFFD700).withValues(alpha: 0.6),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),

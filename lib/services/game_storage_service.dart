@@ -47,6 +47,7 @@ class GameStorageService {
             'color': p.color.name,
             'isBot': p.isBot,
             'rank': p.rank,
+            'hasOpenedFirstToken': p.hasOpenedFirstToken,
             'tokens':
                 p.tokens.map((t) => {'id': t.id, 'step': t.step}).toList(),
           };
@@ -94,10 +95,17 @@ class GameStorageService {
             color: color,
             isBot: pMap['isBot'] as bool,
             rank: pMap['rank'] as int?,
+            hasEverOpenedToken: pMap['hasOpenedFirstToken'] as bool? ??
+                tokens.any((t) => t.step >= 0),
             tokens: tokens,
           ),
         );
       }
+
+      final winners = players
+          .where((p) => p.hasFinished || p.rank != null)
+          .toList()
+        ..sort((a, b) => (a.rank ?? 99).compareTo(b.rank ?? 99));
 
       return GameState(
         players: players,
@@ -106,6 +114,7 @@ class GameStorageService {
         consecutiveSixes: data['consecutiveSixes'] as int,
         statusMessage: data['statusMessage'] as String? ?? "Resumed Match",
         phase: TurnPhase.waitingForRoll,
+        winners: winners,
       );
     } catch (_) {
       await clearSavedGame();

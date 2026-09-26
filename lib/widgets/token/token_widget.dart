@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../constants/ludo_path.dart';
 import '../../models/ludo_player.dart';
 import '../../models/token.dart';
-import '../../services/sound_haptic_service.dart';
 
 class TokenWidget extends StatefulWidget {
   final Token token;
@@ -100,7 +99,6 @@ class _TokenWidgetState extends State<TokenWidget>
       case TokenAnimStage.safeGlow:
         _actionController.duration = const Duration(milliseconds: 400);
         _actionController.forward(from: 0.0);
-        SoundHapticService.onSafeStopLanding();
         break;
       case TokenAnimStage.goalCelebration:
         _actionController.duration = const Duration(milliseconds: 650);

@@ -8,19 +8,48 @@ class SoundHapticService {
   static const String _keyHaptics = 'setting_haptics_enabled';
 
   static bool _soundEnabled = true;
-  static bool _hapticsEnabled = true;
+  static bool vibrationEnabled = true;
 
   static AudioPlayer? _diceAudioPlayer;
-  static int _lastDiceRollTime = 0;
+
+  // Debounce timestamps for preventing duplicate triggers
+  static int _lastDiceRollSoundTime = 0;
+  static int _lastDiceResultTime = 0;
+  static int _lastTokenStepSoundTime = 0;
+  static int _lastTokenLandingTime = 0;
+  static int _lastTokenOpenTime = 0;
+  static int _lastCaptureTime = 0;
+  static int _lastSafeCellTime = 0;
+  static int _lastHomeStretchTime = 0;
+  static int _lastHomeGoalTime = 0;
+  static int _lastVictoryTime = 0;
+
+  // ==========================================
+  // GLOBAL SETTINGS GETTERS & SETTERS
+  // ==========================================
+
+  static bool get soundEnabled => _soundEnabled;
+  static set soundEnabled(bool value) {
+    _soundEnabled = value;
+    if (!_soundEnabled) {
+      stopAllSounds();
+    }
+  }
 
   static bool get isSoundEnabled => _soundEnabled;
-  static bool get isHapticsEnabled => _hapticsEnabled;
+  static set isSoundEnabled(bool value) => soundEnabled = value;
+
+  static bool get isVibrationEnabled => vibrationEnabled;
+  static set isVibrationEnabled(bool value) => vibrationEnabled = value;
+
+  static bool get isHapticsEnabled => vibrationEnabled;
+  static set isHapticsEnabled(bool value) => vibrationEnabled = value;
 
   static Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       _soundEnabled = prefs.getBool(_keySound) ?? true;
-      _hapticsEnabled = prefs.getBool(_keyHaptics) ?? true;
+      vibrationEnabled = prefs.getBool(_keyHaptics) ?? true;
     } catch (_) {}
 
     try {
@@ -33,185 +62,267 @@ class SoundHapticService {
   }
 
   static Future<void> toggleSound() async {
-    _soundEnabled = !_soundEnabled;
-    if (!_soundEnabled) {
-      try {
-        await _diceAudioPlayer?.stop();
-      } catch (_) {}
-    }
+    soundEnabled = !_soundEnabled;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keySound, _soundEnabled);
     } catch (_) {}
   }
 
-  static Future<void> toggleHaptics() async {
-    _hapticsEnabled = !_hapticsEnabled;
+  static Future<void> toggleVibration() async {
+    vibrationEnabled = !vibrationEnabled;
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_keyHaptics, _hapticsEnabled);
+      await prefs.setBool(_keyHaptics, vibrationEnabled);
     } catch (_) {}
   }
 
-  static void onDicePickup() {
+  static Future<void> toggleHaptics() => toggleVibration();
+
+  static void stopAllSounds() {
     try {
-      if (_hapticsEnabled) {
-        HapticFeedback.selectionClick();
-      }
+      _diceAudioPlayer?.stop().catchError((_) {});
     } catch (_) {}
   }
 
-  /// Triggered on immediate user touch/press before the throw initiates
-  static void onDiceTapPress() {
+  // ==========================================
+  // 1. DICE ROLL FEEDBACK
+  // ==========================================
+
+  /// Plays realistic dice roll/throw sound without triggering unnecessary vibrations.
+  /// Debounced to avoid duplicate triggers during rapid state changes or multiple callbacks.
+  static void playDiceRollSound() {
+    if (!_soundEnabled) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastDiceRollSoundTime < 450) return;
+    _lastDiceRollSoundTime = now;
+    _playDiceAudio();
+  }
+
+  /// Optional short haptic feedback triggered strictly once when the dice settles on its final result (1-6).
+  static void onDiceResult() {
+    if (!vibrationEnabled) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastDiceResultTime < 350) return;
+    _lastDiceResultTime = now;
+
     try {
-      if (_hapticsEnabled) {
-        HapticFeedback.lightImpact();
-      }
-      if (_soundEnabled) {
-        SystemSound.play(SystemSoundType.click);
-      }
+      HapticFeedback.lightImpact();
     } catch (_) {}
   }
 
-  static void onDiceShake() {
-    try {
-      if (_hapticsEnabled) {
-        HapticFeedback.lightImpact();
-      }
-      if (_soundEnabled) {
-        SystemSound.play(SystemSoundType.click);
-      }
-    } catch (_) {}
-  }
+  /// Alias for backward compatibility
+  static void onDiceSettle() => onDiceResult();
 
-  /// Triggered as the dice leaves the hand/tray and launches into the air
+  /// Aliases and legacy dice methods kept safe and non-intrusive
+  static void onDiceRoll() => playDiceRollSound();
+
   static void onDiceThrow() {
-    try {
-      if (_hapticsEnabled) {
-        HapticFeedback.mediumImpact();
-      }
-      onDiceRoll();
-    } catch (_) {}
+    playDiceRollSound();
   }
 
-  /// Triggered upon first contact of the dice with the board surface
-  static void onDiceFirstLanding() {
-    try {
-      if (_hapticsEnabled) {
-        HapticFeedback.mediumImpact();
-      }
-    } catch (_) {}
-  }
-
-  /// Triggered when a token arrives safely on a STOP point / safe star cell
-  static void onSafeStopLanding() {
-    try {
-      if (_hapticsEnabled) {
-        HapticFeedback.mediumImpact();
-      }
-      if (_soundEnabled) {
-        SystemSound.play(SystemSoundType.click);
-      }
-    } catch (_) {}
-  }
-
-  static void onBoardCollision() {
-    try {
-      if (_hapticsEnabled) {
-        HapticFeedback.mediumImpact();
-      }
-    } catch (_) {}
-  }
-
-  /// Triggered when the dice finishes all bounces and rests in its final position
-  static void onDiceSettle() {
-    try {
-      if (_hapticsEnabled) {
-        HapticFeedback.lightImpact();
-      }
-    } catch (_) {}
-  }
-
-  /// Realistic physical dice rolling sound effect & haptic feedback.
-  /// Debounced to prevent multiple rapid triggers during a single throw.
-  static void onDiceRoll() {
-    try {
-      if (_hapticsEnabled) {
-        HapticFeedback.mediumImpact();
-      }
-      if (_soundEnabled) {
-        final now = DateTime.now().millisecondsSinceEpoch;
-        // Debounce: prevent duplicate triggers within 500ms for a single throw
-        if (now - _lastDiceRollTime >= 500) {
-          _lastDiceRollTime = now;
-          _playDiceSound();
-        }
-      }
-    } catch (e) {
-      debugPrint("Error in onDiceRoll: $e");
-    }
-  }
-
-  static Future<void> _playDiceSound() async {
-    try {
-      _diceAudioPlayer ??= AudioPlayer();
-      await _diceAudioPlayer!.stop();
-      await _diceAudioPlayer!.play(AssetSource('sounds/dice_roll.wav'));
-    } catch (e) {
-      debugPrint("AudioPlayer dice roll sound error (safe fallback): $e");
+  static void onDiceTapPress() {
+    // Only a gentle tap click if sound enabled, no heavy vibration cascade
+    if (_soundEnabled) {
       try {
-        await _diceAudioPlayer?.play(AssetSource('sounds/dice_roll.mp3'));
+        SystemSound.play(SystemSoundType.click);
       } catch (_) {}
     }
   }
 
+  static void onDiceShake() {
+    // Controlled: no continuous vibration during shake
+  }
+
+  static void onDicePickup() {}
+
+  static void onDiceFirstLanding() {}
+
+  static void onBoardCollision() {}
+
+  // ==========================================
+  // 2. TOKEN MOVEMENT FEEDBACK
+  // ==========================================
+
+  /// Audio click on each token step/hop. NO vibration!
+  /// Prevents shaking the device multiple times on multi-step moves.
+  static void playTokenStepSound() {
+    if (!_soundEnabled) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastTokenStepSoundTime < 100) return;
+    _lastTokenStepSoundTime = now;
+
+    try {
+      SystemSound.play(SystemSoundType.click);
+    } catch (_) {}
+  }
+
+  /// Controlled short haptic feedback when the token finishes its movement steps and lands.
+  static void onTokenStepLanding() {
+    if (!vibrationEnabled) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastTokenLandingTime < 300) return;
+    _lastTokenLandingTime = now;
+
+    try {
+      HapticFeedback.selectionClick();
+    } catch (_) {}
+  }
+
+  /// Legacy token step alias
   static void onTokenStep() {
-    try {
-      if (_hapticsEnabled) {
-        HapticFeedback.selectionClick();
-      }
-      if (_soundEnabled) {
-        SystemSound.play(SystemSoundType.click);
-      }
-    } catch (_) {}
+    playTokenStepSound();
   }
 
-  static void onCapture() {
-    try {
-      if (_hapticsEnabled) {
+  // ==========================================
+  // 3. SPECIAL EVENTS
+  // ==========================================
+
+  /// Token opening for the first time / leaving home base onto starting cell.
+  static void onTokenOpen() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastTokenOpenTime < 400) return;
+    _lastTokenOpenTime = now;
+
+    if (vibrationEnabled) {
+      try {
+        HapticFeedback.lightImpact();
+      } catch (_) {}
+    }
+    if (_soundEnabled) {
+      try {
+        SystemSound.play(SystemSoundType.click);
+      } catch (_) {}
+    }
+  }
+
+  /// Opponent token capture event.
+  static void onTokenCapture() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastCaptureTime < 400) return;
+    _lastCaptureTime = now;
+
+    if (vibrationEnabled) {
+      try {
         HapticFeedback.heavyImpact();
-      }
-      if (_soundEnabled) {
+      } catch (_) {}
+    }
+    if (_soundEnabled) {
+      try {
         SystemSound.play(SystemSoundType.alert);
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
   }
 
-  static void onHomeGoal() {
-    try {
-      if (_hapticsEnabled) {
+  static void onCapture() => onTokenCapture();
+
+  /// Token lands safely on a STAR / safe cell.
+  static void onSafeCellLanding() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastSafeCellTime < 400) return;
+    _lastSafeCellTime = now;
+
+    if (vibrationEnabled) {
+      try {
         HapticFeedback.mediumImpact();
-      }
-      if (_soundEnabled) {
+      } catch (_) {}
+    }
+    if (_soundEnabled) {
+      try {
         SystemSound.play(SystemSoundType.click);
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
   }
 
+  static void onSafeStopLanding() => onSafeCellLanding();
+
+  /// Token enters the colored home stretch.
+  static void onHomeStretchEnter() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastHomeStretchTime < 400) return;
+    _lastHomeStretchTime = now;
+
+    if (vibrationEnabled) {
+      try {
+        HapticFeedback.lightImpact();
+      } catch (_) {}
+    }
+    if (_soundEnabled) {
+      try {
+        SystemSound.play(SystemSoundType.click);
+      } catch (_) {}
+    }
+  }
+
+  /// Token reaches the home triangle / goal.
+  static void onHomeGoal() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastHomeGoalTime < 400) return;
+    _lastHomeGoalTime = now;
+
+    if (vibrationEnabled) {
+      try {
+        HapticFeedback.mediumImpact();
+      } catch (_) {}
+    }
+    if (_soundEnabled) {
+      try {
+        SystemSound.play(SystemSoundType.click);
+      } catch (_) {}
+    }
+  }
+
+  /// Player victory / game over fanfare.
   static void onVictory() {
-    try {
-      if (_hapticsEnabled) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastVictoryTime < 500) return;
+    _lastVictoryTime = now;
+
+    if (vibrationEnabled) {
+      try {
         HapticFeedback.vibrate();
-      }
-      if (_soundEnabled) {
+      } catch (_) {}
+    }
+    if (_soundEnabled) {
+      try {
         SystemSound.play(SystemSoundType.alert);
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
+  }
+
+  // ==========================================
+  // HELPERS
+  // ==========================================
+
+  static Future<void> _playDiceAudio() async {
+    try {
+      _diceAudioPlayer ??= AudioPlayer();
+      await _diceAudioPlayer!.stop().catchError((_) {});
+      await _diceAudioPlayer!.play(AssetSource('sounds/dice_roll.wav')).catchError((_) {});
+    } catch (e) {
+      try {
+        await _diceAudioPlayer?.play(AssetSource('sounds/dice_roll.mp3')).catchError((_) {});
+      } catch (_) {}
+    }
+  }
+
+  @visibleForTesting
+  static void resetDebounce() {
+    _lastDiceRollSoundTime = 0;
+    _lastDiceResultTime = 0;
+    _lastTokenStepSoundTime = 0;
+    _lastTokenLandingTime = 0;
+    _lastTokenOpenTime = 0;
+    _lastCaptureTime = 0;
+    _lastSafeCellTime = 0;
+    _lastHomeStretchTime = 0;
+    _lastHomeGoalTime = 0;
+    _lastVictoryTime = 0;
   }
 
   static Future<void> dispose() async {
     try {
-      await _diceAudioPlayer?.dispose();
+      await _diceAudioPlayer?.dispose().catchError((_) {});
       _diceAudioPlayer = null;
     } catch (_) {}
   }

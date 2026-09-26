@@ -38,16 +38,24 @@ class LudoGameController extends ChangeNotifier {
   LudoGameController({
     GameMode mode = GameMode.twoPlayer,
     GameState? initialState,
+    int passNPlayPlayerCount = 2,
+    List<String>? customPlayerNames,
   }) {
     if (initialState != null) {
       state = initialState;
-      if (state.currentPlayer.isBot) {
+      if (state.phase == TurnPhase.waitingForPlayerHandoff) {
+        _isTimerPaused = true;
+      } else if (state.currentPlayer.isBot) {
         _triggerBotTurn();
       } else {
         _startTurnTimer();
       }
     } else {
-      initGame(mode);
+      initGame(
+        mode,
+        passNPlayPlayerCount: passNPlayPlayerCount,
+        customPlayerNames: customPlayerNames,
+      );
     }
   }
 
@@ -55,6 +63,7 @@ class LudoGameController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _turnTimer?.cancel();
+    SoundHapticService.stopAllSounds();
     super.dispose();
   }
 
@@ -69,7 +78,7 @@ class LudoGameController extends ChangeNotifier {
   }
 
   void resumeTimer() {
-    if (state.isGameOver) return;
+    if (state.isGameOver || state.phase == TurnPhase.waitingForPlayerHandoff) return;
     _isTimerPaused = false;
   }
 
@@ -148,6 +157,21 @@ class LudoGameController extends ChangeNotifier {
       }
 
       state.currentPlayerIndex = nextIdx;
+      state.currentDiceValue = null;
+      state.selectedTokenId = null;
+      state.consecutiveSixes = 0;
+
+      if (state.mode == GameMode.passNPlay) {
+        state.phase = TurnPhase.waitingForPlayerHandoff;
+        state.statusMessage =
+            "Time's up for ${timedOutPlayer.name}! Pass the device to ${state.currentPlayer.name}!";
+        turnSecondsRemaining = maxTurnSeconds;
+        _isTimerPaused = true;
+        _safeNotifyListeners();
+        GameStorageService.saveGame(state);
+        return;
+      }
+
       state.phase = TurnPhase.waitingForRoll;
       state.statusMessage =
           "Time's up for ${timedOutPlayer.name}! ${state.currentPlayer.name}'s turn.";
@@ -156,7 +180,6 @@ class LudoGameController extends ChangeNotifier {
       turnSecondsRemaining = maxTurnSeconds;
       _isTimerPaused = false;
 
-      SoundHapticService.onTokenStep();
       _safeNotifyListeners();
 
       GameStorageService.saveGame(state);
@@ -175,7 +198,11 @@ class LudoGameController extends ChangeNotifier {
     }
   }
 
-  void initGame(GameMode mode) {
+  void initGame(
+    GameMode mode, {
+    int passNPlayPlayerCount = 2,
+    List<String>? customPlayerNames,
+  }) {
     _turnTimer?.cancel();
     _isChangingTurn = false;
     List<LudoPlayer> players = [];
@@ -191,6 +218,26 @@ class LudoGameController extends ChangeNotifier {
           LudoPlayer(
             color: PlayerColor.yellow,
             name: "Player 2 (Yellow)",
+            isBot: false,
+          ),
+        ];
+        break;
+
+      case GameMode.threePlayer:
+        players = [
+          LudoPlayer(
+            color: PlayerColor.red,
+            name: "Player 1 (Red)",
+            isBot: false,
+          ),
+          LudoPlayer(
+            color: PlayerColor.green,
+            name: "Player 2 (Green)",
+            isBot: false,
+          ),
+          LudoPlayer(
+            color: PlayerColor.yellow,
+            name: "Player 3 (Yellow)",
             isBot: false,
           ),
         ];
@@ -235,6 +282,77 @@ class LudoGameController extends ChangeNotifier {
           ),
         ];
         break;
+
+      case GameMode.passNPlay:
+        final count = (customPlayerNames != null && customPlayerNames.isNotEmpty)
+            ? customPlayerNames.length.clamp(2, 4)
+            : passNPlayPlayerCount.clamp(2, 4);
+        final defaultNames = ["Player 1", "Player 2", "Player 3", "Player 4"];
+        String getName(int idx) {
+          if (customPlayerNames != null &&
+              idx < customPlayerNames.length &&
+              customPlayerNames[idx].trim().isNotEmpty) {
+            return customPlayerNames[idx].trim();
+          }
+          return defaultNames[idx];
+        }
+
+        if (count == 2) {
+          players = [
+            LudoPlayer(
+              color: PlayerColor.red,
+              name: getName(0),
+              isBot: false,
+            ),
+            LudoPlayer(
+              color: PlayerColor.yellow,
+              name: getName(1),
+              isBot: false,
+            ),
+          ];
+        } else if (count == 3) {
+          players = [
+            LudoPlayer(
+              color: PlayerColor.red,
+              name: getName(0),
+              isBot: false,
+            ),
+            LudoPlayer(
+              color: PlayerColor.green,
+              name: getName(1),
+              isBot: false,
+            ),
+            LudoPlayer(
+              color: PlayerColor.yellow,
+              name: getName(2),
+              isBot: false,
+            ),
+          ];
+        } else {
+          players = [
+            LudoPlayer(
+              color: PlayerColor.red,
+              name: getName(0),
+              isBot: false,
+            ),
+            LudoPlayer(
+              color: PlayerColor.green,
+              name: getName(1),
+              isBot: false,
+            ),
+            LudoPlayer(
+              color: PlayerColor.yellow,
+              name: getName(2),
+              isBot: false,
+            ),
+            LudoPlayer(
+              color: PlayerColor.blue,
+              name: getName(3),
+              isBot: false,
+            ),
+          ];
+        }
+        break;
     }
 
     state = GameState(
@@ -273,7 +391,7 @@ class LudoGameController extends ChangeNotifier {
     required int roll,
     required bool isHuman,
   }) async {
-    SoundHapticService.onDiceRoll();
+    SoundHapticService.playDiceRollSound();
     state.phase = TurnPhase.throwingDice;
     state.currentDiceValue = roll;
     state.statusMessage = "${state.currentPlayer.name} throws the dice!";
@@ -283,12 +401,15 @@ class LudoGameController extends ChangeNotifier {
     if (!isHuman) {
       // Computer awaits the exact same physical trajectory, flight, bounces, and settle duration
       await Future.delayed(_botDelay(1750));
+      SoundHapticService.onDiceResult();
     }
   }
 
   /// Unified logical dice roll generation and phase transition for both Human and Computer
   int initiateDiceThrow({bool isHuman = true}) {
-    if (state.phase != TurnPhase.waitingForRoll || _isChangingTurn) {
+    if (state.phase != TurnPhase.waitingForRoll ||
+        _isChangingTurn ||
+        (isHuman && (state.currentPlayer.isBot || _isBotPlaying))) {
       return state.currentDiceValue ?? (_random.nextInt(6) + 1);
     }
 
@@ -299,7 +420,12 @@ class LudoGameController extends ChangeNotifier {
 
   /// Initiates physical dice throw from finger drag release or bot/tap
   void onPhysicalDiceThrowStart() {
-    if (state.phase != TurnPhase.waitingForRoll || _isChangingTurn) return;
+    if (state.phase != TurnPhase.waitingForRoll ||
+        _isChangingTurn ||
+        state.currentPlayer.isBot ||
+        _isBotPlaying) {
+      return;
+    }
     initiateDiceThrow(isHuman: true);
   }
 
@@ -342,6 +468,29 @@ class LudoGameController extends ChangeNotifier {
       return;
     }
 
+    final player = state.currentPlayer;
+
+    // First Token Auto-Opening Rule:
+    // When a human player has not opened their first-ever token yet and rolls 6:
+    // Automatically open their first starting token from base without prompting for selection or waiting for tap!
+    if (!player.isBot &&
+        !player.hasOpenedFirstToken &&
+        roll == 6 &&
+        movable.any((t) => t.isInBase)) {
+      final tokenToOpen = movable.firstWhere((t) => t.isInBase);
+      player.hasOpenedFirstToken = true;
+      state.phase = TurnPhase.animatingMove;
+      state.statusMessage =
+          "${player.name} rolled 6! First goti automatically opened!";
+      state.selectedTokenId = tokenToOpen.id;
+      _safeNotifyListeners();
+
+      await Future.delayed(_stepDelay(400));
+      if (_disposed || state.isGameOver) return;
+      await moveToken(tokenToOpen);
+      return;
+    }
+
     state.phase = TurnPhase.waitingForMove;
     state.statusMessage =
         "${state.currentPlayer.name} rolled $roll! Tap a glowing goti to move.";
@@ -368,6 +517,7 @@ class LudoGameController extends ChangeNotifier {
       // auto-move it so the player doesn't have to tap unnecessarily.
       // If roll is 6, player gets to decide which goti to move (unlock goti vs advance open goti).
       if (roll != 6 && movable.length == 1) {
+        state.phase = TurnPhase.animatingMove;
         state.statusMessage =
             "${state.currentPlayer.name} rolled $roll! Auto-moving goti...";
         state.selectedTokenId = movable.first.id;
@@ -376,8 +526,14 @@ class LudoGameController extends ChangeNotifier {
         await Future.delayed(_stepDelay(400));
         if (_disposed || state.isGameOver) return;
         await moveToken(movable.first);
-      } else if (roll == 6 && movable.length == 1 && movable.first.isInBase) {
-        // Single remaining token in base with no other movable tokens
+      } else if (roll == 6 && movable.length == 1) {
+        // Single remaining movable token on roll of 6 (no decision needed)
+        state.phase = TurnPhase.animatingMove;
+        state.statusMessage =
+            "${state.currentPlayer.name} rolled 6! Auto-moving goti...";
+        state.selectedTokenId = movable.first.id;
+        _safeNotifyListeners();
+
         await Future.delayed(_stepDelay(400));
         if (_disposed || state.isGameOver) return;
         await moveToken(movable.first);
@@ -387,9 +543,10 @@ class LudoGameController extends ChangeNotifier {
 
   /// Handles user tapping a token directly on the board
   Future<void> onTokenTapped(Token token) async {
-    // 1. If currently animating, throwing dice, changing turn, bot playing, or game over, ignore taps (lock input)
+    // 1. If currently animating, throwing dice, waiting for handoff, changing turn, bot playing, or game over, ignore taps (lock input)
     if (state.phase == TurnPhase.animatingMove ||
         state.phase == TurnPhase.throwingDice ||
+        state.phase == TurnPhase.waitingForPlayerHandoff ||
         _isChangingTurn ||
         _isBotPlaying ||
         state.currentPlayer.isBot ||
@@ -417,13 +574,19 @@ class LudoGameController extends ChangeNotifier {
 
   /// Rolls the dice (triggers physical throw sequence)
   void rollDice() {
-    if (state.phase != TurnPhase.waitingForRoll || _isChangingTurn) return;
+    if (state.phase != TurnPhase.waitingForRoll ||
+        _isChangingTurn ||
+        state.currentPlayer.isBot ||
+        _isBotPlaying) {
+      return;
+    }
     onPhysicalDiceThrowStart();
   }
 
   /// Moves the chosen token with realistic throw & step-by-step hopping
   Future<MoveResult> moveToken(Token token, {bool autoAdvanceTurn = true}) async {
-    if (state.phase != TurnPhase.waitingForMove ||
+    if ((state.phase != TurnPhase.waitingForMove &&
+            state.phase != TurnPhase.animatingMove) ||
         state.currentDiceValue == null ||
         _isChangingTurn) {
       return const MoveResult();
@@ -447,7 +610,6 @@ class LudoGameController extends ChangeNotifier {
 
     // 1. Initial 3D Throw / Lift Animation on the selected goti
     token.animStage = TokenAnimStage.throwing;
-    SoundHapticService.onTokenStep();
     _safeNotifyListeners();
 
     await Future.delayed(_stepDelay(550));
@@ -459,13 +621,15 @@ class LudoGameController extends ChangeNotifier {
     bool extraTurn = false;
     bool capturedOpponent = false;
     bool reachedHomeGoal = false;
+    bool enteredHomeStretch = false;
 
     // 2. Step-by-step Hopping Movement
     if (token.isInBase) {
+      state.currentPlayer.hasOpenedFirstToken = true;
       // Come out of base onto starting cell
       token.animStage = TokenAnimStage.hopping;
       token.step = 0;
-      SoundHapticService.onTokenStep();
+      SoundHapticService.onTokenOpen();
       _safeNotifyListeners();
 
       await Future.delayed(_stepDelay(260));
@@ -477,8 +641,11 @@ class LudoGameController extends ChangeNotifier {
       final target = token.step + diceVal;
       while (token.step < target) {
         token.step++;
+        if (token.step == 51) {
+          enteredHomeStretch = true;
+        }
         token.animStage = TokenAnimStage.hopping;
-        SoundHapticService.onTokenStep();
+        SoundHapticService.playTokenStepSound();
         _safeNotifyListeners();
 
         await Future.delayed(_stepDelay(230));
@@ -487,6 +654,10 @@ class LudoGameController extends ChangeNotifier {
 
       token.animStage = TokenAnimStage.idle;
       _safeNotifyListeners();
+
+      if (enteredHomeStretch && token.step < 56) {
+        SoundHapticService.onHomeStretchEnter();
+      }
     }
 
     // 3. Check for captures with impact shake and opponent base return
@@ -499,7 +670,7 @@ class LudoGameController extends ChangeNotifier {
             if (enemyToken.isPlaying && enemyToken.coordinate == coord) {
               // Capture impact!
               triggerCaptureShake();
-              SoundHapticService.onCapture();
+              SoundHapticService.onTokenCapture();
               enemyToken.animStage = TokenAnimStage.captured;
               state.statusMessage =
                   "Boom! ${state.currentPlayer.name} captured ${p.name}'s goti!";
@@ -525,9 +696,10 @@ class LudoGameController extends ChangeNotifier {
       }
     }
 
-    // 4. Safe Star Sparkle Effect
+    // 4. Safe Star Sparkle Effect or Normal Landing
     if (token.step <= 50 && LudoPath.isSafeCoord(token.coordinate)) {
       token.animStage = TokenAnimStage.safeGlow;
+      SoundHapticService.onSafeCellLanding();
       _safeNotifyListeners();
 
       await Future.delayed(_stepDelay(400));
@@ -535,6 +707,9 @@ class LudoGameController extends ChangeNotifier {
 
       token.animStage = TokenAnimStage.idle;
       _safeNotifyListeners();
+    } else if (!capturedOpponent && !token.hasReachedGoal && !token.isInBase) {
+      // Normal track cell landing (controlled short haptic)
+      SoundHapticService.onTokenStepLanding();
     }
 
     // 5. Check if reached Goal
@@ -589,6 +764,11 @@ class LudoGameController extends ChangeNotifier {
       extraTurn = true;
     }
 
+    // A player who has completed all 4 tokens has finished their game and cannot have an extra turn
+    if (state.currentPlayer.hasFinished) {
+      extraTurn = false;
+    }
+
     final moveResult = MoveResult(
       captured: capturedOpponent,
       reachedHome: reachedHomeGoal,
@@ -597,7 +777,7 @@ class LudoGameController extends ChangeNotifier {
     );
 
     if (autoAdvanceTurn) {
-      if (extraTurn) {
+      if (extraTurn && !state.currentPlayer.hasFinished) {
         state.phase = TurnPhase.waitingForRoll;
         state.currentDiceValue = null;
         state.statusMessage =
@@ -640,8 +820,20 @@ class LudoGameController extends ChangeNotifier {
       state.currentPlayerIndex = nextIdx;
       state.currentDiceValue = null;
       state.selectedTokenId = null;
-      state.phase = TurnPhase.waitingForRoll;
       state.consecutiveSixes = 0;
+
+      if (state.mode == GameMode.passNPlay) {
+        state.phase = TurnPhase.waitingForPlayerHandoff;
+        state.statusMessage =
+            "Pass the device to ${state.currentPlayer.name}!";
+        turnSecondsRemaining = maxTurnSeconds;
+        _isTimerPaused = true;
+        _safeNotifyListeners();
+        GameStorageService.saveGame(state);
+        return;
+      }
+
+      state.phase = TurnPhase.waitingForRoll;
       state.statusMessage =
           "${state.currentPlayer.name}'s turn! Drag & throw dice.";
       turnSecondsRemaining = maxTurnSeconds;
@@ -662,6 +854,23 @@ class LudoGameController extends ChangeNotifier {
     if (shouldTriggerBot) {
       _triggerBotTurn();
     }
+  }
+
+  /// Called when the next player taps "I'M READY" in Pass N Play mode
+  void onPlayerReady() {
+    if (_disposed ||
+        state.isGameOver ||
+        state.phase != TurnPhase.waitingForPlayerHandoff) {
+      return;
+    }
+    state.phase = TurnPhase.waitingForRoll;
+    state.statusMessage =
+        "${state.currentPlayer.name}'s turn! Drag & throw dice.";
+    turnSecondsRemaining = maxTurnSeconds;
+    _isTimerPaused = false;
+    _safeNotifyListeners();
+    GameStorageService.saveGame(state);
+    _startTurnTimer();
   }
 
   /// Dedicated alias for computer turn automation
@@ -816,6 +1025,12 @@ class LudoGameController extends ChangeNotifier {
           return;
         }
       }
+    } catch (e, stack) {
+      debugPrint('[BOT] Error in computer turn: $e\n$stack');
+      _isBotPlaying = false;
+      if (!_disposed && !state.isGameOver) {
+        _nextTurn();
+      }
     } finally {
       _isBotPlaying = false;
     }
@@ -826,9 +1041,17 @@ class LudoGameController extends ChangeNotifier {
     playComputerTurn();
   }
 
-  void restartGame() {
+  void restartGame({List<String>? customPlayerNames}) {
     GameStorageService.clearSavedGame();
-    initGame(state.mode);
+    final names = customPlayerNames ??
+        (state.mode == GameMode.passNPlay
+            ? state.players.map((p) => p.name).toList()
+            : null);
+    initGame(
+      state.mode,
+      passNPlayPlayerCount: state.players.length,
+      customPlayerNames: names,
+    );
   }
 }
 

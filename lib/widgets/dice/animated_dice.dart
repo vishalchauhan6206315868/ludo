@@ -501,15 +501,14 @@ class _AnimatedDiceState extends State<AnimatedDice>
     // Board contact impact trigger (t ≈ 0.54)
     if (t >= 0.54 && !_collisionHapticTriggered) {
       _collisionHapticTriggered = true;
-      SoundHapticService.onDiceFirstLanding();
     }
   }
 
   void _onThrowSettle() {
     _collisionHapticTriggered = false;
 
-    // Final landing settle sound and light haptic
-    SoundHapticService.onDiceSettle();
+    // Final landing settle light haptic on final result
+    SoundHapticService.onDiceResult();
 
     // After brief settle pause to clearly show result, glide back cleanly to tray
     Future.delayed(const Duration(milliseconds: 380), () {
@@ -591,7 +590,7 @@ class _AnimatedDiceState extends State<AnimatedDice>
     _collisionHapticTriggered = false;
     _springBackController.stop();
 
-    SoundHapticService.onDiceThrow();
+    SoundHapticService.playDiceRollSound();
     _throwController.forward(from: 0.0);
   }
 
@@ -604,7 +603,6 @@ class _AnimatedDiceState extends State<AnimatedDice>
     _isDiceAnimating = true;
     _isThrowing = true;
 
-    SoundHapticService.onDiceTapPress();
     widget.onRoll?.call();
 
     _pressController.forward(from: 0.0).then((_) {
@@ -626,8 +624,6 @@ class _AnimatedDiceState extends State<AnimatedDice>
       _lastDx = 0.0;
       _lastDy = 0.0;
     });
-
-    SoundHapticService.onDiceTapPress();
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
@@ -642,7 +638,6 @@ class _AnimatedDiceState extends State<AnimatedDice>
         (dy > 3.0 && _lastDy < -3.0) ||
         (dy < -3.0 && _lastDy > 3.0)) {
       _shakeCount++;
-      SoundHapticService.onDiceShake();
     }
     _lastDx = dx;
     _lastDy = dy;

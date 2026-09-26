@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ludo/constants/ludo_path.dart';
 import 'package:ludo/logic/ludo_game_controller.dart';
 import 'package:ludo/models/game_state.dart';
+import 'package:ludo/models/ludo_player.dart';
 import 'package:ludo/models/token.dart';
 import 'package:ludo/services/game_storage_service.dart';
 
@@ -72,6 +73,37 @@ void main() {
       expect(controller.state.players[1].color, PlayerColor.green);
       expect(controller.state.players[2].color, PlayerColor.yellow);
       expect(controller.state.players[3].color, PlayerColor.blue);
+      controller.dispose();
+    });
+
+    test('Controller initializes with 3 players for threePlayer mode', () {
+      final controller = LudoGameController(mode: GameMode.threePlayer);
+      expect(controller.state.players.length, 3);
+      expect(controller.state.players[0].color, PlayerColor.red);
+      expect(controller.state.players[1].color, PlayerColor.green);
+      expect(controller.state.players[2].color, PlayerColor.yellow);
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+      expect(controller.turnSecondsRemaining, LudoGameController.maxTurnSeconds);
+      controller.dispose();
+    });
+
+    test('3-player mode turn rotation cycles P1 -> P2 -> P3 -> P1', () {
+      final controller = LudoGameController(mode: GameMode.threePlayer);
+      expect(controller.state.currentPlayerIndex, 0);
+      expect(controller.state.currentPlayer.color, PlayerColor.red);
+
+      controller.forceTurnTimeout();
+      expect(controller.state.currentPlayerIndex, 1);
+      expect(controller.state.currentPlayer.color, PlayerColor.green);
+
+      controller.forceTurnTimeout();
+      expect(controller.state.currentPlayerIndex, 2);
+      expect(controller.state.currentPlayer.color, PlayerColor.yellow);
+
+      controller.forceTurnTimeout();
+      expect(controller.state.currentPlayerIndex, 0);
+      expect(controller.state.currentPlayer.color, PlayerColor.red);
+
       controller.dispose();
     });
 
@@ -149,6 +181,97 @@ void main() {
       expect(controller.state.phase, TurnPhase.waitingForMove);
       expect(redPlayer.tokens[0].step, 5);
       expect(redPlayer.tokens[1].step, 10);
+
+      controller.dispose();
+      LudoGameController.isFastBotForTesting = false;
+    });
+
+    test('All players start with all 4 tokens in base and hasOpenedFirstToken false', () {
+      final controller = LudoGameController(mode: GameMode.fourPlayer);
+      for (final player in controller.state.players) {
+        expect(player.hasOpenedFirstToken, false);
+        expect(player.tokens.length, 4);
+        for (final token in player.tokens) {
+          expect(token.isInBase, true);
+          expect(token.step, -1);
+        }
+      }
+      controller.dispose();
+    });
+
+    test('First token automatically opens on dice roll 6 without waiting for manual tap', () async {
+      LudoGameController.isFastBotForTesting = true;
+      final controller = LudoGameController(mode: GameMode.twoPlayer);
+      final redPlayer = controller.state.players[0];
+
+      // All 4 tokens in base initially
+      expect(redPlayer.hasOpenedFirstToken, false);
+      expect(redPlayer.tokens.every((t) => t.isInBase), true);
+
+      controller.state.phase = TurnPhase.waitingForRoll;
+
+      // Simulate human dice roll of 6
+      await controller.onPhysicalDiceThrowComplete(6);
+
+      // First token should be automatically opened onto starting cell (step = 0)
+      expect(redPlayer.tokens[0].step, 0);
+      expect(redPlayer.tokens[0].isPlaying, true);
+      expect(redPlayer.tokens.where((t) => t.isInBase).length, 3);
+      expect(redPlayer.hasOpenedFirstToken, true);
+
+      // Player receives bonus turn
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+      expect(controller.state.currentPlayerIndex, 0);
+
+      controller.dispose();
+      LudoGameController.isFastBotForTesting = false;
+    });
+
+    test('Second roll of 6 does NOT auto-open and allows player to choose token', () async {
+      LudoGameController.isFastBotForTesting = true;
+      final controller = LudoGameController(mode: GameMode.twoPlayer);
+      final redPlayer = controller.state.players[0];
+
+      // Step 1: Roll first 6 to auto-open first token
+      controller.state.phase = TurnPhase.waitingForRoll;
+      await controller.onPhysicalDiceThrowComplete(6);
+      expect(redPlayer.tokens[0].step, 0);
+      expect(redPlayer.hasOpenedFirstToken, true);
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+
+      // Step 2: Roll second 6 (bonus roll)
+      await controller.onPhysicalDiceThrowComplete(6);
+
+      // Must NOT auto-open second token! Must wait for player selection between open token and base
+      expect(controller.state.phase, TurnPhase.waitingForMove);
+      expect(redPlayer.tokens[0].step, 0); // Token 0 has not moved yet
+      expect(redPlayer.tokens.where((t) => t.isInBase).length, 3); // No second token auto-unlocked
+
+      controller.dispose();
+      LudoGameController.isFastBotForTesting = false;
+    });
+
+    test('Captured player with all tokens back in base does NOT re-trigger first token auto-opening', () async {
+      LudoGameController.isFastBotForTesting = true;
+      final controller = LudoGameController(mode: GameMode.twoPlayer);
+      final redPlayer = controller.state.players[0];
+
+      // Mark that player has previously opened a token
+      redPlayer.hasOpenedFirstToken = true;
+      // All tokens happen to be in base (e.g. captured)
+      for (final t in redPlayer.tokens) {
+        t.step = -1;
+      }
+      expect(redPlayer.tokens.every((t) => t.isInBase), true);
+
+      controller.state.phase = TurnPhase.waitingForRoll;
+
+      // Roll 6
+      await controller.onPhysicalDiceThrowComplete(6);
+
+      // Since hasOpenedFirstToken is already true, it should NOT auto-open!
+      expect(controller.state.phase, TurnPhase.waitingForMove);
+      expect(redPlayer.tokens.every((t) => t.isInBase), true);
 
       controller.dispose();
       LudoGameController.isFastBotForTesting = false;
@@ -492,6 +615,68 @@ void main() {
       expect(controller.state.phase, TurnPhase.gameOver);
       expect(controller.state.winners.first.name, "Computer (Yellow)");
       controller.dispose();
+    });
+
+    test('TestCase 11: Finished player in 4P mode does NOT receive extra turn on final goal', () async {
+      final controller = LudoGameController(mode: GameMode.fourPlayer);
+      controller.state.currentPlayerIndex = 0; // Red
+
+      // Finish first 3 tokens
+      controller.state.players[0].tokens[0].step = 56;
+      controller.state.players[0].tokens[1].step = 56;
+      controller.state.players[0].tokens[2].step = 56;
+
+      // 4th token 1 step away
+      final lastToken = controller.state.players[0].tokens[3];
+      lastToken.step = 55;
+
+      controller.state.phase = TurnPhase.waitingForMove;
+      controller.state.currentDiceValue = 1;
+
+      final result = await controller.moveToken(lastToken, autoAdvanceTurn: true);
+
+      // Player has finished
+      expect(controller.state.players[0].hasFinished, true);
+      // Result extra turn must be FALSE because player has finished!
+      expect(result.extraTurn, false);
+      // Turn must advance to Green (player 1), NOT remain with finished player 0
+      expect(controller.state.currentPlayerIndex, 1);
+      controller.dispose();
+    });
+
+    test('TestCase 12: Human cannot roll dice when currentPlayer is Bot', () {
+      final controller = LudoGameController(mode: GameMode.vsComputer);
+      controller.state.currentPlayerIndex = 1; // Bot
+      controller.state.phase = TurnPhase.waitingForRoll;
+
+      controller.rollDice();
+
+      // Phase must still be waitingForRoll, not throwingDice
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+      controller.dispose();
+    });
+
+    test('TestCase 13: Saved game restores winners list when a player has finished', () async {
+      final p1 = LudoPlayer(color: PlayerColor.red, name: "Player 1", rank: 1);
+      for (final t in p1.tokens) {
+        t.step = 56;
+      }
+      final p2 = LudoPlayer(color: PlayerColor.yellow, name: "Player 2");
+
+      final gameState = GameState(
+        players: [p1, p2],
+        mode: GameMode.twoPlayer,
+        currentPlayerIndex: 1,
+        statusMessage: "Match in progress",
+      );
+
+      await GameStorageService.saveGame(gameState);
+      final restored = await GameStorageService.loadSavedGame();
+
+      expect(restored != null, true);
+      expect(restored!.winners.length, 1);
+      expect(restored.winners.first.name, "Player 1");
+      expect(restored.winners.first.rank, 1);
     });
   });
 }
