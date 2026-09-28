@@ -33,10 +33,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Verify "Play with Friends" is present
-    expect(find.text('Play with Friends'), findsOneWidget);
-    // Verify "Play vs Computer" is unchanged and present
-    expect(find.text('Play vs Computer'), findsOneWidget);
+    // Verify "PLAY WITH FRIENDS" and "PASS N PLAY" and "PLAY VS COMPUTER" are present
+    expect(find.text('PLAY WITH FRIENDS'), findsOneWidget);
+    expect(find.text('PASS N PLAY'), findsOneWidget);
+    expect(find.text('PLAY VS COMPUTER'), findsOneWidget);
 
     // Verify separate 2-player and 4-player buttons are removed
     expect(find.text('2 Players Match'), findsNothing);
@@ -59,8 +59,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tap "Play with Friends"
-    await tester.tap(find.text('Play with Friends'));
+    // Tap "PLAY WITH FRIENDS"
+    await tester.tap(find.text('PLAY WITH FRIENDS'));
     await tester.pumpAndSettle();
 
     // Verify dialog content
@@ -85,7 +85,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('How many friends want to play?'), findsNothing);
-    expect(find.text('Play with Friends'), findsOneWidget);
+    expect(find.text('PLAY WITH FRIENDS'), findsOneWidget);
   });
 
   testWidgets('PlayerSelectionDialog returns correct GameMode for each option',

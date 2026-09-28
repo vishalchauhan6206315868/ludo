@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../models/game_state.dart';
 import '../services/auth_service.dart';
 import '../services/game_storage_service.dart';
-import '../widgets/pass_n_play_setup_dialog.dart';
+import '../widgets/game_mode_card.dart';
+import '../widgets/home_navigation_sections.dart';
 import '../widgets/player_selection_dialog.dart';
 import '../widgets/settings_dialog.dart';
 import 'game_screen.dart';
 import 'login_screen.dart';
+import 'pass_n_play_setup_screen.dart';
 
 class HomeMenuScreen extends StatefulWidget {
   const HomeMenuScreen({super.key});
@@ -19,6 +21,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
   String _userName = 'Ludo Master';
   bool _hasSavedMatch = false;
   GameState? _savedState;
+  int _selectedNavIndex = 0; // 0: HOME, 1: EVENT, 2: ADDA, 3: INVENTORY, 4: SOCIAL
 
   @override
   void initState() {
@@ -194,67 +197,21 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                 // Top Header Bar
                 _buildHeaderBar(context),
 
-                // Scrollable Body Content
+                // Dynamic Section Content
                 Expanded(
                   child: Center(
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 440),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // 3D Emblem & Pedestal
-                            _buildHeroEmblem(),
-
-                            const SizedBox(height: 12),
-
-                            // Branding Title (LUDO SUPREME + Tagline)
-                            _buildBrandingTitle(),
-
-                            const SizedBox(height: 16),
-
-                            // 4-Color Player Indicator Dots & Glowing Divider
-                            _buildColorDotsWithSlider(),
-
-                            const SizedBox(height: 24),
-
-                            // Resume Match Card (if exists)
-                            if (_hasSavedMatch && _savedState != null) ...[
-                              _buildResumeCard(context, _savedState!),
-                              const SizedBox(height: 16),
-                            ],
-
-                            // Card 1: Play with Friends (Online Rooms)
-                            _buildFriendsCard(context),
-
-                            const SizedBox(height: 14),
-
-                            // Card 2: Pass N Play (Local Same-Device Multiplayer)
-                            _buildPassNPlayCard(context),
-
-                            const SizedBox(height: 14),
-
-                            // Card 3: Play vs Computer
-                            _buildComputerCard(context),
-
-                            const SizedBox(height: 28),
-
-                            // Bottom 4 Feature Badges
-                            _buildBottomFeatures(),
-
-                            const SizedBox(height: 18),
-
-                            // How to Play & Rules Link
-                            _buildRulesLink(context),
-
-                            const SizedBox(height: 10),
-                          ],
-                        ),
-                      ),
-                    ),
+                    child: _buildCurrentSection(),
                   ),
+                ),
+
+                // Modern 5-Section Gaming Navigation Bar
+                HomeNavigationBar(
+                  selectedIndex: _selectedNavIndex,
+                  onItemSelected: (idx) {
+                    setState(() {
+                      _selectedNavIndex = idx;
+                    });
+                  },
                 ),
               ],
             ),
@@ -331,6 +288,8 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -560,54 +519,57 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
         const SizedBox(height: 2),
 
         // LUDO SUPREME 3D Metallic Text
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              "LUDO ",
-              style: TextStyle(
-                color: Color(0xFFEDEDED),
-                fontSize: 32,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2.5,
-                shadows: [
-                  Shadow(
-                    color: Colors.black87,
-                    offset: Offset(0, 3),
-                    blurRadius: 6,
-                  ),
-                ],
-              ),
-            ),
-            ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(
-                colors: [
-                  Color(0xFFFFF176),
-                  Color(0xFFFFD54F),
-                  Color(0xFFFFB300),
-                  Color(0xFFFF8F00),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ).createShader(bounds),
-              child: const Text(
-                "SUPREME",
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                "LUDO ",
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Color(0xFFEDEDED),
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2.5,
                   shadows: [
                     Shadow(
-                      color: Color(0x66FF8F00),
-                      offset: Offset(0, 2),
-                      blurRadius: 8,
+                      color: Colors.black87,
+                      offset: Offset(0, 3),
+                      blurRadius: 6,
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+              ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [
+                    Color(0xFFFFF176),
+                    Color(0xFFFFD54F),
+                    Color(0xFFFFB300),
+                    Color(0xFFFF8F00),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ).createShader(bounds),
+                child: const Text(
+                  "SUPREME",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2.5,
+                    shadows: [
+                      Shadow(
+                        color: Color(0x66FF8F00),
+                        offset: Offset(0, 2),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 4),
 
@@ -679,414 +641,68 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
     );
   }
 
-  // --- Card 1: Play with Friends (PASS & PLAY) ---
-  Widget _buildFriendsCard(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFFFB300),
-          width: 1.8,
-        ),
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xF0201A12),
-            Color(0xF0121728),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFFB300).withValues(alpha: 0.30),
-            blurRadius: 22,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          splashColor: const Color(0xFFFFB300).withValues(alpha: 0.2),
-          onTap: _openFriendsSelection,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Row(
-              children: [
-                // Golden Rounded Square Icon
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFFB74D), Color(0xFFFF8F00), Color(0xFFE65100)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFF8F00).withValues(alpha: 0.45),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.groups_rounded,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                ),
-                const SizedBox(width: 14),
-
-                // Title + PASS & PLAY badge + Subtitle
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Flexible(
-                            child: Text(
-                              "Play with Friends",
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16.5,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            key: const Key('friends_pass_n_play_badge'),
-                            onTap: _openPassNPlaySetup,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFB300),
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFFFFB300).withValues(alpha: 0.4),
-                                    blurRadius: 6,
-                                  ),
-                                ],
-                              ),
-                              child: const Text(
-                                "PASS & PLAY",
-                                style: TextStyle(
-                                  color: Color(0xFF1B1B1B),
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      const Text(
-                        "Pass & Play with 2, 3 or 4 friends",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Color(0xFFB0BEC5),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // Circular Chevron Button
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0x33FFB300),
-                    border: Border.all(color: const Color(0xFFFFB300), width: 1.2),
-                  ),
-                  child: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFFFFD54F),
-                    size: 22,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+  // --- Card 1: PLAY WITH FRIENDS (Top Row Left) ---
+  Widget _buildPlayWithFriendsCard(BuildContext context) {
+    return GameModeCard(
+      cardKey: const Key('play_with_friends_card'),
+      title: "PLAY WITH FRIENDS",
+      height: 144,
+      glowColor: const Color(0xFFFFB300),
+      accentColor: const Color(0xFFFFD700),
+      cardGradient: const [
+        Color(0xFF1544A2),
+        Color(0xFF0C2B72),
+        Color(0xFF040F2D),
+      ],
+      illustration: const PlayWithFriendsIllustration(),
+      onTap: _openFriendsSelection,
     );
   }
 
-  // --- Card 2: Pass N Play (Local Multiplayer) ---
+  // --- Card 2: PASS N PLAY (Top Row Right) ---
   Widget _buildPassNPlayCard(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFF00E676),
-          width: 1.8,
-        ),
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xF00F291E),
-            Color(0xF00D1F2D),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF00E676).withValues(alpha: 0.28),
-            blurRadius: 22,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          key: const Key('pass_n_play_card'),
-          borderRadius: BorderRadius.circular(20),
-          splashColor: const Color(0xFF00E676).withValues(alpha: 0.2),
-          onTap: _openPassNPlaySetup,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Row(
-              children: [
-                // Emerald/Cyan Rounded Square Icon
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF00E676), Color(0xFF00B0FF), Color(0xFF1DE9B6)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF00E676).withValues(alpha: 0.45),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.phonelink_ring_rounded,
-                    color: Color(0xFF060B19),
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 14),
-
-                // Title + LOCAL badge + Subtitle
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Flexible(
-                            child: Text(
-                              "Pass N Play",
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16.5,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF00E676),
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF00E676).withValues(alpha: 0.4),
-                                  blurRadius: 6,
-                                ),
-                              ],
-                            ),
-                            child: const Text(
-                              "LOCAL",
-                              style: TextStyle(
-                                color: Color(0xFF060B19),
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      const Text(
-                        "Pass & play on 1 device with 2, 3 or 4 players",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Color(0xFFB0BEC5),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // Circular Chevron Button
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0x3300E676),
-                    border: Border.all(color: const Color(0xFF00E676), width: 1.2),
-                  ),
-                  child: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFF69F0AE),
-                    size: 22,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return GameModeCard(
+      cardKey: const Key('pass_n_play_card'),
+      title: "PASS N PLAY",
+      height: 144,
+      glowColor: const Color(0xFFFFB300),
+      accentColor: const Color(0xFFFFD700),
+      cardGradient: const [
+        Color(0xFF261D5C),
+        Color(0xFF141344),
+        Color(0xFF060924),
+      ],
+      illustration: const PassNPlayIllustration(),
+      onTap: _openPassNPlaySetup,
     );
   }
 
-  // --- Card 3: Play vs Computer ---
-  Widget _buildComputerCard(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFF00B4D8),
-          width: 1.8,
-        ),
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xF00D1B2A),
-            Color(0xF0101730),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF00B4D8).withValues(alpha: 0.28),
-            blurRadius: 22,
-            offset: const Offset(0, 4),
+  // --- Card 3: PLAY VS COMPUTER (Centered Below Top Row) ---
+  Widget _buildPlayVsComputerCard(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Horizontally centered, responsive width, proportionally larger & taller
+        final cardWidth = (constraints.maxWidth * 0.74).clamp(205.0, 255.0);
+        return SizedBox(
+          width: cardWidth,
+          child: GameModeCard(
+            cardKey: const Key('play_vs_computer_card'),
+            title: "PLAY VS COMPUTER",
+            height: 172,
+            isVertical: true,
+            glowColor: const Color(0xFFFFB300),
+            accentColor: const Color(0xFFFFD700),
+            cardGradient: const [
+              Color(0xFF0F265C),
+              Color(0xFF08173E),
+              Color(0xFF030718),
+            ],
+            showPedestalShadow: true,
+            illustration: const PlayVsComputerIllustration(),
+            onTap: () => _startGame(context, GameMode.vsComputer),
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          splashColor: const Color(0xFF00B4D8).withValues(alpha: 0.2),
-          onTap: () => _startGame(context, GameMode.vsComputer),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Row(
-              children: [
-                // Cyan/Purple Rounded Square Icon
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF8A4FFF), Color(0xFF4361EE), Color(0xFF3A0CA3)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF4361EE).withValues(alpha: 0.45),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.smart_toy_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 14),
-
-                // Title & Subtitle
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Play vs Computer",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16.5,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 3),
-                      Text(
-                        "Challenge the smart Ludo Bot",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Color(0xFFB0BEC5),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // Circular Chevron Button
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0x3300B4D8),
-                    border: Border.all(color: const Color(0xFF00B4D8), width: 1.2),
-                  ),
-                  child: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFF00E5FF),
-                    size: 22,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -1176,85 +792,89 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
     );
   }
 
-  // --- Bottom 4 Feature Badges ---
-  Widget _buildBottomFeatures() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1A30).withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildFeatureBadge(
-              icon: Icons.emoji_events_rounded,
-              iconColor: const Color(0xFFFFB300),
-              title: "Classic Mode",
-            ),
-          ),
-          Expanded(
-            child: _buildFeatureBadge(
-              icon: Icons.groups_rounded,
-              iconColor: const Color(0xFF8A4FFF),
-              title: "2-4 Players",
-            ),
-          ),
-          Expanded(
-            child: _buildFeatureBadge(
-              icon: Icons.bar_chart_rounded,
-              iconColor: const Color(0xFF00B4D8),
-              title: "Fun & Strategy",
-            ),
-          ),
-          Expanded(
-            child: _buildFeatureBadge(
-              icon: Icons.verified_user_rounded,
-              iconColor: const Color(0xFF43A047),
-              title: "Safe & Ad-Free",
-            ),
-          ),
-        ],
-      ),
-    );
+  // --- Section Router ---
+  Widget _buildCurrentSection() {
+    switch (_selectedNavIndex) {
+      case 1:
+        return const EventSectionView();
+      case 2:
+        return const AddaSectionView();
+      case 3:
+        return const InventorySectionView();
+      case 4:
+        return SocialSectionView(userName: _userName);
+      case 5:
+        return const SafeAndAdFreeSectionView();
+      case 0:
+      default:
+        return _buildHomeDashboard();
+    }
   }
 
-  Widget _buildFeatureBadge({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.15),
-            shape: BoxShape.circle,
-            border: Border.all(color: iconColor.withValues(alpha: 0.3), width: 1.0),
-          ),
-          child: Icon(icon, color: iconColor, size: 18),
-        ),
-        const SizedBox(height: 6),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              title,
-              maxLines: 1,
-              style: const TextStyle(
-                color: Color(0xFFB0BEC5),
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
+  // --- 1. HOME DASHBOARD ---
+  Widget _buildHomeDashboard() {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 3D Emblem & Pedestal
+            _buildHeroEmblem(),
+
+            const SizedBox(height: 12),
+
+            // Branding Title (LUDO SUPREME + Tagline)
+            _buildBrandingTitle(),
+
+            const SizedBox(height: 16),
+
+            // 4-Color Player Indicator Dots & Glowing Divider
+            _buildColorDotsWithSlider(),
+
+            const SizedBox(height: 24),
+
+            // Resume Match Card (if exists)
+            if (_hasSavedMatch && _savedState != null) ...[
+              _buildResumeCard(context, _savedState!),
+              const SizedBox(height: 16),
+            ],
+
+            // ==========================================
+            // GAME MODE CARDS SECTION (3 CARDS)
+            // ==========================================
+
+            // TOP ROW: PLAY WITH FRIENDS + PASS N PLAY
+            Row(
+              children: [
+                Expanded(
+                  child: _buildPlayWithFriendsCard(context),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildPassNPlayCard(context),
+                ),
+              ],
             ),
-          ),
+
+            const SizedBox(height: 14),
+
+            // BELOW (CENTERED): PLAY VS COMPUTER
+            Center(
+              child: _buildPlayVsComputerCard(context),
+            ),
+
+            const SizedBox(height: 22),
+
+            // How to Play & Rules Link
+            _buildRulesLink(context),
+
+            const SizedBox(height: 14),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -1267,30 +887,33 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
         onTap: () => _showRules(context),
         child: const Padding(
           padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.info_outline_rounded,
-                color: Color(0xFFFFD700),
-                size: 16,
-              ),
-              SizedBox(width: 6),
-              Text(
-                "How to Play & Rules",
-                style: TextStyle(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
                   color: Color(0xFFFFD700),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                  size: 16,
                 ),
-              ),
-              SizedBox(width: 4),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFFFFD700),
-                size: 18,
-              ),
-            ],
+                SizedBox(width: 6),
+                Text(
+                  "How to Play & Rules",
+                  style: TextStyle(
+                    color: Color(0xFFFFD700),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFFFFD700),
+                  size: 18,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1310,23 +933,13 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
   }
 
   Future<void> _openPassNPlaySetup() async {
-    final config = await showDialog<PassNPlayConfig>(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) => const PassNPlaySetupDialog(),
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PassNPlaySetupScreen(),
+      ),
     );
-
-    if (config != null && mounted) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => GameScreen(
-            mode: GameMode.passNPlay,
-            passNPlayPlayerCount: config.playerCount,
-            customPlayerNames: config.playerNames,
-          ),
-        ),
-      );
+    if (mounted) {
       _checkSavedGame();
     }
   }
