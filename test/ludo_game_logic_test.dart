@@ -394,9 +394,9 @@ void main() {
       final controller = LudoGameController(mode: GameMode.vsComputer);
       expect(controller.state.players.length, 2);
       expect(controller.state.players[0].isBot, false);
-      expect(controller.state.players[0].color, PlayerColor.red);
+      expect(controller.state.players[0].color, PlayerColor.yellow);
       expect(controller.state.players[1].isBot, true);
-      expect(controller.state.players[1].color, PlayerColor.yellow);
+      expect(controller.state.players[1].color, PlayerColor.red);
       controller.dispose();
     });
 
@@ -476,14 +476,14 @@ void main() {
       final humanToken = controller.state.players[0].tokens[0];
       final botToken = controller.state.players[1].tokens[0];
 
-      // Yellow step 0 is index 26 = (13, 8)
-      // Yellow step 1 is index 27 = (12, 8) (unsafe cell)
-      // Red starts at index 0, so Red step 27 is index 27 = (12, 8)
+      // Bot is Red: Red step 0 is index 0 = (1, 6)
+      // Bot is Red: Red step 1 is index 1 = (2, 6) (unsafe cell)
+      // Human is Yellow: Yellow starts at index 26, so step 27 is index 1 = (2, 6)
       botToken.step = 0;
       humanToken.step = 27;
 
-      expect(botToken.coordinate, const BoardCoord(13, 8));
-      expect(humanToken.coordinate, const BoardCoord(12, 8));
+      expect(botToken.coordinate, const BoardCoord(1, 6));
+      expect(humanToken.coordinate, const BoardCoord(2, 6));
       expect(LudoPath.isSafeCoord(humanToken.coordinate), false);
 
       controller.state.currentPlayerIndex = 1;
@@ -613,7 +613,7 @@ void main() {
 
       expect(result.gameOver, true);
       expect(controller.state.phase, TurnPhase.gameOver);
-      expect(controller.state.winners.first.name, "Computer (Yellow)");
+      expect(controller.state.winners.first.name, "Computer (Red)");
       controller.dispose();
     });
 

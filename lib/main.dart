@@ -1,11 +1,20 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'constants/ludo_colors.dart';
+import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'services/sound_haptic_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint("Firebase.initializeApp note: $e");
+  }
   await SoundHapticService.init();
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

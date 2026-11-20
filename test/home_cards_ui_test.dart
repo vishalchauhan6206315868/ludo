@@ -15,7 +15,7 @@ void main() {
   });
 
   group('Home Dashboard 3 Game Mode Cards UI & Layout Tests', () {
-    testWidgets('Renders exactly 3 game mode cards with correct titles',
+    testWidgets('Renders all 5 game mode cards with correct titles and keys',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(360, 640);
       tester.view.devicePixelRatio = 1.0;
@@ -31,15 +31,19 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Check card keys
+      // Check all 5 card keys
       expect(find.byKey(const Key('play_with_friends_card')), findsOneWidget);
-      expect(find.byKey(const Key('pass_n_play_card')), findsOneWidget);
+      expect(find.byKey(const Key('online_card')), findsOneWidget);
+      expect(find.byKey(const Key('team_up_card')), findsOneWidget);
       expect(find.byKey(const Key('play_vs_computer_card')), findsOneWidget);
+      expect(find.byKey(const Key('pass_n_play_card')), findsOneWidget);
 
       // Check titles
       expect(find.text('PLAY WITH FRIENDS'), findsOneWidget);
-      expect(find.text('PASS N PLAY'), findsOneWidget);
+      expect(find.text('ONLINE'), findsOneWidget);
+      expect(find.text('TEAM UP'), findsOneWidget);
       expect(find.text('PLAY VS COMPUTER'), findsOneWidget);
+      expect(find.text('PASS N PLAY'), findsOneWidget);
 
       // Verify legacy features ("Classic Mode", "2-4 Players", "Fun & Strategy") are removed
       expect(find.text('Classic Mode'), findsNothing);
@@ -87,6 +91,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      await tester.ensureVisible(find.byKey(const Key('pass_n_play_card')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('pass_n_play_card')));
       await tester.pumpAndSettle();
 
@@ -116,9 +122,12 @@ void main() {
       await tester.ensureVisible(find.byKey(const Key('play_vs_computer_card')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('play_vs_computer_card')));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.byType(GameScreen), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
     });
 
     testWidgets('Small screen (320x568) renders without RenderFlex overflow',
@@ -215,9 +224,8 @@ void main() {
       await tester.tap(find.byKey(const Key('nav_item_event')));
       await tester.pumpAndSettle();
 
-      expect(find.text('EVENTS & TOURNAMENTS'), findsOneWidget);
-      expect(find.text('SUPREME GRAND PRIX'), findsOneWidget);
-      expect(find.text('Daily Quests'), findsOneWidget);
+      expect(find.text('LIVE EVENTS & REWARDS'), findsOneWidget);
+      expect(find.text('REWARDS CENTER & HISTORY'), findsOneWidget);
       expect(find.byKey(const Key('play_with_friends_card')), findsNothing);
     });
 
@@ -242,8 +250,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('COMMUNITY ADDA'), findsOneWidget);
-      expect(find.text('HOST AN ADDA LOUNGE'), findsOneWidget);
-      expect(find.text('Popular Clubs'), findsOneWidget);
+      expect(find.text('HOST AN ADDA TABLE'), findsOneWidget);
+      expect(find.text('Join Adda by Code'), findsOneWidget);
     });
 
     testWidgets('Navigating to INVENTORY displays customization vault',
@@ -266,10 +274,10 @@ void main() {
       await tester.tap(find.byKey(const Key('nav_item_inventory')));
       await tester.pumpAndSettle();
 
-      expect(find.text('PLAYER INVENTORY'), findsOneWidget);
-      expect(find.text('DICE SKINS'), findsOneWidget);
-      expect(find.text('TOKEN PAWNS'), findsOneWidget);
-      expect(find.text('Classic Ivory'), findsOneWidget);
+      expect(find.text('PLAYER INVENTORY & VAULT'), findsOneWidget);
+      expect(find.text('COLLECTIBLES'), findsOneWidget);
+      expect(find.text('HONOR BADGES'), findsOneWidget);
+      expect(find.text('VAULT ASSETS'), findsOneWidget);
     });
 
     testWidgets('Navigating to SOCIAL displays player profile and friends',
@@ -292,9 +300,9 @@ void main() {
       await tester.tap(find.byKey(const Key('nav_item_social')));
       await tester.pumpAndSettle();
 
-      expect(find.text('SOCIAL & FRIENDS'), findsOneWidget);
-      expect(find.text('Online Friends (2)'), findsOneWidget);
-      expect(find.text('INVITE YOUR FRIENDS'), findsOneWidget);
+      expect(find.text('SOCIAL & COMMUNITY'), findsOneWidget);
+      expect(find.text('Challenge Friends'), findsOneWidget);
+      expect(find.text('Create Friendly Room & Invite'), findsOneWidget);
     });
 
     testWidgets('Navigating back to HOME restores dashboard and gameplay entry points',
@@ -316,7 +324,7 @@ void main() {
       // Go to SOCIAL
       await tester.tap(find.byKey(const Key('nav_item_social')));
       await tester.pumpAndSettle();
-      expect(find.text('SOCIAL & FRIENDS'), findsOneWidget);
+      expect(find.text('SOCIAL & COMMUNITY'), findsOneWidget);
 
       // Return to HOME
       await tester.tap(find.byKey(const Key('nav_item_home')));

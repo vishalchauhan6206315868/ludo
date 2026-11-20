@@ -7,6 +7,7 @@ enum GameMode {
   fourPlayer,
   vsComputer,
   passNPlay,
+  teamUp,
 }
 
 enum TurnPhase {
@@ -28,6 +29,7 @@ class GameState {
   List<LudoPlayer> winners;
   String statusMessage;
   int? selectedTokenId;
+  String? winningTeam;
 
   GameState({
     required this.players,
@@ -39,9 +41,22 @@ class GameState {
     List<LudoPlayer>? winners,
     this.statusMessage = "Roll the dice to begin!",
     this.selectedTokenId,
+    this.winningTeam,
   }) : winners = winners ?? [];
 
   LudoPlayer get currentPlayer => players[currentPlayerIndex];
+
+  /// In Team Up mode, returns current player's partner
+  LudoPlayer? get currentTeammate {
+    if (mode != GameMode.teamUp) return null;
+    try {
+      return players.firstWhere(
+        (p) => p != currentPlayer && p.isTeammateWith(currentPlayer),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 
   bool get isWaitingForRoll => phase == TurnPhase.waitingForRoll;
   bool get isThrowingDice => phase == TurnPhase.throwingDice;
@@ -52,6 +67,13 @@ class GameState {
   bool isTokenMovable(Token token) {
     if (phase != TurnPhase.waitingForMove || currentDiceValue == null) {
       return false;
+    }
+    // In Team Up, if current player has already finished all 4 tokens, they roll for their teammate!
+    if (mode == GameMode.teamUp && currentPlayer.hasFinished) {
+      final teammate = currentTeammate;
+      if (teammate != null && token.color == teammate.color) {
+        return token.canMove(currentDiceValue!);
+      }
     }
     if (token.color != currentPlayer.color) {
       return false;

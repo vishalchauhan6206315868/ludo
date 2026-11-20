@@ -283,8 +283,8 @@ class _GameModeCardState extends State<GameModeCard> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: isVertical ? 9 : 7.5,
+        horizontal: 4,
+        vertical: isVertical ? 8.0 : 6.0,
       ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -302,11 +302,11 @@ class _GameModeCardState extends State<GameModeCard> {
         border: const Border(
           top: BorderSide(
             color: Color(0xFFFFFDE7),
-            width: 1.4,
+            width: 1.2,
           ),
           bottom: BorderSide(
             color: Color(0xFF6D3200),
-            width: 3.0, // 3D depth bottom lip
+            width: 2.5, // 3D depth bottom lip
           ),
         ),
         boxShadow: [
@@ -320,49 +320,52 @@ class _GameModeCardState extends State<GameModeCard> {
       child: Center(
         child: FittedBox(
           fit: BoxFit.scaleDown,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Left decorative golden diamond stud
-              _buildBannerNotch(),
-              const SizedBox(width: 5),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Left decorative golden diamond stud
+                _buildBannerNotch(),
+                const SizedBox(width: 3.5),
 
-              // Title text with high-contrast outline
-              Text(
-                titleText,
-                maxLines: 1,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Roboto',
-                  fontSize: isVertical ? 14.5 : 12.0,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: isVertical ? 1.0 : 0.8,
-                  color: Colors.white,
-                  shadows: const [
-                    // 8-directional outline shadows for bold crisp game outline
-                    Shadow(offset: Offset(-1.5, -1.5), color: Color(0xFF3E1800)),
-                    Shadow(offset: Offset(1.5, -1.5), color: Color(0xFF3E1800)),
-                    Shadow(offset: Offset(-1.5, 1.5), color: Color(0xFF3E1800)),
-                    Shadow(offset: Offset(1.5, 1.5), color: Color(0xFF3E1800)),
-                    Shadow(offset: Offset(0, -1.8), color: Color(0xFF3E1800)),
-                    Shadow(offset: Offset(0, 1.8), color: Color(0xFF3E1800)),
-                    Shadow(offset: Offset(-1.8, 0), color: Color(0xFF3E1800)),
-                    Shadow(offset: Offset(1.8, 0), color: Color(0xFF3E1800)),
-                    // 3D Bottom Drop Shadow
-                    Shadow(
-                      color: Color(0x99000000),
-                      offset: Offset(0, 2.5),
-                      blurRadius: 3.0,
-                    ),
-                  ],
+                // Title text with high-contrast outline
+                Text(
+                  titleText,
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: isVertical ? 13.0 : 11.2,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: isVertical ? 0.8 : 0.4,
+                    color: Colors.white,
+                    shadows: const [
+                      // 8-directional outline shadows for bold crisp game outline
+                      Shadow(offset: Offset(-1.2, -1.2), color: Color(0xFF3E1800)),
+                      Shadow(offset: Offset(1.2, -1.2), color: Color(0xFF3E1800)),
+                      Shadow(offset: Offset(-1.2, 1.2), color: Color(0xFF3E1800)),
+                      Shadow(offset: Offset(1.2, 1.2), color: Color(0xFF3E1800)),
+                      Shadow(offset: Offset(0, -1.4), color: Color(0xFF3E1800)),
+                      Shadow(offset: Offset(0, 1.4), color: Color(0xFF3E1800)),
+                      Shadow(offset: Offset(-1.4, 0), color: Color(0xFF3E1800)),
+                      Shadow(offset: Offset(1.4, 0), color: Color(0xFF3E1800)),
+                      // 3D Bottom Drop Shadow
+                      Shadow(
+                        color: Color(0x99000000),
+                        offset: Offset(0, 2.0),
+                        blurRadius: 2.5,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
-              const SizedBox(width: 5),
-              // Right decorative golden diamond stud
-              _buildBannerNotch(),
-            ],
+                const SizedBox(width: 3.5),
+                // Right decorative golden diamond stud
+                _buildBannerNotch(),
+              ],
+            ),
           ),
         ),
       ),
@@ -1246,3 +1249,307 @@ void _drawSparkle(Canvas canvas, Offset center, double radius) {
   // Bright white center specular dot
   canvas.drawCircle(center, radius * 0.38, Paint()..color = Colors.white);
 }
+
+// ============================================================================
+// 4. ONLINE MULTIPLAYER ILLUSTRATION (Glowing Holographic Globe & Networked Pawns)
+// ============================================================================
+class OnlineIllustration extends StatelessWidget {
+  const OnlineIllustration({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _OnlineIllustrationPainter(),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _OnlineIllustrationPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height * 0.54;
+    final scale = (size.width / 120.0).clamp(0.65, 1.25);
+
+    // 1. Digital Cyber Glow Behind Globe
+    final glowRadius = 36.0 * scale;
+    final bgGlow = Paint()
+      ..shader = RadialGradient(
+        colors: const [
+          Color(0x6600E5FF),
+          Color(0x330091EA),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: glowRadius * 1.3));
+    canvas.drawCircle(Offset(cx, cy), glowRadius * 1.3, bgGlow);
+
+    // 2. 3D Glowing Holographic Globe (Cyan/Sapphire Sphere)
+    final globeRadius = 25.0 * scale;
+    final globeRect = Rect.fromCircle(center: Offset(cx, cy + 2 * scale), radius: globeRadius);
+    final globePaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.35, -0.35),
+        radius: 0.9,
+        colors: const [
+          Color(0xFF29B6F6),
+          Color(0xFF0277BD),
+          Color(0xFF013A63),
+          Color(0xFF001833),
+        ],
+      ).createShader(globeRect);
+    canvas.drawCircle(Offset(cx, cy + 2 * scale), globeRadius, globePaint);
+
+    // 3. Globe Latitude & Longitude Grid Lines (Cyan neon)
+    final gridPaint = Paint()
+      ..color = const Color(0x8880D8FF)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0 * scale;
+    // Equator & parallels
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx, cy + 2 * scale), width: globeRadius * 2, height: globeRadius * 0.9),
+      gridPaint,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx, cy + 2 * scale), width: globeRadius * 2, height: globeRadius * 1.6),
+      gridPaint,
+    );
+    // Vertical meridian
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx, cy + 2 * scale), width: globeRadius * 0.85, height: globeRadius * 2),
+      gridPaint,
+    );
+    // Outer golden/cyan rim
+    canvas.drawCircle(
+      Offset(cx, cy + 2 * scale),
+      globeRadius,
+      Paint()
+        ..color = const Color(0xFFFFD700)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.3 * scale,
+    );
+
+    // 4. Two Online Players Connecting Across the Globe:
+    // Left Player: Royal Ruby Red Pawn
+    _drawGlossyPawn(
+      canvas,
+      center: Offset(cx - 26 * scale, cy + 6 * scale),
+      size: 28 * scale,
+      baseColor: const Color(0xFFE53935),
+      lightColor: const Color(0xFFFF8A80),
+      darkColor: const Color(0xFFB71C1C),
+      hasGoldCrown: true,
+    );
+
+    // Right Player: Vivid Emerald Green Pawn
+    _drawGlossyPawn(
+      canvas,
+      center: Offset(cx + 26 * scale, cy + 6 * scale),
+      size: 28 * scale,
+      baseColor: const Color(0xFF2E7D32),
+      lightColor: const Color(0xFF81C784),
+      darkColor: const Color(0xFF1B5E20),
+    );
+
+    // 5. Orbiting Golden Wifi / Connection Signal Waves
+    final signalPaint = Paint()
+      ..color = const Color(0xFFFFD700)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8 * scale
+      ..strokeCap = StrokeCap.round;
+    final topArcRect = Rect.fromCircle(center: Offset(cx, cy - 8 * scale), radius: 18 * scale);
+    canvas.drawArc(topArcRect, -math.pi * 0.85, math.pi * 0.70, false, signalPaint);
+    final topArcRect2 = Rect.fromCircle(center: Offset(cx, cy - 8 * scale), radius: 24 * scale);
+    canvas.drawArc(topArcRect2, -math.pi * 0.85, math.pi * 0.70, false, signalPaint..strokeWidth = 1.4 * scale);
+
+    // 6. Center Floating Glowing Lucky Dice with Red Pips
+    _drawGlossyDice(
+      canvas,
+      center: Offset(cx, cy + 14 * scale),
+      size: 18 * scale,
+      pipColor: const Color(0xFFD32F2F),
+      pipCount: 6,
+      rotation: 0.1,
+    );
+
+    // 7. Twinkling Golden Sparkles
+    _drawSparkle(canvas, Offset(cx - 26 * scale, cy - 20 * scale), 5.0 * scale);
+    _drawSparkle(canvas, Offset(cx + 26 * scale, cy - 20 * scale), 5.0 * scale);
+    _drawSparkle(canvas, Offset(cx, cy - 28 * scale), 4.2 * scale);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ============================================================================
+// 5. TEAM UP ILLUSTRATION (Heraldic Golden Shield & Allied Duo 2v2)
+// ============================================================================
+class TeamUpIllustration extends StatelessWidget {
+  const TeamUpIllustration({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _TeamUpIllustrationPainter(),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _TeamUpIllustrationPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height * 0.54;
+    final scale = (size.width / 120.0).clamp(0.65, 1.25);
+
+    // 1. Radiant Team Synergy Glow
+    final glowRadius = 38.0 * scale;
+    final bgGlow = Paint()
+      ..shader = const RadialGradient(
+        colors: [
+          Color(0x66FFD700),
+          Color(0x33FF6F00),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: glowRadius));
+    canvas.drawCircle(Offset(cx, cy), glowRadius, bgGlow);
+
+    // 2. Golden Heraldic Team Shield in Background
+    _drawGoldenShield(canvas, Offset(cx, cy - 2 * scale), 46 * scale, 52 * scale);
+
+    // 3. Two Allied Pawns Side-by-Side (Teammates!)
+    // Teammate 1: Red Champion Pawn with Gold Crown (Left)
+    _drawGlossyPawn(
+      canvas,
+      center: Offset(cx - 15 * scale, cy + 5 * scale),
+      size: 32 * scale,
+      baseColor: const Color(0xFFE53935),
+      lightColor: const Color(0xFFFF8A80),
+      darkColor: const Color(0xFFB71C1C),
+      hasGoldCrown: true,
+    );
+
+    // Teammate 2: Gold/Yellow Partner Pawn (Right)
+    _drawGlossyPawn(
+      canvas,
+      center: Offset(cx + 15 * scale, cy + 5 * scale),
+      size: 32 * scale,
+      baseColor: const Color(0xFFFBC02D),
+      lightColor: const Color(0xFFFFF59D),
+      darkColor: const Color(0xFFE65100),
+    );
+
+    // 4. "2v2" Golden Metallic Badge / Ribbon across bottom
+    _draw2v2Badge(canvas, Offset(cx, cy + 22 * scale), scale);
+
+    // 5. Golden Sparkles
+    _drawSparkle(canvas, Offset(cx - 28 * scale, cy - 18 * scale), 5.5 * scale);
+    _drawSparkle(canvas, Offset(cx + 28 * scale, cy - 18 * scale), 6.0 * scale);
+    _drawSparkle(canvas, Offset(cx, cy - 28 * scale), 5.0 * scale);
+  }
+
+  void _drawGoldenShield(Canvas canvas, Offset center, double width, double height) {
+    final path = Path()
+      ..moveTo(center.dx, center.dy - height * 0.48)
+      ..lineTo(center.dx + width * 0.48, center.dy - height * 0.36)
+      ..lineTo(center.dx + width * 0.44, center.dy + height * 0.12)
+      ..quadraticBezierTo(
+        center.dx + width * 0.30,
+        center.dy + height * 0.44,
+        center.dx,
+        center.dy + height * 0.54,
+      )
+      ..quadraticBezierTo(
+        center.dx - width * 0.30,
+        center.dy + height * 0.44,
+        center.dx - width * 0.44,
+        center.dy + height * 0.12,
+      )
+      ..lineTo(center.dx - width * 0.48, center.dy - height * 0.36)
+      ..close();
+
+    // Shield gradient
+    final shieldPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0xFF0F265C),
+          Color(0xFF09173E),
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromCenter(center: center, width: width, height: height));
+    canvas.drawPath(path, shieldPaint);
+
+    // Golden shield border
+    final borderPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFFFFDE7), Color(0xFFFFD54F), Color(0xFF8D4B00)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromCenter(center: center, width: width, height: height))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawPath(path, borderPaint);
+  }
+
+  void _draw2v2Badge(Canvas canvas, Offset center, double scale) {
+    final badgeWidth = 44.0 * scale;
+    final badgeHeight = 16.0 * scale;
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: center, width: badgeWidth, height: badgeHeight),
+      Radius.circular(5.0 * scale),
+    );
+
+    // Drop shadow
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(center.dx, center.dy + 1.5 * scale), width: badgeWidth, height: badgeHeight),
+        Radius.circular(5.0 * scale),
+      ),
+      Paint()..color = const Color(0x66000000),
+    );
+
+    // Gold gradient body
+    final badgePaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFFFF9C4), Color(0xFFFFB300), Color(0xFFC45A00)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(rrect.outerRect);
+    canvas.drawRRect(rrect, badgePaint);
+
+    // Dark border
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..color = const Color(0xFF5D2E00)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0 * scale,
+    );
+
+    // "2 VS 2" text
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: "2 VS 2",
+        style: TextStyle(
+          fontFamily: 'Roboto',
+          fontSize: 8.5 * scale,
+          fontWeight: FontWeight.w900,
+          color: const Color(0xFF2E1200),
+          letterSpacing: 0.6 * scale,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    textPainter.paint(
+      canvas,
+      Offset(center.dx - textPainter.width / 2, center.dy - textPainter.height / 2),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+

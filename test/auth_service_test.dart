@@ -25,15 +25,16 @@ void main() {
     });
 
     test('Registers new user and sets session', () async {
+      final testEmail = 'john_${DateTime.now().millisecondsSinceEpoch}@example.com';
       final registered = await AuthService.registerUser(
         name: 'John Doe',
-        email: 'john@example.com',
+        email: testEmail,
         password: 'secretpassword',
       );
       expect(registered, true);
       expect(await AuthService.isLoggedIn(), true);
       expect(await AuthService.getUserName(), 'John Doe');
-      expect(await AuthService.getUserEmail(), 'john@example.com');
+      expect(await AuthService.getUserEmail(), testEmail);
     });
 
     test('Logout clears session', () async {

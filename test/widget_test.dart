@@ -13,11 +13,16 @@ void main() {
 
   testWidgets('LudoApp splash screen smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(const LudoApp());
-    expect(find.text('ALLCORESOLUTION'), findsOneWidget);
-    expect(find.text('Complete Solutions • Infinite Possibilities'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 500));
 
-    // Fast-forward past the splash timer (2.2s)
-    await tester.pump(const Duration(milliseconds: 2300));
+    expect(find.text('LUDO SUPREME'), findsOneWidget);
+    expect(find.text('PLAY • ROLL • WIN'), findsOneWidget);
+    expect(find.text('POWERED BY'), findsOneWidget);
+    expect(find.text('Loading...'), findsOneWidget);
+
+    // Fast-forward past the 6-second animated splash choreography + route transition (850ms)
+    await tester.pump(const Duration(milliseconds: 5650));
+    await tester.pump(const Duration(milliseconds: 950));
     await tester.pumpAndSettle();
 
     // After splash on first run, it navigates to LoginScreen

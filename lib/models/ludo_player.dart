@@ -5,24 +5,31 @@ import 'token.dart';
 
 class LudoPlayer {
   final PlayerColor color;
-  final String name;
+  String name; // online matches replace the placeholder name with the real player's name
   final bool isBot;
   final List<Token> tokens;
+  final String? teamId; // 'A' or 'B' in Team Up mode
   int? rank; // 1 for 1st place, 2 for 2nd, etc.
   bool hasEverOpenedToken;
+  bool isSurrendered;
 
   LudoPlayer({
     required this.color,
     required this.name,
     this.isBot = false,
+    this.teamId,
     List<Token>? tokens,
     this.rank,
     this.hasEverOpenedToken = false,
+    this.isSurrendered = false,
   }) : tokens = tokens ??
             List.generate(
               4,
               (index) => Token(id: index, color: color),
             );
+
+  bool isTeammateWith(LudoPlayer other) =>
+      teamId != null && other.teamId != null && teamId == other.teamId;
 
   bool get hasOpenedFirstToken =>
       hasEverOpenedToken || tokens.any((t) => t.step >= 0);

@@ -9,8 +9,23 @@ class LudoBotAI {
     required List<LudoPlayer> allPlayers,
     required int diceValue,
   }) {
-    final movable = botPlayer.getMovableTokens(diceValue);
-    if (movable.isEmpty) return null;
+    List<Token> movable = botPlayer.getMovableTokens(diceValue);
+    if (movable.isEmpty) {
+      if (botPlayer.hasFinished) {
+        final teammate = allPlayers.firstWhere(
+          (p) => p != botPlayer && p.isTeammateWith(botPlayer),
+          orElse: () => botPlayer,
+        );
+        if (!teammate.hasFinished) {
+          return pickBestToken(
+            botPlayer: teammate,
+            allPlayers: allPlayers,
+            diceValue: diceValue,
+          );
+        }
+      }
+      return null;
+    }
     if (movable.length == 1) return movable.first;
 
     Token bestToken = movable.first;
@@ -106,8 +121,10 @@ class LudoBotAI {
     List<LudoPlayer> allPlayers,
   ) {
     final List<Token> opponents = [];
+    final myPlayer = allPlayers.firstWhere((p) => p.color == myColor, orElse: () => allPlayers.first);
     for (final player in allPlayers) {
       if (player.color == myColor) continue;
+      if (myPlayer.isTeammateWith(player)) continue;
       for (final t in player.tokens) {
         if (t.isPlaying && t.coordinate == coord) {
           opponents.add(t);
@@ -119,9 +136,11 @@ class LudoBotAI {
 
   static bool _isUnderThreat(Token token, List<LudoPlayer> allPlayers) {
     final myGlobalPos = (LudoPath.startIndex(token.color) + token.step) % 52;
+    final myPlayer = allPlayers.firstWhere((p) => p.color == token.color, orElse: () => allPlayers.first);
 
     for (final player in allPlayers) {
       if (player.color == token.color) continue;
+      if (myPlayer.isTeammateWith(player)) continue;
       for (final enemyToken in player.tokens) {
         if (!enemyToken.isPlaying || enemyToken.step > 50) continue;
         final enemyGlobalPos =

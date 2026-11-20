@@ -204,12 +204,15 @@ void main() {
 
       // Tap Start Game
       await tester.tap(find.byKey(const Key('start_game_button')));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
 
-      // Verify GameScreen is pushed with Pass N Play mode
+      // Verify GameScreen is pushed with Pass N Play mode and custom player names
       expect(find.byType(GameScreen), findsOneWidget);
-      expect(find.text('Iron Man'), findsWidgets);
-      expect(find.text('Spider Man'), findsWidgets);
+      expect(find.bySemanticsLabel('Iron Man'), findsOneWidget);
+      expect(find.bySemanticsLabel('Spider Man'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
     });
 
     testWidgets('Back button navigates back cleanly',

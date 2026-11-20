@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../../constants/ludo_path.dart';
 import '../../models/ludo_player.dart';
 import '../../models/token.dart';
 
@@ -17,7 +16,7 @@ class TokenWidget extends StatefulWidget {
     required this.player,
     required this.isMovable,
     this.onTap,
-    this.size = 28,
+    this.size = 24,
   });
 
   @override
@@ -27,81 +26,74 @@ class TokenWidget extends StatefulWidget {
 class _TokenWidgetState extends State<TokenWidget>
     with TickerProviderStateMixin {
   late AnimationController _pulseController;
-  late Animation<double> _pulseScaleAnim;
-  late Animation<double> _pulseGlowAnim;
 
   late AnimationController _actionController;
+  TokenAnimStage _lastStage = TokenAnimStage.idle;
 
   @override
   void initState() {
     super.initState();
-    // Idle movable pulsing controller
+
+    // Continuous 360° spinning halo + radar ripple + rhythmic bounce for movable tokens
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 1100),
     );
 
-    _pulseScaleAnim = Tween<double>(begin: 1.0, end: 1.18).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
-    _pulseGlowAnim = Tween<double>(begin: 2.0, end: 9.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
-    // Dynamic action controller for throw, hop, capture, safe glow, goal
+    // Action animation controller for hop, capture, safe glow, goal
     _actionController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 220),
     );
 
     if (widget.isMovable) {
-      _pulseController.repeat(reverse: true);
+      _pulseController.repeat();
     }
 
-    _triggerActionIfActive(widget.token.animStage);
+    _lastStage = widget.token.animStage;
+    _triggerActionAnimation(widget.token.animStage);
   }
 
   @override
   void didUpdateWidget(covariant TokenWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Update idle pulse
     if (widget.isMovable && !_pulseController.isAnimating) {
-      _pulseController.repeat(reverse: true);
+      _pulseController.repeat();
     } else if (!widget.isMovable && _pulseController.isAnimating) {
       _pulseController.stop();
       _pulseController.reset();
     }
 
-    // Trigger action animation when stage changes
-    if (widget.token.animStage != oldWidget.token.animStage ||
-        (widget.token.animStage != TokenAnimStage.idle &&
-            !_actionController.isAnimating)) {
-      _triggerActionIfActive(widget.token.animStage);
+    if (widget.token.animStage != _lastStage) {
+      _lastStage = widget.token.animStage;
+      _triggerActionAnimation(widget.token.animStage);
+    } else if (widget.token.animStage == TokenAnimStage.hopping &&
+        widget.token.step != oldWidget.token.step) {
+      _triggerActionAnimation(TokenAnimStage.hopping);
     }
   }
 
-  void _triggerActionIfActive(TokenAnimStage stage) {
+  void _triggerActionAnimation(TokenAnimStage stage) {
     switch (stage) {
       case TokenAnimStage.throwing:
-        _actionController.duration = const Duration(milliseconds: 550);
+        _actionController.duration = const Duration(milliseconds: 520);
         _actionController.forward(from: 0.0);
         break;
       case TokenAnimStage.hopping:
-        _actionController.duration = const Duration(milliseconds: 220);
+        _actionController.duration = const Duration(milliseconds: 210);
         _actionController.forward(from: 0.0);
         break;
       case TokenAnimStage.captured:
-        _actionController.duration = const Duration(milliseconds: 350);
+        _actionController.duration = const Duration(milliseconds: 450);
         _actionController.forward(from: 0.0);
         break;
       case TokenAnimStage.safeGlow:
-        _actionController.duration = const Duration(milliseconds: 400);
+        _actionController.duration = const Duration(milliseconds: 380);
         _actionController.forward(from: 0.0);
         break;
       case TokenAnimStage.goalCelebration:
-        _actionController.duration = const Duration(milliseconds: 650);
+        _actionController.duration = const Duration(milliseconds: 850);
         _actionController.forward(from: 0.0);
         break;
       case TokenAnimStage.idle:
@@ -133,262 +125,435 @@ class _TokenWidgetState extends State<TokenWidget>
         animation: Listenable.merge([_pulseController, _actionController]),
         builder: (context, child) {
           final t = _actionController.value;
+          final pulseT = _pulseController.value;
           final stage = widget.token.animStage;
-          final isCurrentlySafe = widget.token.step >= 0 &&
-              widget.token.step <= 50 &&
-              LudoPath.isSafeCoord(widget.token.coordinate);
+          final showMovableHighlight =
+              widget.isMovable && stage == TokenAnimStage.idle;
 
           double liftY = 0.0;
           double scale = 1.0;
           double tiltAngle = 0.0;
-          double shadowBlur = 3.0;
-          double shadowSpread = 0.5;
-          Offset shadowOffset = const Offset(1.5, 2.5);
-          Color shadowColor = Colors.black.withValues(alpha: 0.35);
 
           if (stage == TokenAnimStage.throwing) {
-            // Parabolic 3D arc lift towards center
-            liftY = -sin(t * pi) * 28.0;
-            scale = 1.0 + sin(t * pi) * 0.38;
-            tiltAngle = sin(t * pi) * -0.16;
-            shadowBlur = 3.0 + sin(t * pi) * 16.0;
-            shadowSpread = 0.5 + sin(t * pi) * 4.0;
-            shadowOffset = Offset(1.5, 2.5 + sin(t * pi) * 10.0);
-            shadowColor = Colors.black.withValues(alpha: 0.2 + (1.0 - sin(t * pi)) * 0.25);
+            liftY = -sin(t * pi) * 16.0;
+            scale = 1.0 + sin(t * pi) * 0.20;
           } else if (stage == TokenAnimStage.hopping) {
-            // Smooth cell-to-cell leap in air
-            liftY = -sin(t * pi) * 18.0;
-            scale = 1.0 + sin(t * pi) * 0.22;
-            tiltAngle = sin(t * pi) * 0.05;
-            shadowBlur = 3.0 + sin(t * pi) * 10.0;
-            shadowSpread = 0.5 + sin(t * pi) * 2.5;
-            shadowOffset = Offset(1.5, 2.5 + sin(t * pi) * 6.0);
+            // Smooth cell-to-cell glide with subtle scale pop (stays strictly inside board)
+            scale = 1.0 + sin(t * pi) * 0.10;
           } else if (stage == TokenAnimStage.captured) {
-            // Shrinking and spin on capture
             scale = (1.0 - t * 0.35).clamp(0.6, 1.0);
             tiltAngle = t * pi * 2;
           } else if (stage == TokenAnimStage.safeGlow) {
-            // Subtle pulse on safe star
-            scale = 1.0 + sin(t * pi) * 0.16;
+            scale = 1.0 + sin(t * pi) * 0.15;
           } else if (stage == TokenAnimStage.goalCelebration) {
-            // Celebratory bouncing in home goal
-            scale = 1.0 + (sin(t * pi * 2).abs()) * 0.35;
-            liftY = -(sin(t * pi * 2).abs()) * 12.0;
-          } else if (widget.isMovable) {
-            // Idle movable pulse
-            scale = _pulseScaleAnim.value;
-            shadowBlur = _pulseGlowAnim.value;
-            shadowSpread = 2.0;
-            shadowOffset = Offset.zero;
-            shadowColor = Colors.white.withValues(alpha: 0.9);
+            scale = 1.0 + (sin(t * pi * 2).abs()) * 0.32;
+            liftY = -(sin(t * pi * 2).abs()) * 8.0;
+          } else if (showMovableHighlight) {
+            // Crisp rhythmic bounce inside the grounded spinning halo ring
+            final bounce = sin(pulseT * pi * 2).abs();
+            liftY = -bounce * (widget.size * 0.16).clamp(3.2, 5.2);
+            scale = 1.0 + bounce * 0.11;
           }
 
-          return Transform.translate(
-            offset: Offset(0, liftY),
-            child: Transform.scale(
-              scale: scale,
-              child: Transform.rotate(
-                angle: tiltAngle,
-                child: Stack(
-                  alignment: Alignment.center,
-                  clipBehavior: Clip.none,
-                  children: [
-                    // Safe star sparkle ring effect
-                    if (stage == TokenAnimStage.safeGlow)
-                      Positioned.fill(
-                        child: Transform.scale(
-                          scale: 1.0 + t * 0.9,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.amber.withValues(alpha: (1.0 - t).clamp(0.0, 1.0)),
-                                width: 2.5,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.amber.withValues(alpha: (0.8 * (1.0 - t)).clamp(0.0, 1.0)),
-                                  blurRadius: 12,
-                                  spreadRadius: 3,
-                                )
-                              ],
-                            ),
-                          ),
+          final haloW = widget.size * 1.95;
+          final haloH = widget.size * 1.05;
+
+          return SizedBox(
+            width: widget.size,
+            height: widget.size,
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                // 1. Grounded High-Contrast Spinning Dashed Halo + Expanding Radar Ripples
+                // Sits directly on the board tile beneath the bouncing 3D pawn!
+                if (showMovableHighlight)
+                  Positioned(
+                    left: (widget.size - haloW) / 2,
+                    top: (widget.size * 0.78) - (haloH / 2),
+                    width: haloW,
+                    height: haloH,
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _MovableTokenHaloPainter(
+                          progress: pulseT,
+                          accentColor: color,
                         ),
-                      ),
-
-                    // Goal victory celebration ring
-                    if (stage == TokenAnimStage.goalCelebration)
-                      Positioned.fill(
-                        child: Transform.scale(
-                          scale: 1.0 + (t * 1.2),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: color.withValues(alpha: (1.0 - t).clamp(0.0, 1.0)),
-                                width: 2.8,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    // Main token body with dynamic 3D gradient and shadow
-                    Container(
-                      width: widget.size,
-                      height: widget.size,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: shadowColor,
-                            blurRadius: shadowBlur,
-                            spreadRadius: shadowSpread,
-                            offset: shadowOffset,
-                          ),
-                        ],
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Base token body with 3D gradient
-                          Container(
-                            width: widget.size,
-                            height: widget.size,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: RadialGradient(
-                                center: const Alignment(-0.35, -0.4),
-                                radius: 0.85,
-                                colors: [
-                                  lightColor,
-                                  color,
-                                  darkColor,
-                                ],
-                                stops: const [0.0, 0.55, 1.0],
-                              ),
-                              border: Border.all(
-                                color: widget.isMovable || stage == TokenAnimStage.throwing
-                                    ? Colors.white
-                                    : Colors.white70,
-                                width: widget.isMovable || stage == TokenAnimStage.throwing
-                                    ? 2.4
-                                    : 1.5,
-                              ),
-                            ),
-                          ),
-
-                          // Inner pin head circle for 3D pawn look
-                          Container(
-                            width: widget.size * 0.46,
-                            height: widget.size * 0.46,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: RadialGradient(
-                                center: const Alignment(-0.3, -0.3),
-                                radius: 0.7,
-                                colors: [
-                                  Colors.white.withValues(alpha: 0.9),
-                                  lightColor,
-                                  color,
-                                ],
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black26,
-                                  blurRadius: 2,
-                                  offset: Offset(0.5, 1.0),
-                                )
-                              ],
-                            ),
-                          ),
-
-                          // Movable indicator dot
-                          if (widget.isMovable && stage == TokenAnimStage.idle)
-                            Positioned(
-                              top: 2,
-                              right: 2,
-                              child: Container(
-                                width: 7,
-                                height: 7,
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                        ],
                       ),
                     ),
+                  ),
 
-                    // Floating Ludo King style "STOP" Safe Signal Badge
-                    if (isCurrentlySafe &&
-                        stage != TokenAnimStage.captured &&
-                        stage != TokenAnimStage.throwing)
-                      Positioned(
-                        top: -6,
-                        right: -6,
-                        child: AnimatedScale(
-                          scale: stage == TokenAnimStage.safeGlow ? 1.35 : 1.0,
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.elasticOut,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 3.5, vertical: 1.2),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFFFD54F), Color(0xFFFF8F00)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                // 2. Bouncing / Animated 3D Pawn + Event Effects
+                Transform.translate(
+                  offset: Offset(0, liftY),
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Transform.rotate(
+                      angle: tiltAngle,
+                      child: SizedBox(
+                        width: widget.size,
+                        height: widget.size,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          clipBehavior: Clip.none,
+                          children: [
+                            // Safe star sparkle ring effect
+                            if (stage == TokenAnimStage.safeGlow)
+                              Positioned.fill(
+                                child: Transform.scale(
+                                  scale: 1.0 + t * 0.8,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.amber.withValues(
+                                            alpha: (1.0 - t).clamp(0.0, 1.0)),
+                                        width: 2.2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
-                              borderRadius: BorderRadius.circular(6),
-                              border:
-                                  Border.all(color: Colors.white, width: 1.0),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.45),
-                                  blurRadius: 3,
-                                  offset: const Offset(0, 1.5),
-                                ),
-                                if (stage == TokenAnimStage.safeGlow)
-                                  const BoxShadow(
-                                    color: Colors.amberAccent,
-                                    blurRadius: 8,
-                                    spreadRadius: 2,
-                                  ),
-                              ],
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.shield_rounded,
-                                  size: 8,
-                                  color: Color(0xFF3E2723),
-                                ),
-                                SizedBox(width: 1.5),
-                                Text(
-                                  "STOP",
-                                  style: TextStyle(
-                                    color: Color(0xFF3E2723),
-                                    fontSize: 6.5,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.3,
+
+                            // Goal victory celebration ring and star sparkle
+                            if (stage == TokenAnimStage.goalCelebration) ...[
+                              Positioned.fill(
+                                child: Transform.scale(
+                                  scale: 1.0 + (t * 1.3),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: const Color(0xFFFFD700)
+                                            .withValues(
+                                                alpha:
+                                                    (1.0 - t).clamp(0.0, 1.0)),
+                                        width: 2.6,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ],
+                              ),
+                              Positioned(
+                                top: -8,
+                                child: Opacity(
+                                  opacity: (sin(t * pi)).clamp(0.0, 1.0),
+                                  child: const Icon(
+                                    Icons.stars_rounded,
+                                    color: Color(0xFFFFD700),
+                                    size: 15,
+                                  ),
+                                ),
+                              ),
+                            ],
+
+                            // Sculpted 3D Glossy Pawn matching the luxury board
+                            CustomPaint(
+                              size: Size.square(widget.size),
+                              painter: _Board3DPawnPainter(
+                                baseColor: color,
+                                lightColor: lightColor,
+                                darkColor: darkColor,
+                                isMovable: showMovableHighlight,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
-                  ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           );
         },
       ),
     );
   }
+}
+
+/// Crisp 3D sculpted glossy Ludo pawn (wide circular base + conical body + spherical head
+/// with studio specular highlights and directional tabletop shadow).
+class _Board3DPawnPainter extends CustomPainter {
+  final Color baseColor;
+  final Color lightColor;
+  final Color darkColor;
+  final bool isMovable;
+
+  _Board3DPawnPainter({
+    required this.baseColor,
+    required this.lightColor,
+    required this.darkColor,
+    required this.isMovable,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final cx = w / 2;
+
+    // 1. Subtle golden under-glow when movable (main spinning halo sits grounded underneath)
+    if (isMovable) {
+      final glowRect = Rect.fromCenter(
+        center: Offset(cx, h * 0.78),
+        width: w * 0.96,
+        height: h * 0.42,
+      );
+      canvas.drawOval(
+        glowRect,
+        Paint()
+          ..color = const Color(0xFFFFD54F).withValues(alpha: 0.48)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0),
+      );
+    }
+
+    // 2. Soft tabletop drop shadow under base
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(cx + w * 0.04, h * 0.84),
+        width: w * 0.80,
+        height: h * 0.30,
+      ),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.36)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.2),
+    );
+
+    // 3. 3D Extruded Bottom Rim of Pawn Base
+    final baseBottomRect = Rect.fromCenter(
+      center: Offset(cx, h * 0.79),
+      width: w * 0.76,
+      height: h * 0.32,
+    );
+    canvas.drawOval(
+      baseBottomRect,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [baseColor, darkColor, Color.lerp(darkColor, Colors.black, 0.35)!],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ).createShader(baseBottomRect),
+    );
+
+    // Top bevel of pawn circular base
+    final baseTopRect = Rect.fromCenter(
+      center: Offset(cx, h * 0.74),
+      width: w * 0.74,
+      height: h * 0.28,
+    );
+    canvas.drawOval(
+      baseTopRect,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            Color.lerp(lightColor, Colors.white, 0.35)!,
+            baseColor,
+            darkColor,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(baseTopRect),
+    );
+
+    // 4. Sculpted Tapered Pawn Body
+    final bodyPath = Path()
+      ..moveTo(cx - w * 0.30, h * 0.73)
+      ..quadraticBezierTo(cx - w * 0.20, h * 0.54, cx - w * 0.14, h * 0.40)
+      ..lineTo(cx + w * 0.14, h * 0.40)
+      ..quadraticBezierTo(cx + w * 0.20, h * 0.54, cx + w * 0.30, h * 0.73)
+      ..quadraticBezierTo(cx, h * 0.82, cx - w * 0.30, h * 0.73)
+      ..close();
+
+    canvas.drawPath(
+      bodyPath,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            Color.lerp(lightColor, Colors.white, 0.28)!,
+            lightColor,
+            baseColor,
+            darkColor,
+          ],
+          stops: const [0.0, 0.22, 0.55, 1.0],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ).createShader(Offset.zero & size),
+    );
+
+    // Glossy specular reflection streak on body
+    final shinePath = Path()
+      ..moveTo(cx - w * 0.19, h * 0.70)
+      ..quadraticBezierTo(cx - w * 0.13, h * 0.55, cx - w * 0.08, h * 0.44)
+      ..lineTo(cx - w * 0.03, h * 0.44)
+      ..quadraticBezierTo(cx - w * 0.07, h * 0.55, cx - w * 0.11, h * 0.70)
+      ..close();
+    canvas.drawPath(
+      shinePath,
+      Paint()..color = Colors.white.withValues(alpha: 0.42),
+    );
+
+    // Subtle neck shadow collar
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(cx, h * 0.41),
+        width: w * 0.32,
+        height: h * 0.10,
+      ),
+      Paint()..color = darkColor.withValues(alpha: 0.55),
+    );
+
+    // 5. High-Gloss Spherical Pawn Head
+    final headCenter = Offset(cx, h * 0.26);
+    final headR = w * 0.24;
+    canvas.drawCircle(
+      headCenter,
+      headR,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.38, -0.42),
+          radius: 0.90,
+          colors: [
+            Colors.white,
+            Color.lerp(lightColor, Colors.white, 0.30)!,
+            baseColor,
+            darkColor,
+          ],
+          stops: const [0.0, 0.24, 0.62, 1.0],
+        ).createShader(Rect.fromCircle(center: headCenter, radius: headR)),
+    );
+
+    // Bright specular catchlight dot on head
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(cx - headR * 0.34, headCenter.dy - headR * 0.34),
+        width: headR * 0.44,
+        height: headR * 0.26,
+      ),
+      Paint()..color = Colors.white.withValues(alpha: 0.82),
+    );
+
+    // Subtle white rim outline when movable
+    if (isMovable) {
+      canvas.drawCircle(
+        headCenter,
+        headR,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.1
+          ..color = Colors.white.withValues(alpha: 0.9),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _Board3DPawnPainter oldDelegate) =>
+      oldDelegate.baseColor != baseColor ||
+      oldDelegate.isMovable != isMovable;
+}
+
+/// Grounded high-contrast movable-token indicator painted directly on the board tile:
+/// - Two staggered expanding golden radar ripple waves
+/// - High-contrast dark backing ring (pops sharply on white, yellow & colored tiles)
+/// - Continuously spinning 8-dash 24K gold & white highlight ring
+class _MovableTokenHaloPainter extends CustomPainter {
+  final double progress;
+  final Color accentColor;
+
+  const _MovableTokenHaloPainter({
+    required this.progress,
+    required this.accentColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final baseW = size.width * 0.62;
+    final baseH = size.height * 0.56;
+
+    // 1. Two staggered expanding radar ripples (always active, zero dead gap)
+    for (int i = 0; i < 2; i++) {
+      final rT = (progress + i * 0.5) % 1.0;
+      final alpha = pow(1.0 - rT, 1.35).toDouble().clamp(0.0, 1.0);
+      final rippleRect = Rect.fromCenter(
+        center: center,
+        width: baseW * (0.96 + rT * 0.62),
+        height: baseH * (0.96 + rT * 0.62),
+      );
+
+      // Subtle dark contrast halo behind the golden wave (ensures visibility on white cells)
+      canvas.drawOval(
+        rippleRect,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.0 * alpha + 0.6
+          ..color = const Color(0xFF0F172A).withValues(alpha: 0.32 * alpha),
+      );
+      canvas.drawOval(
+        rippleRect,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.8 * alpha + 0.5
+          ..color = const Color(0xFFFFD54F).withValues(alpha: 0.88 * alpha),
+      );
+    }
+
+    // 2. Soft warm golden spotlight fill right under the pawn
+    final ringRect = Rect.fromCenter(
+      center: center,
+      width: baseW,
+      height: baseH,
+    );
+    canvas.drawOval(
+      ringRect,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFFFFE066).withValues(alpha: 0.42),
+            accentColor.withValues(alpha: 0.16),
+            Colors.transparent,
+          ],
+          stops: const [0.0, 0.65, 1.0],
+        ).createShader(ringRect),
+    );
+
+    // 3. High-contrast dark ring backing so rotating dashes pop on every tile color
+    canvas.drawOval(
+      ringRect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = (size.width * 0.068).clamp(3.0, 4.4)
+        ..color = const Color(0xFF0B1221).withValues(alpha: 0.80),
+    );
+
+    // 4. Continuously spinning 8-segment bright 24K gold & white dashed ring
+    const int dashCount = 8;
+    const double stepAngle = (2.0 * pi) / dashCount;
+    const double sweepAngle = stepAngle * 0.56;
+    final double spinOffset = progress * 2.0 * pi;
+    final double dashStroke = (size.width * 0.042).clamp(1.9, 2.8);
+
+    for (int i = 0; i < dashCount; i++) {
+      final start = spinOffset + i * stepAngle;
+      final dashColor = i.isEven
+          ? const Color(0xFFFFE066) // Bright 24K gold
+          : const Color(0xFFFFFFFF); // Crisp white highlight
+      canvas.drawArc(
+        ringRect,
+        start,
+        sweepAngle,
+        false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = dashStroke
+          ..strokeCap = StrokeCap.round
+          ..color = dashColor,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MovableTokenHaloPainter oldDelegate) =>
+      (oldDelegate.progress - progress).abs() > 0.005 ||
+      oldDelegate.accentColor != accentColor;
 }

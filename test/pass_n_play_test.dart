@@ -84,40 +84,63 @@ void main() {
       controller.dispose();
     });
 
-    test('Turn flow and device handoff for 2 players (P1 -> P2 -> P1)', () {
+    test('Turn flow for 2 players (P1 -> P2 -> P1) switches automatically without handoff', () {
       final controller = LudoGameController(
         mode: GameMode.passNPlay,
         passNPlayPlayerCount: 2,
       );
 
       expect(controller.state.currentPlayerIndex, 0);
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
 
-      // Player 1 turn ends on timeout
+      // Player 1 turn ends on timeout -> automatically switches to Player 2
       controller.forceTurnTimeout();
       expect(controller.state.currentPlayerIndex, 1);
-      expect(controller.state.phase, TurnPhase.waitingForPlayerHandoff);
-      expect(controller.isTimerPaused, true);
-
-      // Player 2 presses I'M READY
-      controller.onPlayerReady();
       expect(controller.state.phase, TurnPhase.waitingForRoll);
       expect(controller.isTimerPaused, false);
-      expect(controller.state.currentPlayerIndex, 1);
+      expect(controller.state.statusMessage, contains("Player 2's turn"));
 
-      // Player 2 turn ends on timeout -> hands off back to Player 1
+      // Player 2 turn ends on timeout -> automatically switches back to Player 1
       controller.forceTurnTimeout();
       expect(controller.state.currentPlayerIndex, 0);
-      expect(controller.state.phase, TurnPhase.waitingForPlayerHandoff);
-      expect(controller.isTimerPaused, true);
-
-      // Player 1 presses I'M READY
-      controller.onPlayerReady();
       expect(controller.state.phase, TurnPhase.waitingForRoll);
-      expect(controller.state.currentPlayerIndex, 0);
+      expect(controller.isTimerPaused, false);
+      expect(controller.state.statusMessage, contains("Player 1's turn"));
+
       controller.dispose();
     });
 
-    test('Turn flow and device handoff for 4 players (P1 -> P2 -> P3 -> P4 -> P1)', () {
+    test('Turn flow for 3 players (P1 -> P2 -> P3 -> P1) switches automatically without handoff', () {
+      final controller = LudoGameController(
+        mode: GameMode.passNPlay,
+        passNPlayPlayerCount: 3,
+      );
+
+      expect(controller.state.currentPlayerIndex, 0);
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+
+      // P1 -> P2
+      controller.forceTurnTimeout();
+      expect(controller.state.currentPlayerIndex, 1);
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+      expect(controller.isTimerPaused, false);
+
+      // P2 -> P3
+      controller.forceTurnTimeout();
+      expect(controller.state.currentPlayerIndex, 2);
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+      expect(controller.isTimerPaused, false);
+
+      // P3 -> P1
+      controller.forceTurnTimeout();
+      expect(controller.state.currentPlayerIndex, 0);
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+      expect(controller.isTimerPaused, false);
+
+      controller.dispose();
+    });
+
+    test('Turn flow for 4 players (P1 -> P2 -> P3 -> P4 -> P1) switches automatically without handoff', () {
       final controller = LudoGameController(
         mode: GameMode.passNPlay,
         passNPlayPlayerCount: 4,
@@ -126,27 +149,27 @@ void main() {
       // P1 -> P2
       controller.forceTurnTimeout();
       expect(controller.state.currentPlayerIndex, 1);
-      expect(controller.state.phase, TurnPhase.waitingForPlayerHandoff);
-      controller.onPlayerReady();
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+      expect(controller.isTimerPaused, false);
 
       // P2 -> P3
       controller.forceTurnTimeout();
       expect(controller.state.currentPlayerIndex, 2);
-      expect(controller.state.phase, TurnPhase.waitingForPlayerHandoff);
-      controller.onPlayerReady();
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+      expect(controller.isTimerPaused, false);
 
       // P3 -> P4
       controller.forceTurnTimeout();
       expect(controller.state.currentPlayerIndex, 3);
-      expect(controller.state.phase, TurnPhase.waitingForPlayerHandoff);
-      controller.onPlayerReady();
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+      expect(controller.isTimerPaused, false);
 
       // P4 -> P1
       controller.forceTurnTimeout();
       expect(controller.state.currentPlayerIndex, 0);
-      expect(controller.state.phase, TurnPhase.waitingForPlayerHandoff);
-      controller.onPlayerReady();
       expect(controller.state.phase, TurnPhase.waitingForRoll);
+      expect(controller.isTimerPaused, false);
+
       controller.dispose();
     });
 
@@ -207,7 +230,29 @@ void main() {
       controller.dispose();
     });
 
-    test('No legal move automatically advances turn and triggers handoff', () async {
+    test('Normal token move completion advances turn to next player immediately without handoff', () async {
+      final controller = LudoGameController(
+        mode: GameMode.passNPlay,
+        passNPlayPlayerCount: 2,
+      );
+
+      final p1 = controller.state.players[0];
+      p1.hasOpenedFirstToken = true;
+      p1.tokens[0].step = 10;
+
+      // Player rolls 2 (not 6, no extra turn)
+      controller.state.phase = TurnPhase.waitingForMove;
+      controller.state.currentDiceValue = 2;
+      final result = await controller.moveToken(p1.tokens[0]);
+
+      expect(result.extraTurn, false);
+      expect(controller.state.currentPlayerIndex, 1);
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+      expect(controller.isTimerPaused, false);
+      controller.dispose();
+    });
+
+    test('No legal move automatically advances turn to next player immediately without handoff', () async {
       final controller = LudoGameController(
         mode: GameMode.passNPlay,
         passNPlayPlayerCount: 2,
@@ -217,34 +262,35 @@ void main() {
       controller.state.phase = TurnPhase.waitingForRoll;
       await controller.onPhysicalDiceThrowComplete(3);
 
-      // Turn automatically passed to Player 2 with handoff
+      // Turn automatically passed to Player 2 immediately without handoff
       expect(controller.state.currentPlayerIndex, 1);
-      expect(controller.state.phase, TurnPhase.waitingForPlayerHandoff);
-      expect(controller.isTimerPaused, true);
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+      expect(controller.isTimerPaused, false);
       controller.dispose();
     });
 
-    test('During handoff, dice rolls and token taps are disabled', () {
+    test('Legacy onPlayerReady is safely handled if waitingForPlayerHandoff phase occurs', () {
       final controller = LudoGameController(
         mode: GameMode.passNPlay,
         passNPlayPlayerCount: 2,
+        initialState: GameState(
+          players: [
+            LudoPlayer(color: PlayerColor.red, name: "P1", isBot: false),
+            LudoPlayer(color: PlayerColor.yellow, name: "P2", isBot: false),
+          ],
+          mode: GameMode.passNPlay,
+          currentPlayerIndex: 1,
+          phase: TurnPhase.waitingForPlayerHandoff,
+        ),
       );
 
-      // Move into handoff
-      controller.forceTurnTimeout();
-      expect(controller.state.phase, TurnPhase.waitingForPlayerHandoff);
+      // Initial state with waitingForPlayerHandoff auto-normalizes to waitingForRoll
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
+      expect(controller.isTimerPaused, false);
 
-      // Dice roll attempt should be ignored
-      controller.rollDice();
-      expect(controller.state.phase, TurnPhase.waitingForPlayerHandoff);
-
-      // Token tap attempt should be ignored
-      controller.onTokenTapped(controller.state.currentPlayer.tokens[0]);
-      expect(controller.state.phase, TurnPhase.waitingForPlayerHandoff);
-
-      // Resume timer should keep timer paused while waiting for handoff
-      controller.resumeTimer();
-      expect(controller.isTimerPaused, true);
+      // onPlayerReady is safely callable without error
+      controller.onPlayerReady();
+      expect(controller.state.phase, TurnPhase.waitingForRoll);
       controller.dispose();
     });
   });
@@ -307,7 +353,7 @@ void main() {
   });
 
   group('Pass N Play GameScreen & Handoff Overlay Widget Tests', () {
-    testWidgets('GameScreen shows PassNPlayHandoffOverlay and blocks board interaction',
+    testWidgets('GameScreen does not show PassNPlayHandoffOverlay and handles exit dialog cleanly',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1000);
       tester.view.devicePixelRatio = 1.0;
@@ -325,11 +371,11 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Pass & Play (2 Players)'), findsOneWidget);
-      expect(find.text('Alice'), findsWidgets);
-      expect(find.text('Bob'), findsWidgets);
+      expect(find.bySemanticsLabel('Alice'), findsOneWidget);
+      expect(find.bySemanticsLabel('Bob'), findsOneWidget);
 
       // Initially no handoff overlay
       expect(find.byType(PassNPlayHandoffOverlay), findsNothing);
@@ -340,7 +386,8 @@ void main() {
       // Access controller via timeout test:
       // Tap rules or use back button to verify dialog:
       await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       // Verify requirement 30: "Exit Game?" with "CANCEL" and "EXIT"
       expect(find.text('Exit Game?'), findsOneWidget);
@@ -349,8 +396,11 @@ void main() {
 
       // Cancel exit
       await tester.tap(find.text('CANCEL'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Exit Game?'), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
     });
 
     testWidgets('Handoff overlay displays next player and I\'M READY button starts turn',

@@ -11,7 +11,20 @@ class PlayerCard extends StatelessWidget {
   final LudoGameController controller;
   final Size? boardSize;
   final double? diceSize;
+  final double? boardDiceSize;
   final bool isCompact;
+  final bool isRightAligned;
+  final Key? diceSlotKey;
+  final GlobalKey? boardKey;
+  final bool hideActiveDice;
+  final bool handoffOnSettle;
+  final void Function(
+    Offset globalCenter,
+    int finalValue, [
+    double tiltX,
+    double tiltY,
+    double tiltZ,
+  ])? onBoardSettle;
 
   const PlayerCard({
     super.key,
@@ -19,277 +32,352 @@ class PlayerCard extends StatelessWidget {
     required this.isCurrentTurn,
     required this.controller,
     this.boardSize,
+    this.boardKey,
     this.diceSize,
+    this.boardDiceSize,
     this.isCompact = false,
+    this.isRightAligned = false,
+    this.diceSlotKey,
+    this.hideActiveDice = false,
+    this.handoffOnSettle = false,
+    this.onBoardSettle,
   });
 
   @override
   Widget build(BuildContext context) {
     final state = controller.state;
     final canRoll = isCurrentTurn &&
+        !player.isSurrendered &&
         state.phase == TurnPhase.waitingForRoll &&
         !player.isBot &&
         !controller.isBotPlaying &&
-        !state.currentPlayer.isBot;
+        !state.currentPlayer.isBot &&
+        controller.isMyTurn;
 
-    final secondsRemaining = controller.turnSecondsRemaining;
-    final progress = secondsRemaining / LudoGameController.maxTurnSeconds;
-    final timerColor = secondsRemaining > 5
-        ? Colors.greenAccent
-        : (secondsRemaining > 2 ? Colors.amber : Colors.redAccent);
+    // Each player pod sits beside its matching board corner:
+    // Red (top-left) & Green (top-right) are at the top; Blue & Yellow are at the bottom.
+    final bool isTop = (player.color == PlayerColor.red ||
+        player.color == PlayerColor.green);
 
-    // Determine if this player's card is on the top row of the screen
-    final bool isTop;
-    switch (state.mode) {
-      case GameMode.fourPlayer:
-      case GameMode.threePlayer:
-        isTop = (player.color == PlayerColor.red || player.color == PlayerColor.green);
-        break;
-      case GameMode.twoPlayer:
-      case GameMode.vsComputer:
-        isTop = (player.color != PlayerColor.red);
-        break;
-      case GameMode.passNPlay:
-        if (state.players.length >= 3) {
-          isTop = (player.color == PlayerColor.red || player.color == PlayerColor.green);
-        } else {
-          isTop = (player.color != PlayerColor.red);
-        }
-        break;
-    }
+    // Pod dice sits big & prominent in the corner cards ("bada hi rkh")
+    final effectiveDiceSize = diceSize != null
+        ? diceSize!.clamp(44.0, 76.0)
+        : (isCompact ? 48.0 : 54.0);
+    // Player pod avatar stays large & prominent ("bada")
+    final double personBoxSize = isCompact ? 44.0 : 48.0;
+    final double personIconSize = isCompact ? 30.0 : 34.0;
+    final double pad = isCompact ? 5.0 : 6.0;
+    final double innerSpacing = isCompact ? 6.0 : 8.0;
 
-    final effectiveDiceSize = isCompact
-        ? (diceSize != null ? diceSize!.clamp(30.0, 36.0) : 36.0)
-        : (diceSize ?? 46.0);
-    final horizontalPad = isCompact
-        ? 6.0
-        : (effectiveDiceSize > 56.0 ? 16.0 : 12.0);
-    final verticalPad = isCompact
-        ? 5.0
-        : (effectiveDiceSize > 56.0 ? 12.0 : 9.0);
+    final Color playerTint = player.primaryColor;
+    final Color cardBg = isCurrentTurn
+        ? Color.alphaBlend(
+            playerTint.withValues(alpha: 0.25),
+            const Color(0xFF0E172B),
+          )
+        : Color.alphaBlend(
+            playerTint.withValues(alpha: 0.11),
+            const Color(0xFF0B1324),
+          );
 
-    final avatarOuterSize = isCompact ? 32.0 : 44.0;
-    final avatarInnerSize = isCompact ? 26.0 : 36.0;
-    final avatarIconSize = isCompact ? 14.0 : 20.0;
-    final innerSpacing = isCompact ? 4.0 : 10.0;
-
-    return AnimatedContainer(
-      clipBehavior: Clip.none,
-      duration: const Duration(milliseconds: 300),
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPad,
-        vertical: verticalPad,
-      ),
-      decoration: BoxDecoration(
-        color: isCurrentTurn
-            ? const Color(0xFF14203D)
-            : const Color(0xFF10192D).withValues(alpha: 0.88),
-        borderRadius: BorderRadius.circular(isCompact ? 12 : 16),
-        border: Border.all(
-          color: isCurrentTurn
-              ? const Color(0xFFFFD700)
-              : Colors.white.withValues(alpha: 0.12),
-          width: isCurrentTurn ? 2.0 : 1.0,
-        ),
-        boxShadow: [
-          if (isCurrentTurn) ...[
-            BoxShadow(
-              color: const Color(0xFFFFD700).withValues(alpha: 0.40),
-              blurRadius: 16,
-              spreadRadius: 2,
+    final Widget emptySlotWidget = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: (isCurrentTurn && canRoll && !player.isBot)
+          ? controller.onPhysicalDiceThrowStart
+          : null,
+      child: MouseRegion(
+        cursor: (isCurrentTurn && canRoll && !player.isBot)
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
+        child: Container(
+          width: effectiveDiceSize,
+          height: effectiveDiceSize,
+          decoration: BoxDecoration(
+            color: playerTint.withValues(alpha: isCurrentTurn ? 0.22 : 0.15),
+            borderRadius: BorderRadius.circular(
+              (effectiveDiceSize * 0.22).clamp(7.0, 14.0),
             ),
-            BoxShadow(
-              color: player.primaryColor.withValues(alpha: 0.35),
-              blurRadius: 10,
+            border: Border.all(
+              color: isCurrentTurn
+                  ? playerTint
+                  : playerTint.withValues(alpha: 0.45),
+              width: isCurrentTurn ? 1.8 : 1.2,
             ),
-          ] else ...[
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ],
-      ),
-      child: Row(
-        mainAxisSize: isCompact ? MainAxisSize.max : MainAxisSize.min,
-        children: [
-          // Player Avatar Circle with circular countdown timer ring
-          Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
-            children: [
-              if (isCurrentTurn && !state.isGameOver)
-                SizedBox(
-                  width: avatarOuterSize,
-                  height: avatarOuterSize,
-                  child: CircularProgressIndicator(
-                    value: progress,
-                    strokeWidth: isCompact ? 2.0 : 2.8,
-                    valueColor: AlwaysStoppedAnimation<Color>(timerColor),
-                    backgroundColor: Colors.white12,
-                  ),
+            boxShadow: [
+              if (isCurrentTurn)
+                BoxShadow(
+                  color: playerTint.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  spreadRadius: 0.5,
                 ),
-              Container(
-                width: avatarInnerSize,
-                height: avatarInnerSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: player.isBot
-                      ? const Color(0xFF4361EE)
-                      : player.primaryColor,
-                  border: Border.all(
-                    color: isCurrentTurn
-                        ? const Color(0xFFFFD700)
-                        : Colors.white70,
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    if (isCurrentTurn)
-                      BoxShadow(
-                        color: const Color(0xFFFFD700).withValues(alpha: 0.6),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      ),
-                  ],
-                ),
-                child: Icon(
-                  player.isBot ? Icons.smart_toy_rounded : Icons.person_rounded,
-                  color: Colors.white,
-                  size: avatarIconSize,
-                ),
-              ),
             ],
           ),
-          SizedBox(width: innerSpacing),
-
-          // Player Name & Progress & Timer (Wrapped in Expanded to prevent any overflow)
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        player.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isCompact ? 10 : 13,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    if (isCurrentTurn && !state.isGameOver) ...[
-                      const SizedBox(width: 3),
-                      if (isCompact)
-                        Text(
-                          "${controller.turnSecondsRemaining}s",
-                          style: TextStyle(
-                            color: timerColor,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        )
-                      else
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 1.5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: timerColor.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: timerColor.withValues(alpha: 0.6),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.timer_rounded,
-                                  size: 10, color: timerColor),
-                              const SizedBox(width: 2),
-                              Text(
-                                "${controller.turnSecondsRemaining}s",
-                                style: TextStyle(
-                                  color: timerColor,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ],
+          child: isCurrentTurn
+              ? null
+              : Icon(
+                  Icons.casino_outlined,
+                  color: Colors.white54,
+                  size: (effectiveDiceSize * 0.52).clamp(16.0, 36.0),
                 ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        isCompact
-                            ? "${player.finishedCount}/4"
-                            : "${player.finishedCount}/4 Home",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white60,
-                          fontSize: isCompact ? 9 : 11,
-                        ),
-                      ),
-                    ),
-                    if (player.hasFinished) ...[
-                      const SizedBox(width: 2),
-                      Icon(Icons.emoji_events_rounded,
-                          color: Colors.amber, size: isCompact ? 10 : 14),
-                    ]
-                  ],
-                ),
-              ],
-            ),
-          ),
+        ),
+      ),
+    );
 
-          SizedBox(width: innerSpacing),
+    final occupiedCoords = <BoardCoord>[];
+    for (final p in state.players) {
+      for (final t in p.tokens) {
+        if (!t.isInBase) {
+          occupiedCoords.add(t.coordinate);
+        }
+      }
+    }
 
-          // Physical 3D Dice area
-          if (isCurrentTurn)
+    final bool showActiveDice = isCurrentTurn && !hideActiveDice;
+    final Widget diceWidget = KeyedSubtree(
+      key: diceSlotKey,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          emptySlotWidget,
+          if (showActiveDice)
             AnimatedDice(
-              value: state.currentDiceValue,
+              value: state.currentDiceValue ?? controller.lastSettledDiceValue,
               isRolling: state.phase == TurnPhase.throwingDice,
               canRoll: canRoll,
               isTopPlayer: isTop,
               isHuman: !player.isBot,
               boardSize: boardSize,
+              boardKey: boardKey,
               onRoll: controller.onPhysicalDiceThrowStart,
+              deferThrowToParent: controller.isOnlineMatch,
+              handoffOnSettle: handoffOnSettle,
+              onBoardSettle: onBoardSettle,
               onThrowComplete: (finalValue) {
                 if (!player.isBot) {
                   controller.onPhysicalDiceThrowComplete(finalValue);
                 }
               },
               size: effectiveDiceSize,
-            )
-          else
-            Container(
-              width: (effectiveDiceSize - 6.0).clamp(32.0, 62.0),
-              height: (effectiveDiceSize - 6.0).clamp(32.0, 62.0),
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(
-                  ((effectiveDiceSize - 6.0) * 0.22).clamp(6.0, 14.0),
+              boardDiceSize: boardDiceSize,
+              occupiedCoords: occupiedCoords,
+            ),
+        ],
+      ),
+    );
+
+    final Widget personWidget = Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: personBoxSize,
+          height: personBoxSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: playerTint.withValues(alpha: isCurrentTurn ? 0.24 : 0.12),
+            border: Border.all(
+              color: isCurrentTurn
+                  ? playerTint
+                  : playerTint.withValues(alpha: 0.55),
+              width: isCurrentTurn ? 2.0 : 1.1,
+            ),
+            boxShadow: [
+              if (isCurrentTurn)
+                BoxShadow(
+                  color: playerTint.withValues(alpha: 0.48),
+                  blurRadius: 10,
+                  spreadRadius: 0.8,
                 ),
-              ),
+            ],
+          ),
+          child: Icon(
+            Icons.person_rounded,
+            color: playerTint,
+            size: personIconSize,
+          ),
+        ),
+        if (player.hasFinished)
+          const Positioned(
+            top: -4,
+            right: -4,
+            child: Icon(
+              Icons.emoji_events_rounded,
+              color: Colors.amber,
+              size: 14,
+            ),
+          ),
+        if (player.isSurrendered)
+          const Positioned(
+            bottom: -2,
+            right: -2,
+            child: CircleAvatar(
+              radius: 7,
+              backgroundColor: Colors.redAccent,
               child: Icon(
-                Icons.casino_outlined,
-                color: Colors.white38,
-                size: (effectiveDiceSize * 0.48).clamp(16.0, 32.0),
+                Icons.close_rounded,
+                size: 9,
+                color: Colors.white,
               ),
             ),
+          ),
+      ],
+    );
+
+    final Widget podCard = AnimatedContainer(
+      clipBehavior: Clip.none,
+      duration: const Duration(milliseconds: 240),
+      padding: EdgeInsets.all(pad),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(isCompact ? 14 : 16),
+        border: Border.all(
+          color: isCurrentTurn
+              ? playerTint
+              : playerTint.withValues(alpha: 0.42),
+          width: isCurrentTurn ? 2.2 : 1.2,
+        ),
+        boxShadow: [
+          if (isCurrentTurn)
+            BoxShadow(
+              color: playerTint.withValues(alpha: 0.50),
+              blurRadius: 14,
+              spreadRadius: 1,
+            )
+          else
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: isRightAligned
+            ? [
+                personWidget,
+                SizedBox(width: innerSpacing),
+                diceWidget,
+              ]
+            : [
+                diceWidget,
+                SizedBox(width: innerSpacing),
+                personWidget,
+              ],
+      ),
+    );
+
+    final bool showTurnArrow =
+        isCurrentTurn && !state.isGameOver && state.phase == TurnPhase.waitingForRoll;
+    final arrowSize = (effectiveDiceSize * 0.48).clamp(20.0, 28.0);
+
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: isRightAligned ? Alignment.centerRight : Alignment.centerLeft,
+      child: Semantics(
+        label: player.name,
+        child: Opacity(
+          opacity: player.isSurrendered ? 0.45 : 1.0,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: isRightAligned
+                ? [
+                    if (showTurnArrow) ...[
+                      _TurnPointerArrow(
+                        pointRight: true,
+                        color: playerTint,
+                        size: arrowSize,
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    podCard,
+                  ]
+                : [
+                    podCard,
+                    if (showTurnArrow) ...[
+                      const SizedBox(width: 4),
+                      _TurnPointerArrow(
+                        pointRight: false,
+                        color: playerTint,
+                        size: arrowSize,
+                      ),
+                    ],
+                  ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Animated pointer arrow oscillating smoothly toward the active player's dice.
+class _TurnPointerArrow extends StatefulWidget {
+  final bool pointRight;
+  final Color color;
+  final double size;
+
+  const _TurnPointerArrow({
+    required this.pointRight,
+    required this.color,
+    required this.size,
+  });
+
+  @override
+  State<_TurnPointerArrow> createState() => _TurnPointerArrowState();
+}
+
+class _TurnPointerArrowState extends State<_TurnPointerArrow>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _slideAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    )..repeat(reverse: true);
+    _slideAnim = Tween<double>(begin: 0.0, end: 8.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _slideAnim,
+      builder: (context, child) {
+        final dx = widget.pointRight ? _slideAnim.value : -_slideAnim.value;
+        return Transform.translate(
+          offset: Offset(dx, 0),
+          child: child,
+        );
+      },
+      child: Icon(
+        widget.pointRight
+            ? Icons.keyboard_double_arrow_right_rounded
+            : Icons.keyboard_double_arrow_left_rounded,
+        color: const Color(0xFFFFD700),
+        size: widget.size,
+        shadows: [
+          Shadow(
+            color: widget.color.withValues(alpha: 0.9),
+            blurRadius: 10,
+          ),
+          const Shadow(
+            color: Colors.black87,
+            blurRadius: 4,
+          ),
         ],
       ),
     );

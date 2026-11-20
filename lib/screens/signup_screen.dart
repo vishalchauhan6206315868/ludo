@@ -35,36 +35,52 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     setState(() => _isLoading = true);
 
-    await AuthService.registerUser(
-      name: _nameController.text,
-      email: _emailController.text,
+    final success = await AuthService.registerUser(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
       password: _passwordController.text,
     );
 
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: Colors.green,
-        content: Text(
-            "Account Created Successfully! Welcome ${_nameController.text}"),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.green,
+          content: Text(
+              "Account Created Successfully! Welcome ${_nameController.text.trim()}"),
+          duration: const Duration(seconds: 2),
+        ),
+      );
 
-    // Navigate to Home Menu and clear navigation stack
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeMenuScreen()),
-      (route) => false,
-    );
+      // Navigate to Home Menu and clear navigation stack
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeMenuScreen()),
+        (route) => false,
+      );
+    } else {
+      final errorMsg = AuthService.lastErrorMessage ??
+          "Registration failed. Please check your details and try again.";
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red.shade700,
+          content: Text(errorMsg),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: LudoColors.backgroundDark,
+    return MediaQuery.withClampedTextScaling(
+      minScaleFactor: 0.85,
+      maxScaleFactor: 1.15,
+      child: Scaffold(
+        backgroundColor: LudoColors.backgroundDark,
+        resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -326,6 +342,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }

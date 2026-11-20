@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/ludo_colors.dart';
 import '../services/auth_service.dart';
+import '../widgets/celebration/login_fireworks_overlay.dart';
 import 'home_menu_screen.dart';
 import 'signup_screen.dart';
 
@@ -18,7 +19,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   String? _errorMessage;
+
+  // Diwali Fireworks Login Celebration State
+  bool _showCelebration = false;
+  String? _celebrationPlayerName;
+
+  bool get _isAnyLoading => _isLoading || _isGoogleLoading;
 
   @override
   void dispose() {
@@ -27,7 +35,30 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _triggerCelebration(String name) {
+    if (!mounted) return;
+    setState(() {
+      _celebrationPlayerName = name;
+      _showCelebration = true;
+    });
+  }
+
+  void _navigateToHome() {
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 500),
+        pageBuilder: (context, animation, secondaryAnimation) => FadeTransition(
+          opacity: animation,
+          child: const HomeMenuScreen(),
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleLogin() async {
+    if (_isAnyLoading || _showCelebration) return;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -47,34 +78,58 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     if (success) {
+      final name = await AuthService.getUserName();
+      _triggerCelebration(name.isNotEmpty ? name : 'Player');
+    } else {
+      setState(() {
+        _errorMessage = AuthService.lastErrorMessage ??
+            "Invalid credentials! Check your email or password.";
+      });
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    if (_isAnyLoading || _showCelebration) return;
+
+    setState(() {
+      _isGoogleLoading = true;
+      _errorMessage = null;
+    });
+
+    final result = await AuthService.signInWithGoogle();
+
+    if (!mounted) return;
+
+    setState(() {
+      _isGoogleLoading = false;
+    });
+
+    if (result.success && result.user != null) {
+      final name = result.user!.displayName ?? 'Player';
+      _triggerCelebration(name);
+    } else if (result.isCancelled) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          backgroundColor: Colors.green,
-          content: Text("Login Successful! Welcome back."),
+          backgroundColor: Color(0xFF1E293B),
+          content: Text("Sign-in cancelled"),
           duration: Duration(seconds: 2),
         ),
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeMenuScreen()),
-      );
     } else {
       setState(() {
-        _errorMessage = "Invalid credentials! Check your email or password.";
+        _errorMessage = result.message ?? "Unable to sign in with Google. Please try again.";
       });
     }
   }
 
   Future<void> _handleGuestLogin() async {
+    if (_isAnyLoading || _showCelebration) return;
     setState(() => _isLoading = true);
     await AuthService.loginAsGuest();
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeMenuScreen()),
-    );
+    _triggerCelebration("Guest Player");
   }
 
   void _fillSampleCredentials() {
@@ -87,10 +142,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: LudoColors.backgroundDark,
-      body: SafeArea(
-        child: Center(
+    return MediaQuery.withClampedTextScaling(
+      minScaleFactor: 0.85,
+      maxScaleFactor: 1.15,
+      child: Scaffold(
+        backgroundColor: LudoColors.backgroundDark,
+        resizeToAvoidBottomInset: true,
+        body: Stack(
+          children: [
+            SafeArea(
+              child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             child: ConstrainedBox(
@@ -121,6 +182,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Image.asset(
                           'assets/images/app_icon.png',
                           fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => const Icon(
+                            Icons.casino_rounded,
+                            size: 48,
+                            color: Colors.amber,
+                          ),
                         ),
                       ),
                     ),
@@ -247,14 +313,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
-                    // Login Button
+                    // Traditional Login Button
                     SizedBox(
                       width: double.infinity,
-                      height: 52,
+                      height: 50,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleLogin,
+                        onPressed: _isAnyLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.amber,
                           foregroundColor: Colors.black,
@@ -264,33 +330,44 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         child: _isLoading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(Colors.black),
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  valueColor:
+                                      AlwaysStoppedAnimation<Color>(Colors.black),
+                                ),
+                              )
+                            : const Text(
+                                "LOGIN",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.2,
+                                ),
                               ),
-                            )
-                          : const Text(
-                              "LOGIN",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 18),
+
+                    // Divider: OR CONTINUE WITH
+                    _buildOrDivider(),
+
+                    const SizedBox(height: 18),
+
+                    // Google Sign-In Button
+                    _buildGoogleButton(),
+
+                    const SizedBox(height: 16),
 
                     // Quick Guest Login Button
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: OutlinedButton.icon(
-                        onPressed: _isLoading ? null : _handleGuestLogin,
+                        key: const Key('guest_login_button'),
+                        onPressed: _isAnyLoading ? null : _handleGuestLogin,
                         icon: const Icon(Icons.rocket_launch_rounded,
                             color: Colors.white70, size: 18),
                         label: const Text(
@@ -305,7 +382,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
                     // Navigation to Sign Up
                     Wrap(
@@ -335,7 +412,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 22),
 
                     // Sample credentials helper card
                     Container(
@@ -350,7 +427,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Row(
                         children: [
                           const Icon(Icons.info_outline,
-                              color: Colors.amber, size: 20),
+                                color: Colors.amber, size: 20),
                           const SizedBox(width: 10),
                           const Expanded(
                             child: Column(
@@ -398,6 +475,142 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
+      ),
+      if (_showCelebration)
+        Positioned.fill(
+          child: LoginFireworksOverlay(
+            playerName: _celebrationPlayerName,
+            onComplete: _navigateToHome,
+          ),
+        ),
+    ],
+  ),
+),
+);
+}
+
+  Widget _buildOrDivider() {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withValues(alpha: 0.0),
+                  Colors.white.withValues(alpha: 0.25),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            "OR CONTINUE WITH",
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.0,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Container(
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withValues(alpha: 0.25),
+                  Colors.white.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Continue with Google Button
+  Widget _buildGoogleButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        key: const Key('continue_with_google_button'),
+        onPressed: _isAnyLoading ? null : _handleGoogleSignIn,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF131F38),
+          foregroundColor: Colors.white,
+          elevation: 2,
+          side: BorderSide(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.4),
+            width: 1.2,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: _isGoogleLoading
+            ? const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.amber),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    "Signing in...",
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Stylized Google 'G' icon badge
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                    ),
+                    child: const Center(
+                      child: Text(
+                        "G",
+                        style: TextStyle(
+                          color: Color(0xFF4285F4),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: 'Roboto',
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    "Continue with Google",
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
