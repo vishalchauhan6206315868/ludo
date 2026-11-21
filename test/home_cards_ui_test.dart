@@ -393,5 +393,35 @@ void main() {
         expect(tester.takeException(), isNull, reason: 'Overflow in tab $tabKey');
       }
     });
+
+    testWidgets('All 5 sections render on tablet screen (820x1180) in dynamic multi-column layout without overflow',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(820, 1180);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: HomeMenuScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Check all 5 tabs on tablet screen
+      for (final tabKey in [
+        'nav_item_home',
+        'nav_item_event',
+        'nav_item_adda',
+        'nav_item_inventory',
+        'nav_item_social',
+      ]) {
+        await tester.tap(find.byKey(Key(tabKey)));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull, reason: 'Tablet overflow in tab $tabKey');
+      }
+    });
   });
 }

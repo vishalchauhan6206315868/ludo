@@ -949,66 +949,108 @@ class _EventSectionViewState extends State<EventSectionView> {
           ),
 
           // Scrollable Content
-          RefreshIndicator(
-            onRefresh: _fetchEvents,
-            color: const Color(0xFFFFD700),
-            backgroundColor: const Color(0xFF0B1428),
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 460),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Sleek Header satisfying test finder: 'LIVE EVENTS & REWARDS'
-                      _buildRoyalHeader(),
-                      const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = constraints.maxWidth >= 600;
+              final maxContentWidth = isTablet ? 780.0 : 460.0;
 
-                      if (_errorMessage != null && _availableRewards.isEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Text(
-                            _errorMessage!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.amber, fontSize: 12),
-                          ),
-                        ),
-                      ],
+              return RefreshIndicator(
+                onRefresh: _fetchEvents,
+                color: const Color(0xFFFFD700),
+                backgroundColor: const Color(0xFF0B1428),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxContentWidth),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Sleek Header satisfying test finder: 'LIVE EVENTS & REWARDS'
+                          _buildRoyalHeader(),
+                          const SizedBox(height: 6),
 
-                      // Loading indicator or Event cards
-                      if (_isLoading) ...[
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 40),
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              color: Color(0xFFFFD700),
-                              strokeWidth: 2.8,
+                          if (_errorMessage != null && _availableRewards.isEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                _errorMessage!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.amber, fontSize: 12),
+                              ),
                             ),
-                          ),
-                        ),
-                      ] else ...[
-                        ..._availableRewards.map((reward) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _buildEventCard(reward),
-                            )),
-                      ],
+                          ],
 
-                      const SizedBox(height: 6),
+                          // Loading indicator or Event cards
+                          if (_isLoading) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 40),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFFFFD700),
+                                  strokeWidth: 2.8,
+                                ),
+                              ),
+                            ),
+                          ] else ...[
+                            _buildRewardsList(isTablet: isTablet),
+                          ],
 
-                      // Featured Bottom Banner: "REWARDS CENTER & HISTORY"
-                      _buildRewardsCenterBanner(context),
-                      const SizedBox(height: 18),
-                    ],
+                          const SizedBox(height: 6),
+
+                          // Featured Bottom Banner: "REWARDS CENTER & HISTORY"
+                          _buildRewardsCenterBanner(context),
+                          const SizedBox(height: 18),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ],
       ),
     );
+  }
+
+  // ── Adaptive Responsive Event Cards Layout ─────────────────────────
+  Widget _buildRewardsList({required bool isTablet}) {
+    if (!isTablet || _availableRewards.length <= 1) {
+      return Column(
+        children: _availableRewards
+            .map((reward) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _buildEventCard(reward),
+                ))
+            .toList(),
+      );
+    }
+
+    // Tablet: 2 columns grid
+    final List<Widget> rows = [];
+    for (int i = 0; i < _availableRewards.length; i += 2) {
+      final r1 = _availableRewards[i];
+      final r2 = (i + 1 < _availableRewards.length) ? _availableRewards[i + 1] : null;
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _buildEventCard(r1)),
+              const SizedBox(width: 12),
+              if (r2 != null)
+                Expanded(child: _buildEventCard(r2))
+              else
+                const Expanded(child: SizedBox.shrink()),
+            ],
+          ),
+        ),
+      );
+    }
+    return Column(children: rows);
   }
 
   // ── Header Banner ──────────────────────────────────────────────────
@@ -2324,38 +2366,67 @@ class _AddaSectionViewState extends State<AddaSectionView> {
           ),
 
           // 2. Scrollable Community Adda Content
-          SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Top Royal Header: Crowned Friends Medallion + COMMUNITY ADDA 3D Ribbon Banner
-                    _buildAddaHeader(),
-                    const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = constraints.maxWidth >= 600;
+              final maxContentWidth = isTablet ? 780.0 : 460.0;
 
-                    // Card 1: HOST AN ADDA TABLE (Primary Featured Card with VOICE & CHAT badge)
-                    _buildHostTableCard(),
-                    const SizedBox(height: 12),
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxContentWidth),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Top Royal Header: Crowned Friends Medallion + COMMUNITY ADDA 3D Ribbon Banner
+                        _buildAddaHeader(),
+                        const SizedBox(height: 12),
 
-                    // Card 2: Join Adda by Code (Live Room Code Entry & Neon Green JOIN)
-                    _buildJoinCodeCard(),
-                    const SizedBox(height: 12),
+                        if (!isTablet) ...[
+                          // Card 1: HOST AN ADDA TABLE (Primary Featured Card with VOICE & CHAT badge)
+                          _buildHostTableCard(),
+                          const SizedBox(height: 12),
 
-                    // Middle Dual Shortcuts: 2-Player Table & 4-Player Table
-                    _buildQuickShortcutsRow(),
-                    const SizedBox(height: 12),
+                          // Card 2: Join Adda by Code (Live Room Code Entry & Neon Green JOIN)
+                          _buildJoinCodeCard(),
+                          const SizedBox(height: 12),
 
-                    // Card 3: How Adda Tables Work (3 Bullet Points with Checkmarks & 3D Mic)
-                    _buildAddaGuideCard(),
-                    const SizedBox(height: 20),
-                  ],
+                          // Middle Dual Shortcuts: 2-Player Table & 4-Player Table
+                          _buildQuickShortcutsRow(),
+                          const SizedBox(height: 12),
+
+                          // Card 3: How Adda Tables Work (3 Bullet Points with Checkmarks & 3D Mic)
+                          _buildAddaGuideCard(),
+                        ] else ...[
+                          // Tablet Dual Column: Host Table + Join Code side-by-side
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: _buildHostTableCard()),
+                              const SizedBox(width: 14),
+                              Expanded(child: _buildJoinCodeCard()),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          // Tablet Row 2: Quick Shortcuts + Guide Card side-by-side
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: _buildQuickShortcutsRow()),
+                              const SizedBox(width: 14),
+                              Expanded(child: _buildAddaGuideCard()),
+                            ],
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ],
       ),
@@ -3732,121 +3803,231 @@ class _InventorySectionViewState extends State<InventorySectionView> {
         ),
 
         // Layer 2: Scrollable Interactive Vault Content
-        RefreshIndicator(
-          onRefresh: _fetchInventory,
-          color: const Color(0xFFFFD700),
-          backgroundColor: const Color(0xFF0F1A30),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: Column(
-                children: [
-                  // Top Royal Crown & Laurel Wreath Ribbon Banner
-                  _buildInventoryHeader(),
-                  const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isTablet = constraints.maxWidth >= 600;
+            final maxContentWidth = isTablet ? 780.0 : 440.0;
 
-                  // 3-in-1 Compact Stats Capsule: Coins | Gems | Level
-                  _buildHoldingsBar(profile),
-                  const SizedBox(height: 14),
+            return RefreshIndicator(
+              onRefresh: _fetchInventory,
+              color: const Color(0xFFFFD700),
+              backgroundColor: const Color(0xFF0F1A30),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxContentWidth),
+                    child: Column(
+                      children: [
+                        // Top Royal Crown & Laurel Wreath Ribbon Banner
+                        _buildInventoryHeader(),
+                        const SizedBox(height: 14),
 
-                  // 3D Category Filter Pills: ⭐ COLLECTIBLES | HONOR BADGES | VAULT ASSETS
-                  _buildCategoryTabs(),
-                  const SizedBox(height: 14),
+                        // 3-in-1 Compact Stats Capsule: Coins | Gems | Level
+                        _buildHoldingsBar(profile),
+                        const SizedBox(height: 14),
 
-                  if (_isLoading) ...[
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 36),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFFFD700),
-                          strokeWidth: 2.8,
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    // Category 0: Claimed Collectibles Stack
-                    if (_selectedCategory == 0) ...[
-                      if (displayClaims.isNotEmpty) ...[
-                        ...displayClaims.map((claim) => _buildClaimedItemTile(claim)),
-                      ] else ...[
-                        _buildEmptyCollectiblesCard(),
+                        // 3D Category Filter Pills: ⭐ COLLECTIBLES | HONOR BADGES | VAULT ASSETS
+                        _buildCategoryTabs(),
+                        const SizedBox(height: 14),
+
+                        if (_isLoading) ...[
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 36),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFFFFD700),
+                                strokeWidth: 2.8,
+                              ),
+                            ),
+                          ),
+                        ] else ...[
+                          // Category 0: Claimed Collectibles Stack
+                          if (_selectedCategory == 0) ...[
+                            if (displayClaims.isNotEmpty) ...[
+                              _buildCollectiblesList(displayClaims, isTablet),
+                            ] else ...[
+                              _buildEmptyCollectiblesCard(),
+                            ],
+                          ]
+                          // Category 1: Match Honor Badges
+                          else if (_selectedCategory == 1) ...[
+                            _buildHonorBadgesList(stats, profile, isTablet),
+                          ]
+                          // Category 2: Vault Assets & Balances
+                          else ...[
+                            if (!isTablet) ...[
+                              _buildVaultCard(
+                                title: "Gold Coins Balance",
+                                amount: profile.coins.toString(),
+                                subtitle: "Usable for all match betting & room entries",
+                                icon: Icons.monetization_on_rounded,
+                                color: const Color(0xFFFFD700),
+                                actionText: "Manage in Wallet >",
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const WalletScreen()),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _buildVaultCard(
+                                title: "Diamond Gems Balance",
+                                amount: profile.gems.toString(),
+                                subtitle: "Premium rewards & tournament multipliers",
+                                icon: Icons.diamond_rounded,
+                                color: const Color(0xFF00D2FF),
+                              ),
+                              const SizedBox(height: 12),
+                              _buildLevelProgressCard(profile),
+                            ] else ...[
+                              // Tablet Row: Coins Card + Gems Card side-by-side
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: _buildVaultCard(
+                                      title: "Gold Coins Balance",
+                                      amount: profile.coins.toString(),
+                                      subtitle: "Usable for all match betting & room entries",
+                                      icon: Icons.monetization_on_rounded,
+                                      color: const Color(0xFFFFD700),
+                                      actionText: "Manage in Wallet >",
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (_) => const WalletScreen()),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: _buildVaultCard(
+                                      title: "Diamond Gems Balance",
+                                      amount: profile.gems.toString(),
+                                      subtitle: "Premium rewards & tournament multipliers",
+                                      icon: Icons.diamond_rounded,
+                                      color: const Color(0xFF00D2FF),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              _buildLevelProgressCard(profile),
+                            ],
+                          ],
+                        ],
+
+                        const SizedBox(height: 20),
                       ],
-                    ]
-                    // Category 1: Match Honor Badges
-                    else if (_selectedCategory == 1) ...[
-                      _buildHonorBadgeTile(
-                        title: "Victory Master",
-                        condition: stats.wins > 0
-                            ? "${stats.wins} Matches Won"
-                            : "Win 1 online match to unlock",
-                        isUnlocked: stats.wins > 0,
-                        icon: Icons.emoji_events_rounded,
-                        color: const Color(0xFFFFD700),
-                      ),
-                      _buildHonorBadgeTile(
-                        title: "Elite Roller",
-                        condition: stats.totalGames > 0 && stats.winRate >= 50
-                            ? "${stats.winRate.toStringAsFixed(0)}% Win Rate Maintained"
-                            : "Maintain 50%+ win rate to unlock",
-                        isUnlocked: stats.totalGames > 0 && stats.winRate >= 50,
-                        icon: Icons.auto_awesome_rounded,
-                        color: const Color(0xFF00E676),
-                      ),
-                      _buildHonorBadgeTile(
-                        title: "Battle Veteran",
-                        condition: stats.totalGames >= 3
-                            ? "${stats.totalGames} Matches Played"
-                            : "Play 3 matches to unlock",
-                        isUnlocked: stats.totalGames >= 3,
-                        icon: Icons.sports_esports_rounded,
-                        color: const Color(0xFF38BDF8),
-                      ),
-                      _buildHonorBadgeTile(
-                        title: "Arena Champion",
-                        condition: profile.level >= 2 || stats.wins >= 5
-                            ? "Level ${profile.level} Reached"
-                            : "Reach Level 2 or 5 Wins to unlock",
-                        isUnlocked: profile.level >= 2 || stats.wins >= 5,
-                        icon: Icons.workspace_premium_rounded,
-                        color: const Color(0xFFFFB300),
-                      ),
-                    ]
-                    // Category 2: Vault Assets & Balances
-                    else ...[
-                      _buildVaultCard(
-                        title: "Gold Coins Balance",
-                        amount: profile.coins.toString(),
-                        subtitle: "Usable for all match betting & room entries",
-                        icon: Icons.monetization_on_rounded,
-                        color: const Color(0xFFFFD700),
-                        actionText: "Manage in Wallet >",
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const WalletScreen()),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      _buildVaultCard(
-                        title: "Diamond Gems Balance",
-                        amount: profile.gems.toString(),
-                        subtitle: "Premium rewards & tournament multipliers",
-                        icon: Icons.diamond_rounded,
-                        color: const Color(0xFF00D2FF),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildLevelProgressCard(profile),
-                    ],
-                  ],
-
-                  const SizedBox(height: 20),
-                ],
+                    ),
+                  ),
+                ),
               ),
-            ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // ── Adaptive Responsive Collectibles & Badges Grid ─────────────────
+  Widget _buildCollectiblesList(List<UserRewardClaim> displayClaims, bool isTablet) {
+    if (!isTablet || displayClaims.length <= 1) {
+      return Column(
+        children: displayClaims.map((claim) => _buildClaimedItemTile(claim)).toList(),
+      );
+    }
+
+    final List<Widget> rows = [];
+    for (int i = 0; i < displayClaims.length; i += 2) {
+      final c1 = displayClaims[i];
+      final c2 = (i + 1 < displayClaims.length) ? displayClaims[i + 1] : null;
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _buildClaimedItemTile(c1)),
+              const SizedBox(width: 12),
+              if (c2 != null)
+                Expanded(child: _buildClaimedItemTile(c2))
+              else
+                const Expanded(child: SizedBox.shrink()),
+            ],
           ),
+        ),
+      );
+    }
+    return Column(children: rows);
+  }
+
+  Widget _buildHonorBadgesList(dynamic stats, dynamic profile, bool isTablet) {
+    final b1 = _buildHonorBadgeTile(
+      title: "Victory Master",
+      condition: stats.wins > 0
+          ? "${stats.wins} Matches Won"
+          : "Win 1 online match to unlock",
+      isUnlocked: stats.wins > 0,
+      icon: Icons.emoji_events_rounded,
+      color: const Color(0xFFFFD700),
+    );
+    final b2 = _buildHonorBadgeTile(
+      title: "Elite Roller",
+      condition: stats.totalGames > 0 && stats.winRate >= 50
+          ? "${stats.winRate.toStringAsFixed(0)}% Win Rate Maintained"
+          : "Maintain 50%+ win rate to unlock",
+      isUnlocked: stats.totalGames > 0 && stats.winRate >= 50,
+      icon: Icons.auto_awesome_rounded,
+      color: const Color(0xFF00E676),
+    );
+    final b3 = _buildHonorBadgeTile(
+      title: "Battle Veteran",
+      condition: stats.totalGames >= 3
+          ? "${stats.totalGames} Matches Played"
+          : "Play 3 matches to unlock",
+      isUnlocked: stats.totalGames >= 3,
+      icon: Icons.sports_esports_rounded,
+      color: const Color(0xFF38BDF8),
+    );
+    final b4 = _buildHonorBadgeTile(
+      title: "Arena Champion",
+      condition: profile.level >= 2 || stats.wins >= 5
+          ? "Level ${profile.level} Reached"
+          : "Reach Level 2 or 5 Wins to unlock",
+      isUnlocked: profile.level >= 2 || stats.wins >= 5,
+      icon: Icons.workspace_premium_rounded,
+      color: const Color(0xFFFFB300),
+    );
+
+    if (!isTablet) {
+      return Column(
+        children: [b1, b2, b3, b4],
+      );
+    }
+
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: b1),
+            const SizedBox(width: 12),
+            Expanded(child: b2),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: b3),
+            const SizedBox(width: 12),
+            Expanded(child: b4),
+          ],
         ),
       ],
     );
@@ -5521,45 +5702,87 @@ class _SocialSectionViewState extends State<SocialSectionView> {
         ),
 
         // Layer 2: Scrollable Interactive Content
-        RefreshIndicator(
-          onRefresh: _loadAllSocialData,
-          color: const Color(0xFFFFD700),
-          backgroundColor: const Color(0xFF0F1A30),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: Column(
-                children: [
-                  // Top Header: 3D Crown Laurel & Curved Ribbon Banner
-                  _buildSocialHeader(),
-                  const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isTablet = constraints.maxWidth >= 600;
+            final maxContentWidth = isTablet ? 820.0 : 440.0;
 
-                  // Card 1: Real Player Identity & Standing Card
-                  _buildProfileCard(
-                    name: activeName,
-                    level: level,
-                    rankTitle: _getRankTitle(level),
-                    gamesWon: gamesWon,
-                    gamesPlayed: gamesPlayed,
-                    winRate: winRate,
-                    coins: coins,
-                    gems: gems,
+            return RefreshIndicator(
+              onRefresh: _loadAllSocialData,
+              color: const Color(0xFFFFD700),
+              backgroundColor: const Color(0xFF0F1A30),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxContentWidth),
+                    child: Column(
+                      children: [
+                        // Top Header: 3D Crown Laurel & Curved Ribbon Banner
+                        _buildSocialHeader(),
+                        const SizedBox(height: 14),
+
+                        if (!isTablet) ...[
+                          // Card 1: Real Player Identity & Standing Card
+                          _buildProfileCard(
+                            name: activeName,
+                            level: level,
+                            rankTitle: _getRankTitle(level),
+                            gamesWon: gamesWon,
+                            gamesPlayed: gamesPlayed,
+                            winRate: winRate,
+                            coins: coins,
+                            gems: gems,
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Card 2: Friendly Match Challenge (Host Room & Code Join)
+                          _buildChallengeCard(),
+                          const SizedBox(height: 14),
+
+                          // Card 3: Community Champions / Leaderboard
+                          _buildLeaderboardPreviewCard(displayLeaderboard),
+                        ] else ...[
+                          // Tablet Dual Column: Profile & Challenge (Left) | Leaderboard (Right)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 5,
+                                child: Column(
+                                  children: [
+                                    _buildProfileCard(
+                                      name: activeName,
+                                      level: level,
+                                      rankTitle: _getRankTitle(level),
+                                      gamesWon: gamesWon,
+                                      gamesPlayed: gamesPlayed,
+                                      winRate: winRate,
+                                      coins: coins,
+                                      gems: gems,
+                                    ),
+                                    const SizedBox(height: 14),
+                                    _buildChallengeCard(),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                flex: 6,
+                                child: _buildLeaderboardPreviewCard(displayLeaderboard),
+                              ),
+                            ],
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 14),
-
-                  // Card 2: Friendly Match Challenge (Host Room & Code Join)
-                  _buildChallengeCard(),
-                  const SizedBox(height: 14),
-
-                  // Card 3: Community Champions / Leaderboard
-                  _buildLeaderboardPreviewCard(displayLeaderboard),
-                  const SizedBox(height: 20),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ],
     );
