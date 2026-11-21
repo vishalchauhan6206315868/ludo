@@ -1,3 +1,4 @@
+﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
@@ -208,50 +209,99 @@ class _WalletScreenState extends State<WalletScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1424),
+      backgroundColor: const Color(0xFF060B24),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF141F36),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFFFD700), size: 22),
-            SizedBox(width: 8),
-            Text(
-              "MY WALLET",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                letterSpacing: 1.2,
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFD700),
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFFD700).withValues(alpha: 0.5),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  color: Color(0xFF1E0E44),
+                  size: 18,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              const Text(
+                "MY WALLET",
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                  letterSpacing: 1.2,
+                  shadows: [
+                    Shadow(color: Color(0xFFFFD700), blurRadius: 10),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           IconButton(
             tooltip: "Refresh Wallet",
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFFFFD700), size: 22),
+            icon: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.7),
+                  width: 1.5,
+                ),
+                color: const Color(0x22FFD700),
+              ),
+              child: const Icon(Icons.refresh_rounded, color: Color(0xFFFFD700), size: 18),
+            ),
             onPressed: _isLoading ? null : _fetchInitialData,
           ),
+          const SizedBox(width: 4),
         ],
       ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            RefreshIndicator(
-              color: const Color(0xFFFFD700),
-              backgroundColor: const Color(0xFF141F36),
-              onRefresh: _fetchInitialData,
-              child: _buildBody(),
-            ),
-            if (_isProcessingPayment) _buildPaymentLoadingOverlay(),
-          ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF04081E),
+              Color(0xFF09123E),
+              Color(0xFF05081C),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              RefreshIndicator(
+                color: const Color(0xFFFFD700),
+                backgroundColor: const Color(0xFF141F36),
+                onRefresh: _fetchInitialData,
+                child: _buildBody(),
+              ),
+              if (_isProcessingPayment) _buildPaymentLoadingOverlay(),
+            ],
+          ),
         ),
       ),
     );
@@ -294,13 +344,7 @@ class _WalletScreenState extends State<WalletScreen> {
           child: _buildBalanceCard(),
         ),
 
-        // Wallet Metadata Info Card
-        if (_wallet.id.isNotEmpty || _wallet.createdAt != null)
-          SliverToBoxAdapter(
-            child: _buildWalletInfoCard(),
-          ),
-
-        // Filter Tabs
+        // Filter Tabs (Placed directly below balance card as in reference design)
         SliverToBoxAdapter(
           child: _buildFilterTabBar(),
         ),
@@ -329,6 +373,12 @@ class _WalletScreenState extends State<WalletScreen> {
         SliverToBoxAdapter(
           child: _buildPaginationFooter(),
         ),
+
+        // Optional Wallet Metadata Info at the very bottom
+        if (_wallet.id.isNotEmpty || _wallet.createdAt != null)
+          SliverToBoxAdapter(
+            child: _buildWalletInfoCard(),
+          ),
       ],
     );
   }
@@ -341,189 +391,317 @@ class _WalletScreenState extends State<WalletScreen> {
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF1B2A4A),
-            Color(0xFF121D33),
-            Color(0xFF0F172A),
+            Color(0xFF0F1E4A),
+            Color(0xFF0A1435),
+            Color(0xFF060B22),
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFFFFD700).withValues(alpha: 0.4),
-          width: 1.5,
+          color: const Color(0xFFFFD54F),
+          width: 2.6,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFFD700).withValues(alpha: 0.15),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: const Color(0xFFFFB300).withValues(alpha: 0.45),
+            blurRadius: 22,
+            spreadRadius: 1,
           ),
-          const BoxShadow(
-            color: Colors.black45,
-            blurRadius: 10,
-            offset: Offset(0, 2),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.7),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Top Row: Crowned Wallet Emblem, Available Balance & ACTIVE pill
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFD700).withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.account_balance_wallet_rounded,
-                      color: Color(0xFFFFD700),
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "AVAILABLE BALANCE",
-                        style: TextStyle(
-                          color: Color(0xFFFFD700),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.1,
-                        ),
-                      ),
-                      Text(
-                        "Game Coins for Matches & Entry",
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.4),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
+              // Left: Crown + Wallet Emblem + Titles (Wrapped in Expanded to prevent overflow)
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 12),
-                    SizedBox(width: 4),
-                    Text(
-                      "ACTIVE",
-                      style: TextStyle(
-                        color: Color(0xFF10B981),
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
+                    // Crown + Wallet Emblem
+                    Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.topCenter,
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          margin: const EdgeInsets.only(top: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFFFD54F),
+                              width: 1.8,
+                            ),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF1976D2), Color(0xFF0D47A1), Color(0xFF052060)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF1976D2).withValues(alpha: 0.5),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.account_balance_wallet_rounded,
+                            color: Color(0xFFFFD700),
+                            size: 22,
+                          ),
+                        ),
+                        Positioned(
+                          top: 0,
+                          child: CustomPaint(
+                            size: const Size(26, 16),
+                            painter: _WalletCrownPainter(),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Text(
+                            "AVAILABLE BALANCE",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Color(0xFFFFD54F),
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            "Game Coins for Matches & Entry",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Color(0xFFB0BEC5),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-
+              ),
+              const SizedBox(width: 8),
+              // Right: ACTIVE status pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00C853),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF00C853).withValues(alpha: 0.45),
+                      blurRadius: 6,
+                      offset: const Offset(0, 1.5),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.check_circle_rounded, color: Colors.white, size: 12),
+                    SizedBox(width: 3),
+                    Text(
+                      "ACTIVE",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9.0,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+
+          // Center Row: Balance Display (Left) & 3D Treasure Chest (Right)
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.monetization_on_rounded,
-                color: Color(0xFFFFD700),
-                size: 34,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _formatNumber(_wallet.balance),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
+              // Left: Coin Icon, Dynamic Balance, and COINS label
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildGlossyStarCoin(size: 38),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _formatNumber(_wallet.balance),
+                          style: const TextStyle(
+                            fontFamily: 'Roboto',
+                            color: Colors.white,
+                            fontSize: 34,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      "COINS",
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        color: Color(0xFFFFD54F),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-              const Text(
-                "COINS",
-                style: TextStyle(
-                  color: Color(0xFFFFD700),
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.0,
+              // Right: 3D Open Golden Treasure Chest
+              const SizedBox(
+                width: 86,
+                height: 72,
+                child: CustomPaint(
+                  painter: _TreasureChestPainter(),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          const Divider(color: Colors.white12, height: 1),
-          const SizedBox(height: 14),
-          // Action Buttons: Row 1 (Add Cash & Withdraw)
+
+          // Action Buttons: Row 1 (+ Add Cash & Withdraw)
           Row(
             children: [
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _showAddCashBottomSheet,
-                  icon: const Icon(Icons.add_circle_rounded, size: 18),
-                  label: const Text(
-                    "Add Cash",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: Colors.white,
+                child: GestureDetector(
+                  onTap: _showAddCashBottomSheet,
+                  child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFA7FFEB),
+                        width: 1.2,
+                      ),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF00E676), Color(0xFF00C853), Color(0xFF009624)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF00E676).withValues(alpha: 0.45),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
                     ),
-                    elevation: 0,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.add_circle, color: Colors.white, size: 20),
+                          SizedBox(width: 6),
+                          Text(
+                            "Add Cash",
+                            style: TextStyle(
+                              fontFamily: 'Roboto',
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _showWithdrawBottomSheet,
-                  icon: const Icon(Icons.account_balance_rounded, size: 18),
-                  label: const Text(
-                    "Withdraw",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E293B),
-                    foregroundColor: const Color(0xFFFFD700),
-                    side: const BorderSide(color: Color(0xFFFFD700), width: 1.2),
+                child: GestureDetector(
+                  onTap: _showWithdrawBottomSheet,
+                  child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFFFD54F),
+                        width: 1.8,
+                      ),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1E232F), Color(0xFF101520), Color(0xFF080C14)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFD54F).withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
                     ),
-                    elevation: 0,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.account_balance_rounded, color: Color(0xFFFFD54F), size: 19),
+                          SizedBox(width: 6),
+                          Text(
+                            "Withdraw",
+                            style: TextStyle(
+                              fontFamily: 'Roboto',
+                              color: Color(0xFFFFD54F),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+
           // Action Buttons: Row 2 (Earn Free Coins & Sync)
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
+                child: GestureDetector(
+                  onTap: () async {
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -534,33 +712,59 @@ class _WalletScreenState extends State<WalletScreen> {
                     );
                     _fetchInitialData();
                   },
-                  icon: const Icon(Icons.card_giftcard_rounded, size: 16, color: Color(0xFFFFD700)),
-                  label: const Text(
-                    "Earn Free Coins",
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.white24),
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0x33101C38),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white12, width: 1),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.card_giftcard_rounded, size: 16, color: Color(0xFFFFD700)),
+                        SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            "Earn Free Coins",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 10),
-              OutlinedButton.icon(
-                onPressed: _fetchInitialData,
-                icon: const Icon(Icons.sync_rounded, size: 16, color: Colors.white70),
-                label: const Text(
-                  "Sync",
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.white24),
-                  padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+              GestureDetector(
+                onTap: _fetchInitialData,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
+                  decoration: BoxDecoration(
+                    color: const Color(0x33101C38),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white12, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.sync_rounded, size: 16, color: Colors.white70),
+                      SizedBox(width: 5),
+                      Text(
+                        "Sync",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -641,12 +845,12 @@ class _WalletScreenState extends State<WalletScreen> {
   // --- 3. Filter Tab Bar ---
   Widget _buildFilterTabBar() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFF101A2E),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
+        color: const Color(0xFF0A1028),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0x33FFD54F), width: 1),
       ),
       child: Row(
         children: [
@@ -677,19 +881,34 @@ class _WalletScreenState extends State<WalletScreen> {
     return GestureDetector(
       onTap: () => setState(() => _selectedFilter = index),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFFD700) : Colors.transparent,
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(14),
+          gradient: isSelected
+              ? const LinearGradient(
+                  colors: [Color(0xFFFFF9C4), Color(0xFFFFD54F), Color(0xFFFF9800)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                )
+              : null,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFFFD54F).withValues(alpha: 0.45),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
-              size: 14,
-              color: isSelected ? const Color(0xFF091428) : const Color(0xFF90A4AE),
+              size: 15,
+              color: isSelected ? const Color(0xFF1B0F00) : Colors.white70,
             ),
             const SizedBox(width: 5),
             Flexible(
@@ -698,9 +917,11 @@ class _WalletScreenState extends State<WalletScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: isSelected ? const Color(0xFF091428) : const Color(0xFF90A4AE),
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                  fontSize: 11,
+                  fontFamily: 'Roboto',
+                  color: isSelected ? const Color(0xFF1B0F00) : Colors.white70,
+                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                  fontSize: 11.5,
+                  letterSpacing: 0.3,
                 ),
               ),
             ),
@@ -789,13 +1010,17 @@ class _WalletScreenState extends State<WalletScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      tx.createdAt != null
-                          ? _formatDateTime(tx.createdAt!)
-                          : "Recently",
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 11,
+                    Flexible(
+                      child: Text(
+                        tx.createdAt != null
+                            ? _formatDateTime(tx.createdAt!)
+                            : "Recently",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                     Text(
@@ -811,7 +1036,9 @@ class _WalletScreenState extends State<WalletScreen> {
                 const SizedBox(height: 6),
 
                 // Pills: Status + Source Tag
-                Row(
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -829,7 +1056,6 @@ class _WalletScreenState extends State<WalletScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
@@ -845,8 +1071,7 @@ class _WalletScreenState extends State<WalletScreen> {
                         ),
                       ),
                     ),
-                    if (tx.source.isNotEmpty && tx.source != 'other') ...[
-                      const SizedBox(width: 6),
+                    if (tx.source.isNotEmpty && tx.source != 'other')
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
@@ -861,7 +1086,6 @@ class _WalletScreenState extends State<WalletScreen> {
                           ),
                         ),
                       ),
-                    ],
                   ],
                 ),
               ],
@@ -905,7 +1129,7 @@ class _WalletScreenState extends State<WalletScreen> {
         padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(
           child: Text(
-            "• End of Transaction History •",
+            "â€¢ End of Transaction History â€¢",
             style: TextStyle(color: Colors.white24, fontSize: 11),
           ),
         ),
@@ -915,49 +1139,84 @@ class _WalletScreenState extends State<WalletScreen> {
     return const SizedBox(height: 24);
   }
 
+  Widget _buildGlossyStarCoin({double size = 36}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const RadialGradient(
+          center: Alignment(-0.3, -0.3),
+          radius: 0.8,
+          colors: [
+            Color(0xFFFFF9C4),
+            Color(0xFFFFD54F),
+            Color(0xFFFFB300),
+            Color(0xFFC45A00),
+          ],
+        ),
+        border: Border.all(color: const Color(0xFFFFFDE7), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFB300).withValues(alpha: 0.5),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: Center(
+        child: Icon(
+          Icons.star_rounded,
+          color: const Color(0xFF6B3300),
+          size: size * 0.62,
+        ),
+      ),
+    );
+  }
+
   // --- 6. Empty State View ---
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF141F36),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white10),
-              ),
-              child: const Icon(
-                Icons.receipt_long_rounded,
-                color: Color(0xFFFFD700),
-                size: 48,
+            // 3D Illuminated Pedestal Stage with Passbook and Coins
+            const SizedBox(
+              width: 180,
+              height: 140,
+              child: CustomPaint(
+                painter: _PedestalStagePainter(),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             const Text(
               "No Transactions Yet",
               style: TextStyle(
+                fontFamily: 'Roboto',
                 color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              "Play matches or claim daily rewards to start building your coin history!",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 13,
-                height: 1.4,
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                "Play matches or claim daily rewards to start building your coin history!",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFFB0BEC5),
+                  fontSize: 13,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () async {
+            const SizedBox(height: 22),
+            GestureDetector(
+              onTap: () async {
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -968,13 +1227,41 @@ class _WalletScreenState extends State<WalletScreen> {
                 );
                 _fetchInitialData();
               },
-              icon: const Icon(Icons.card_giftcard_rounded, size: 16),
-              label: const Text("Claim Free Rewards"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFD700),
-                foregroundColor: const Color(0xFF0D1424),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(25),
+                  border: Border.all(color: Colors.white, width: 1.5),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFF9C4), Color(0xFFFFD54F), Color(0xFFFF8F00)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF8F00).withValues(alpha: 0.55),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.card_giftcard_rounded, color: Color(0xFF261200), size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      "Claim Free Rewards",
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        color: Color(0xFF261200),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 14.5,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1279,7 +1566,7 @@ class _WalletScreenState extends State<WalletScreen> {
                         prefixIcon: const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 14),
                           child: Text(
-                            "₹",
+                            "â‚¹",
                             style: TextStyle(
                               color: Color(0xFFFFD700),
                               fontSize: 26,
@@ -1316,7 +1603,7 @@ class _WalletScreenState extends State<WalletScreen> {
                         final isSelected = enteredAmount == amt;
                         return ChoiceChip(
                           label: Text(
-                            "+ ₹$amt",
+                            "+ â‚¹$amt",
                             style: TextStyle(
                               color: isSelected ? const Color(0xFF091428) : Colors.white70,
                               fontWeight: FontWeight.bold,
@@ -1380,7 +1667,7 @@ class _WalletScreenState extends State<WalletScreen> {
                         elevation: 0,
                       ),
                       child: Text(
-                        "PROCEED TO PAY ₹$enteredAmount",
+                        "PROCEED TO PAY â‚¹$enteredAmount",
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -1510,7 +1797,7 @@ class _WalletScreenState extends State<WalletScreen> {
         orderId: orderId,
         amount: amount,
         name: "Ludo Supreme",
-        description: "Deposit ₹$amount (Coins: $amount)",
+        description: "Deposit â‚¹$amount (Coins: $amount)",
         prefillName: userName,
         prefillEmail: userEmail,
       );
@@ -1707,7 +1994,7 @@ class _WalletScreenState extends State<WalletScreen> {
                                 ),
                               ),
                               Text(
-                                "Available Balance: ₹$availableBalance",
+                                "Available Balance: â‚¹$availableBalance",
                                 style: const TextStyle(
                                   color: Color(0xFFFFD700),
                                   fontSize: 12,
@@ -1789,12 +2076,12 @@ class _WalletScreenState extends State<WalletScreen> {
                         ),
                         onChanged: (_) => setModalState(() {}),
                         decoration: InputDecoration(
-                          labelText: "Withdrawal Amount (₹)",
+                          labelText: "Withdrawal Amount (â‚¹)",
                           labelStyle: const TextStyle(color: Colors.white60, fontSize: 13),
                           prefixIcon: const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 14),
                             child: Text(
-                              "₹",
+                              "â‚¹",
                               style: TextStyle(
                                 color: Color(0xFFFFD700),
                                 fontSize: 22,
@@ -1823,7 +2110,7 @@ class _WalletScreenState extends State<WalletScreen> {
                         children: [
                           if (availableBalance >= 100)
                             ActionChip(
-                              label: const Text("₹100"),
+                              label: const Text("â‚¹100"),
                               backgroundColor: const Color(0xFF141F36),
                               labelStyle: const TextStyle(color: Colors.white70, fontSize: 11),
                               side: const BorderSide(color: Colors.white12),
@@ -1833,7 +2120,7 @@ class _WalletScreenState extends State<WalletScreen> {
                             ),
                           if (availableBalance >= 500)
                             ActionChip(
-                              label: const Text("₹500"),
+                              label: const Text("â‚¹500"),
                               backgroundColor: const Color(0xFF141F36),
                               labelStyle: const TextStyle(color: Colors.white70, fontSize: 11),
                               side: const BorderSide(color: Colors.white12),
@@ -2037,7 +2324,7 @@ class _WalletScreenState extends State<WalletScreen> {
         _showAlertDialog(
           title: "Withdrawal Requested",
           message:
-              "Your withdrawal request of ₹$amount has been submitted successfully.${requestNo != null ? '\nRequest No: $requestNo' : ''}\nStatus: Pending Admin Approval.",
+              "Your withdrawal request of â‚¹$amount has been submitted successfully.${requestNo != null ? '\nRequest No: $requestNo' : ''}\nStatus: Pending Admin Approval.",
         );
       } else {
         _showAlertDialog(
@@ -2099,7 +2386,7 @@ class _WalletScreenState extends State<WalletScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                "₹$amount has been added to your wallet balance.",
+                "â‚¹$amount has been added to your wallet balance.",
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
@@ -2192,4 +2479,440 @@ class _WalletScreenState extends State<WalletScreen> {
       },
     );
   }
+}
+
+// ============================================================================
+// 3D ROYAL GAMING WALLET CUSTOM PAINTERS & GRAPHICS
+// ============================================================================
+
+/// 1. Mini Jeweled Golden Crown perched atop the wallet emblem
+class _WalletCrownPainter extends CustomPainter {
+  const _WalletCrownPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final width = size.width;
+    final height = size.height;
+
+    // Crown Path (5-peaks)
+    final path = Path()
+      ..moveTo(width * 0.12, height * 0.90)
+      ..lineTo(width * 0.05, height * 0.30)
+      ..lineTo(width * 0.28, height * 0.58)
+      ..lineTo(width * 0.50, height * 0.08)
+      ..lineTo(width * 0.72, height * 0.58)
+      ..lineTo(width * 0.95, height * 0.30)
+      ..lineTo(width * 0.88, height * 0.90)
+      ..close();
+
+    // Crown Gold Gradient
+    final crownPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFFFFDE7), Color(0xFFFFD54F), Color(0xFFC45A00)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(0, 0, width, height));
+    canvas.drawPath(path, crownPaint);
+
+    // Crown Outline
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xFF5D2E00)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
+
+    // Center Ruby
+    final rubyPaint = Paint()..color = const Color(0xFFD50000);
+    canvas.save();
+    canvas.translate(width * 0.50, height * 0.65);
+    canvas.rotate(math.pi / 4);
+    canvas.drawRect(Rect.fromCenter(center: Offset.zero, width: 4.5, height: 4.5), rubyPaint);
+    canvas.restore();
+
+    // Peak Jewels (white pearls)
+    final jewelPaint = Paint()..color = Colors.white;
+    canvas.drawCircle(Offset(width * 0.05, height * 0.30), 1.8, jewelPaint);
+    canvas.drawCircle(Offset(width * 0.50, height * 0.08), 2.4, jewelPaint);
+    canvas.drawCircle(Offset(width * 0.95, height * 0.30), 1.8, jewelPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// 2. 3D Open Golden Treasure Chest with overflowing coins & sparkles
+class _TreasureChestPainter extends CustomPainter {
+  const _TreasureChestPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height * 0.55;
+    final scale = (size.width / 90.0).clamp(0.65, 1.35);
+
+    // 1. Radiant Aura Behind Chest
+    final auraPaint = Paint()
+      ..shader = RadialGradient(
+        colors: const [
+          Color(0x77FFD700),
+          Color(0x33FF9100),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset(cx + 4 * scale, cy), radius: 36 * scale));
+    canvas.drawCircle(Offset(cx + 4 * scale, cy), 36 * scale, auraPaint);
+
+    // 2. Chest Lower Body
+    final bodyRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(cx, cy + 10 * scale), width: 56 * scale, height: 32 * scale),
+      Radius.circular(6 * scale),
+    );
+    // Body Drop Shadow
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(cx, cy + 13 * scale), width: 56 * scale, height: 32 * scale),
+        Radius.circular(6 * scale),
+      ),
+      Paint()..color = const Color(0x66000000),
+    );
+
+    // Wood / Gold body gradient
+    final bodyPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF8D4B00), Color(0xFF5D2E00), Color(0xFF381A00)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(bodyRect.outerRect);
+    canvas.drawRRect(bodyRect, bodyPaint);
+
+    // Golden Vertical Ribs & Corner Brackets on Body
+    final goldBandPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFFFF9C4), Color(0xFFFFD54F), Color(0xFFC45A00)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(bodyRect.outerRect);
+
+    // Left band
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(cx - 18 * scale, cy + 10 * scale), width: 6 * scale, height: 32 * scale),
+        Radius.circular(2 * scale),
+      ),
+      goldBandPaint,
+    );
+    // Right band
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(cx + 18 * scale, cy + 10 * scale), width: 6 * scale, height: 32 * scale),
+        Radius.circular(2 * scale),
+      ),
+      goldBandPaint,
+    );
+    // Rim trim
+    canvas.drawRRect(
+      bodyRect,
+      Paint()
+        ..color = const Color(0xFFFFD54F)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8 * scale,
+    );
+
+    // 3. Open Lid (Angled backwards)
+    final lidPath = Path()
+      ..moveTo(cx - 30 * scale, cy - 4 * scale)
+      ..lineTo(cx + 30 * scale, cy - 4 * scale)
+      ..lineTo(cx + 26 * scale, cy - 24 * scale)
+      ..quadraticBezierTo(cx, cy - 30 * scale, cx - 26 * scale, cy - 24 * scale)
+      ..close();
+
+    final lidPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF3E1F80), Color(0xFF1E0E44), Color(0xFF0F0525)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromCenter(center: Offset(cx, cy - 16 * scale), width: 60 * scale, height: 26 * scale));
+    canvas.drawPath(lidPath, lidPaint);
+
+    // Lid Golden Rim
+    canvas.drawPath(
+      lidPath,
+      Paint()
+        ..shader = goldBandPaint.shader
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0 * scale,
+    );
+
+    // 4. Glowing Golden Coins Overflowing
+    final coinPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFFFF9C4), Color(0xFFFFD54F), Color(0xFFFF8F00)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromCenter(center: Offset(cx, cy), width: 40 * scale, height: 20 * scale));
+
+    final coinPositions = [
+      Offset(cx - 16 * scale, cy - 2 * scale),
+      Offset(cx - 8 * scale, cy - 6 * scale),
+      Offset(cx, cy - 4 * scale),
+      Offset(cx + 8 * scale, cy - 7 * scale),
+      Offset(cx + 16 * scale, cy - 3 * scale),
+      Offset(cx - 12 * scale, cy + 2 * scale),
+      Offset(cx - 4 * scale, cy + 1 * scale),
+      Offset(cx + 5 * scale, cy + 2 * scale),
+      Offset(cx + 13 * scale, cy + 3 * scale),
+      Offset(cx - 20 * scale, cy + 18 * scale),
+      Offset(cx + 22 * scale, cy + 17 * scale),
+    ];
+
+    for (final pos in coinPositions) {
+      canvas.drawOval(
+        Rect.fromCenter(center: pos, width: 8.5 * scale, height: 6.0 * scale),
+        coinPaint,
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: pos, width: 8.5 * scale, height: 6.0 * scale),
+        Paint()
+          ..color = const Color(0xFF7A3600)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8 * scale,
+      );
+    }
+
+    // 5. Golden Center Latch / Lock Plate
+    final lockRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(cx, cy + 3 * scale), width: 9 * scale, height: 11 * scale),
+      Radius.circular(2.5 * scale),
+    );
+    canvas.drawRRect(lockRect, goldBandPaint);
+    canvas.drawCircle(Offset(cx, cy + 4.5 * scale), 1.6 * scale, Paint()..color = const Color(0xFF381A00));
+
+    // 6. Floating Coins in Air
+    final floatingCoins = [
+      Offset(cx - 26 * scale, cy - 14 * scale),
+      Offset(cx + 28 * scale, cy - 12 * scale),
+      Offset(cx + 34 * scale, cy + 4 * scale),
+    ];
+    for (final pos in floatingCoins) {
+      canvas.drawOval(
+        Rect.fromCenter(center: pos, width: 7.5 * scale, height: 5.5 * scale),
+        coinPaint,
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: pos, width: 7.5 * scale, height: 5.5 * scale),
+        Paint()
+          ..color = const Color(0xFF7A3600)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.7 * scale,
+      );
+    }
+
+    // 7. Twinkling Sparkles
+    _drawSparkle(canvas, Offset(cx - 20 * scale, cy - 20 * scale), 4.5 * scale);
+    _drawSparkle(canvas, Offset(cx + 24 * scale, cy - 22 * scale), 5.0 * scale);
+    _drawSparkle(canvas, Offset(cx + 2 * scale, cy - 12 * scale), 4.0 * scale);
+    _drawSparkle(canvas, Offset(cx + 36 * scale, cy - 4 * scale), 3.5 * scale);
+  }
+
+  void _drawSparkle(Canvas canvas, Offset center, double radius) {
+    final path = Path()
+      ..moveTo(center.dx, center.dy - radius)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx + radius, center.dy)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx, center.dy + radius)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx - radius, center.dy)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx - radius, center.dy)
+      ..close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = const RadialGradient(
+          colors: [Colors.white, Color(0xFFFFD54F), Colors.transparent],
+        ).createShader(Rect.fromCircle(center: center, radius: radius)),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// 3. 3D Illuminated Circular Pedestal Stage Empty State
+class _PedestalStagePainter extends CustomPainter {
+  const _PedestalStagePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height * 0.65;
+    final scale = (size.width / 200.0).clamp(0.65, 1.35);
+
+    // 1. Purple / Blue Ambient Glow behind stage
+    final glowRadius = 55.0 * scale;
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        colors: const [
+          Color(0x667C4DFF),
+          Color(0x3300E5FF),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset(cx, cy - 15 * scale), radius: glowRadius));
+    canvas.drawCircle(Offset(cx, cy - 15 * scale), glowRadius, glowPaint);
+
+    // 2. Lower Pedestal Tier (Elliptical podium)
+    final lowerRect = Rect.fromCenter(center: Offset(cx, cy + 12 * scale), width: 140 * scale, height: 42 * scale);
+    final lowerPath = Path()..addOval(lowerRect);
+    canvas.drawPath(
+      lowerPath,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF2A166A), Color(0xFF130938)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(lowerRect),
+    );
+    canvas.drawOval(
+      lowerRect,
+      Paint()
+        ..color = const Color(0xFF00E5FF).withValues(alpha: 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0 * scale,
+    );
+
+    // 3. Upper Pedestal Tier
+    final upperRect = Rect.fromCenter(center: Offset(cx, cy), width: 116 * scale, height: 34 * scale);
+    canvas.drawOval(
+      upperRect,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF651FFF), Color(0xFF311B92)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(upperRect),
+    );
+    canvas.drawOval(
+      upperRect,
+      Paint()
+        ..color = const Color(0xFF80D8FF)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.4 * scale,
+    );
+
+    // 4. Stacks of 3D Gold Coins on Left & Right
+    _drawCoinStack(canvas, Offset(cx - 36 * scale, cy - 4 * scale), scale);
+    _drawCoinStack(canvas, Offset(cx + 36 * scale, cy - 4 * scale), scale);
+
+    // 5. Center 3D Passbook Document Card with Wallet Emblem
+    _drawPassbookCard(canvas, Offset(cx, cy - 24 * scale), scale);
+
+    // 6. Floating Sparkles and Radiant Beams
+    _drawSparkle(canvas, Offset(cx - 32 * scale, cy - 42 * scale), 4.5 * scale);
+    _drawSparkle(canvas, Offset(cx + 32 * scale, cy - 42 * scale), 4.5 * scale);
+    _drawSparkle(canvas, Offset(cx, cy - 54 * scale), 5.5 * scale);
+    _drawSparkle(canvas, Offset(cx - 48 * scale, cy + 8 * scale), 4.0 * scale);
+    _drawSparkle(canvas, Offset(cx + 48 * scale, cy + 8 * scale), 4.0 * scale);
+  }
+
+  void _drawCoinStack(Canvas canvas, Offset baseCenter, double scale) {
+    final coinPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFFFF9C4), Color(0xFFFFD54F), Color(0xFFFF8F00)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromCenter(center: baseCenter, width: 22 * scale, height: 26 * scale));
+
+    final strokePaint = Paint()
+      ..color = const Color(0xFF7A3600)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9 * scale;
+
+    // 3 Coins stacked vertically
+    for (int i = 0; i < 3; i++) {
+      final y = baseCenter.dy - (i * 5.0 * scale);
+      final r = Rect.fromCenter(center: Offset(baseCenter.dx, y), width: 18 * scale, height: 7 * scale);
+      canvas.drawOval(r, coinPaint);
+      canvas.drawOval(r, strokePaint);
+    }
+  }
+
+  void _drawPassbookCard(Canvas canvas, Offset center, double scale) {
+    final width = 36.0 * scale;
+    final height = 46.0 * scale;
+    final rect = Rect.fromCenter(center: center, width: width, height: height);
+
+    // Card shadow
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(center.dx, center.dy + 3 * scale), width: width, height: height),
+        Radius.circular(6 * scale),
+      ),
+      Paint()..color = const Color(0x66000000),
+    );
+
+    // White / Silver Document Body
+    final bodyRRect = RRect.fromRectAndRadius(rect, Radius.circular(6 * scale));
+    canvas.drawRRect(
+      bodyRRect,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFFFFFFF), Color(0xFFECEFF1), Color(0xFFCFD8DC)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(rect),
+    );
+    canvas.drawRRect(
+      bodyRRect,
+      Paint()
+        ..color = const Color(0xFFB0BEC5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2 * scale,
+    );
+
+    // Center Gold Wallet Emblem on Passbook
+    final badgeRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: center, width: 20 * scale, height: 20 * scale),
+      Radius.circular(4 * scale),
+    );
+    canvas.drawRRect(
+      badgeRect,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF0F1E4A), Color(0xFF060B22)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(badgeRect.outerRect),
+    );
+    canvas.drawRRect(
+      badgeRect,
+      Paint()
+        ..color = const Color(0xFFFFD54F)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0 * scale,
+    );
+
+    // Mini Golden Wallet inside badge
+    final walletPaint = Paint()..color = const Color(0xFFFFD54F);
+    final walletRect = Rect.fromCenter(center: center, width: 11 * scale, height: 8 * scale);
+    canvas.drawRRect(RRect.fromRectAndRadius(walletRect, Radius.circular(1.5 * scale)), walletPaint);
+    canvas.drawCircle(Offset(center.dx + 2.5 * scale, center.dy), 1.2 * scale, Paint()..color = const Color(0xFF0F1E4A));
+  }
+
+  void _drawSparkle(Canvas canvas, Offset center, double radius) {
+    final path = Path()
+      ..moveTo(center.dx, center.dy - radius)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx + radius, center.dy)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx, center.dy + radius)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx - radius, center.dy)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx - radius, center.dy)
+      ..close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = const RadialGradient(
+          colors: [Colors.white, Color(0xFFFFD54F), Colors.transparent],
+        ).createShader(Rect.fromCircle(center: center, radius: radius)),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

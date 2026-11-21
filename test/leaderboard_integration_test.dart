@@ -237,5 +237,87 @@ void main() {
 
       expect(find.text('No leaderboard rankings yet.'), findsOneWidget);
     });
+
+    testWidgets('LeaderboardScreen renders top 3 podium ranks and rank 4+ without overflow on small screens', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final multiRankApi = FakeTestApiService(
+        leaderboardResponse: {
+          'success': true,
+          'statusCode': 200,
+          'message': 'Success',
+          'data': {
+            'leaderboard': [
+              {
+                'rank': 1,
+                'user': {'id': 'u1', 'name': 'Vishal Chauhan', 'avatar': ''},
+                'score': 350,
+                'wins': 4,
+                'gamesPlayed': 6,
+              },
+              {
+                'rank': 2,
+                'user': {'id': 'u2', 'name': 'Ludo Master', 'avatar': ''},
+                'score': 200,
+                'wins': 2,
+                'gamesPlayed': 2,
+              },
+              {
+                'rank': 3,
+                'user': {'id': 'u3', 'name': 'Guest Player', 'avatar': ''},
+                'score': 100,
+                'wins': 1,
+                'gamesPlayed': 1,
+              },
+              {
+                'rank': 4,
+                'user': {'id': 'u4', 'name': 'Guest 1789719599', 'avatar': ''},
+                'score': 100,
+                'wins': 1,
+                'gamesPlayed': 1,
+              },
+            ],
+            'currentUser': {
+              'rank': 2,
+              'score': 200,
+              'wins': 2,
+              'losses': 0,
+              'gamesPlayed': 2,
+            },
+          },
+        },
+        meResponse: {
+          'success': true,
+          'statusCode': 200,
+          'message': 'Success',
+          'data': {
+            'rank': 2,
+            'score': 200,
+            'wins': 2,
+            'losses': 0,
+            'gamesPlayed': 2,
+          },
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LeaderboardScreen(apiService: multiRankApi),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Vishal Chauhan'), findsOneWidget);
+      expect(find.text('Ludo Master'), findsOneWidget);
+      expect(find.text('Guest Player'), findsOneWidget);
+      expect(find.text('Guest 1789719599'), findsOneWidget);
+      expect(find.text('Rank #2'), findsOneWidget);
+      expect(find.text('350 pts'), findsOneWidget);
+      expect(find.text('Rewards'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

@@ -1553,3 +1553,357 @@ class _TeamUpIllustrationPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+// ============================================================================
+// 6. TOURNAMENTS ILLUSTRATION (3D Golden Championship Trophy, Laurels & Sparks)
+// ============================================================================
+class TournamentsIllustration extends StatelessWidget {
+  const TournamentsIllustration({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _TournamentsIllustrationPainter(),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _TournamentsIllustrationPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height * 0.54;
+    final scale = (size.width / 120.0).clamp(0.65, 1.25);
+
+    // 1. Radiant Championship Golden Aura Glow
+    final glowRadius = 38.0 * scale;
+    final bgGlow = Paint()
+      ..shader = RadialGradient(
+        colors: const [
+          Color(0x77FFD700),
+          Color(0x33FF8F00),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: glowRadius * 1.25));
+    canvas.drawCircle(Offset(cx, cy), glowRadius * 1.25, bgGlow);
+
+    // 2. Golden Victory Laurel Branches (Left & Right)
+    _drawLaurelWreath(canvas, Offset(cx, cy), scale);
+
+    // 3. 3D Golden Championship Trophy Cup
+    _drawTrophyCup(canvas, Offset(cx, cy), scale);
+
+    // 4. Two Flanking Glowing Pawns at base
+    _drawGlossyPawn(
+      canvas,
+      center: Offset(cx - 30 * scale, cy + 12 * scale),
+      size: 20 * scale,
+      baseColor: const Color(0xFFE53935),
+      lightColor: const Color(0xFFFF8A80),
+      darkColor: const Color(0xFFB71C1C),
+    );
+
+    _drawGlossyPawn(
+      canvas,
+      center: Offset(cx + 30 * scale, cy + 12 * scale),
+      size: 20 * scale,
+      baseColor: const Color(0xFF1E88E5),
+      lightColor: const Color(0xFF90CAF9),
+      darkColor: const Color(0xFF0D47A1),
+    );
+
+    // 5. Center Floating Glowing Lucky Dice with Red Pips resting in front
+    _drawGlossyDice(
+      canvas,
+      center: Offset(cx, cy + 18 * scale),
+      size: 15 * scale,
+      pipColor: const Color(0xFFD32F2F),
+      pipCount: 1,
+      rotation: 0.0,
+    );
+
+    // 6. Twinkling Golden Sparkles & Light Beams
+    _drawSparkle(canvas, Offset(cx - 24 * scale, cy - 22 * scale), 5.5 * scale);
+    _drawSparkle(canvas, Offset(cx + 24 * scale, cy - 22 * scale), 5.5 * scale);
+    _drawSparkle(canvas, Offset(cx, cy - 30 * scale), 6.5 * scale);
+    _drawSparkle(canvas, Offset(cx - 16 * scale, cy + 2 * scale), 4.0 * scale);
+    _drawSparkle(canvas, Offset(cx + 16 * scale, cy + 2 * scale), 4.0 * scale);
+  }
+
+  void _drawLaurelWreath(Canvas canvas, Offset center, double scale) {
+    final leafPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFFFF9C4), Color(0xFFFFD54F), Color(0xFFFF8F00)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromCircle(center: center, radius: 36 * scale));
+
+    // Stems (left and right curved arcs)
+    final stemPaint = Paint()
+      ..shader = leafPaint.shader
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0 * scale
+      ..strokeCap = StrokeCap.round;
+
+    final leftStem = Path()
+      ..moveTo(center.dx - 12 * scale, center.dy + 20 * scale)
+      ..quadraticBezierTo(
+        center.dx - 36 * scale,
+        center.dy + 4 * scale,
+        center.dx - 22 * scale,
+        center.dy - 18 * scale,
+      );
+    canvas.drawPath(leftStem, stemPaint);
+
+    final rightStem = Path()
+      ..moveTo(center.dx + 12 * scale, center.dy + 20 * scale)
+      ..quadraticBezierTo(
+        center.dx + 36 * scale,
+        center.dy + 4 * scale,
+        center.dx + 22 * scale,
+        center.dy - 18 * scale,
+      );
+    canvas.drawPath(rightStem, stemPaint);
+
+    // Leaves along left stem
+    final leftLeaves = [
+      Offset(center.dx - 22 * scale, center.dy + 16 * scale),
+      Offset(center.dx - 32 * scale, center.dy + 8 * scale),
+      Offset(center.dx - 34 * scale, center.dy - 3 * scale),
+      Offset(center.dx - 28 * scale, center.dy - 13 * scale),
+      Offset(center.dx - 19 * scale, center.dy - 20 * scale),
+    ];
+    for (final pos in leftLeaves) {
+      canvas.save();
+      canvas.translate(pos.dx, pos.dy);
+      canvas.rotate(-0.5);
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset.zero, width: 8 * scale, height: 4 * scale),
+        leafPaint,
+      );
+      canvas.restore();
+    }
+
+    // Leaves along right stem
+    final rightLeaves = [
+      Offset(center.dx + 22 * scale, center.dy + 16 * scale),
+      Offset(center.dx + 32 * scale, center.dy + 8 * scale),
+      Offset(center.dx + 34 * scale, center.dy - 3 * scale),
+      Offset(center.dx + 28 * scale, center.dy - 13 * scale),
+      Offset(center.dx + 19 * scale, center.dy - 20 * scale),
+    ];
+    for (final pos in rightLeaves) {
+      canvas.save();
+      canvas.translate(pos.dx, pos.dy);
+      canvas.rotate(0.5);
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset.zero, width: 8 * scale, height: 4 * scale),
+        leafPaint,
+      );
+      canvas.restore();
+    }
+  }
+
+  void _drawTrophyCup(Canvas canvas, Offset center, double scale) {
+    // 1. Trophy Pedestal Base
+    final baseWidth = 28.0 * scale;
+    final baseHeight = 9.0 * scale;
+    final baseTop = center.dy + 13.0 * scale;
+
+    final baseRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(center.dx, baseTop + baseHeight / 2),
+        width: baseWidth,
+        height: baseHeight,
+      ),
+      Radius.circular(3.0 * scale),
+    );
+
+    // Base Shadow
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(center.dx, baseTop + baseHeight / 2 + 2 * scale),
+          width: baseWidth,
+          height: baseHeight,
+        ),
+        Radius.circular(3.0 * scale),
+      ),
+      Paint()..color = const Color(0x77000000),
+    );
+
+    // Base Gradient
+    final basePaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF5D2E00), Color(0xFF8D4600), Color(0xFF3E1B00)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(baseRect.outerRect);
+    canvas.drawRRect(baseRect, basePaint);
+
+    // Base Rim Gold Stripe
+    canvas.drawRRect(
+      baseRect,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFFFF9C4), Color(0xFFFFD54F), Color(0xFFC45A00)],
+        ).createShader(baseRect.outerRect)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2 * scale,
+    );
+
+    // 2. Stem (Connecting column)
+    final stemPath = Path()
+      ..moveTo(center.dx - 4.5 * scale, baseTop)
+      ..lineTo(center.dx - 3.0 * scale, center.dy + 6.0 * scale)
+      ..lineTo(center.dx + 3.0 * scale, center.dy + 6.0 * scale)
+      ..lineTo(center.dx + 4.5 * scale, baseTop)
+      ..close();
+    canvas.drawPath(
+      stemPath,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFFFD54F), Color(0xFFFFA000), Color(0xFF7A3600)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(Rect.fromCenter(center: center, width: 10 * scale, height: 10 * scale)),
+    );
+
+    // Stem ring
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(center.dx, center.dy + 9.5 * scale), width: 10 * scale, height: 3.5 * scale),
+      Paint()..color = const Color(0xFFFFE082),
+    );
+
+    // 3. Trophy Cup Handles (Left and Right loops)
+    final handlePaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFFFFDE7), Color(0xFFFFD54F), Color(0xFF8D4B00)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromCenter(center: center, width: 44 * scale, height: 30 * scale))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.2 * scale
+      ..strokeCap = StrokeCap.round;
+
+    final leftHandle = Path()
+      ..moveTo(center.dx - 14 * scale, center.dy - 12 * scale)
+      ..cubicTo(
+        center.dx - 27 * scale,
+        center.dy - 14 * scale,
+        center.dx - 26 * scale,
+        center.dy + 2 * scale,
+        center.dx - 11 * scale,
+        center.dy + 3 * scale,
+      );
+    canvas.drawPath(leftHandle, handlePaint);
+
+    final rightHandle = Path()
+      ..moveTo(center.dx + 14 * scale, center.dy - 12 * scale)
+      ..cubicTo(
+        center.dx + 27 * scale,
+        center.dy - 14 * scale,
+        center.dx + 26 * scale,
+        center.dy + 2 * scale,
+        center.dx + 11 * scale,
+        center.dy + 3 * scale,
+      );
+    canvas.drawPath(rightHandle, handlePaint);
+
+    // 4. Trophy Main Bowl (Chalice)
+    final bowlPath = Path()
+      ..moveTo(center.dx - 16 * scale, center.dy - 14 * scale)
+      ..lineTo(center.dx + 16 * scale, center.dy - 14 * scale)
+      ..quadraticBezierTo(
+        center.dx + 16 * scale,
+        center.dy - 2 * scale,
+        center.dx + 7 * scale,
+        center.dy + 6 * scale,
+      )
+      ..lineTo(center.dx - 7 * scale, center.dy + 6 * scale)
+      ..quadraticBezierTo(
+        center.dx - 16 * scale,
+        center.dy - 2 * scale,
+        center.dx - 16 * scale,
+        center.dy - 14 * scale,
+      )
+      ..close();
+
+    final bowlRect = Rect.fromCenter(center: Offset(center.dx, center.dy - 4 * scale), width: 34 * scale, height: 22 * scale);
+    final bowlPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0xFFFFF9C4),
+          Color(0xFFFFD54F),
+          Color(0xFFFFB300),
+          Color(0xFFC45A00),
+          Color(0xFF6D2F00),
+        ],
+        stops: [0.0, 0.25, 0.55, 0.82, 1.0],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(bowlRect);
+    canvas.drawPath(bowlPath, bowlPaint);
+
+    // Bowl rim lip (Oval on top)
+    final rimRect = Rect.fromCenter(
+      center: Offset(center.dx, center.dy - 14 * scale),
+      width: 32 * scale,
+      height: 6 * scale,
+    );
+    canvas.drawOval(
+      rimRect,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFFFFDE7), Color(0xFFFFD54F), Color(0xFFC45A00)],
+        ).createShader(rimRect),
+    );
+    canvas.drawOval(
+      rimRect,
+      Paint()
+        ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0 * scale,
+    );
+
+    // 5. Embossed Golden Star / Crown on the Cup Center
+    _drawCupEmblem(canvas, Offset(center.dx, center.dy - 5 * scale), 6.5 * scale);
+  }
+
+  void _drawCupEmblem(Canvas canvas, Offset center, double radius) {
+    // 5-point star
+    final path = Path();
+    for (int i = 0; i < 5; i++) {
+      final outerAngle = -math.pi / 2 + (i * 4 * math.pi / 5);
+      final x = center.dx + radius * math.cos(outerAngle);
+      final y = center.dy + radius * math.sin(outerAngle);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFFFFFFF), Color(0xFFFFEE58), Color(0xFFFF8F00)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(Rect.fromCircle(center: center, radius: radius)),
+    );
+
+    canvas.drawCircle(
+      center,
+      radius * 0.35,
+      Paint()..color = const Color(0xFFD32F2F),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+

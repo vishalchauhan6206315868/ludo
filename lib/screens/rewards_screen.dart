@@ -252,101 +252,186 @@ class _RewardsScreenState extends State<RewardsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1424),
+      backgroundColor: const Color(0xFF03091E),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF141F36),
+        backgroundColor: const Color(0xFF0B1938),
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF0C2456),
+              border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.6), width: 1.2),
+            ),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
         ),
-        title: const Row(
+        title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.card_giftcard_rounded, color: Color(0xFFFFD700), size: 22),
-            SizedBox(width: 8),
-            Text(
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const RadialGradient(
+                  colors: [Color(0xFFFFEE58), Color(0xFFFFB300), Color(0xFFFF8F00)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFFB300).withValues(alpha: 0.5),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.card_giftcard_rounded, color: Color(0xFF221500), size: 20),
+            ),
+            const SizedBox(width: 8),
+            const Text(
               "REWARDS & BONUSES",
               style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                letterSpacing: 1.2,
+                fontFamily: 'Roboto',
+                color: Color(0xFFFFD700),
+                fontWeight: FontWeight.w900,
+                fontSize: 16.5,
+                letterSpacing: 1.1,
+                fontStyle: FontStyle.italic,
+                shadows: [
+                  Shadow(
+                    color: Colors.black,
+                    blurRadius: 4,
+                    offset: Offset(0, 1),
+                  ),
+                ],
               ),
             ),
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: "Refresh",
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFFFFD700), size: 22),
-            onPressed: _isLoading ? null : _fetchRewardsData,
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF0C2456),
+                border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.6), width: 1.2),
+              ),
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                tooltip: "Refresh",
+                icon: const Icon(Icons.refresh_rounded, color: Color(0xFFFFD700), size: 20),
+                onPressed: _isLoading ? null : _fetchRewardsData,
+              ),
+            ),
           ),
         ],
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top Summary Cards (Always visible if loaded)
-            if (!_isLoading && _errorMessage == null) _buildSummaryHeader(),
-
-            // Custom Tab Bar (Available Rewards vs My Rewards)
-            if (!_isLoading && _errorMessage == null) _buildCustomTabBar(),
-
-            // Body
-            Expanded(
-              child: _buildBody(),
+      body: Stack(
+        children: [
+          // Layer 1: 3D Cosmic Background (3D Dice, Floating Coins, Pedestal, Gift Box)
+          const Positioned.fill(
+            child: CustomPaint(
+              painter: _RewardsCosmicBackgroundPainter(),
             ),
-          ],
-        ),
+          ),
+
+          // Layer 2: Main Content Area
+          SafeArea(
+            child: Column(
+              children: [
+                // Top Summary Metric Capsule Bar
+                if (!_isLoading && _errorMessage == null) _buildSummaryHeader(),
+
+                // Dual 3D Tab Switcher: Available Rewards vs My History
+                if (!_isLoading && _errorMessage == null) _buildCustomTabBar(),
+
+                // Body List View
+                Expanded(
+                  child: _buildBody(),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // --- Summary Metric Cards ---
+  // --- 1. Summary Metric Capsule Bar ---
   Widget _buildSummaryHeader() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF141F36),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
-        boxShadow: const [
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF0C2456), // Electric royal blue
+            Color(0xFF071738), // Dark navy
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: const Color(0xFF00B0FF).withValues(alpha: 0.75),
+          width: 1.3,
+        ),
+        boxShadow: [
           BoxShadow(
-            color: Colors.black26,
-            blurRadius: 8,
-            offset: Offset(0, 3),
+            color: const Color(0xFF00B0FF).withValues(alpha: 0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Row(
         children: [
           Expanded(
-            child: _buildStatItem(
-              icon: Icons.redeem_rounded,
-              iconColor: const Color(0xFFFFD700),
-              label: "Available",
-              value: "${_summary.availableRewards}",
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: _buildStatItem(
+                icon: Icons.calendar_today_rounded,
+                badgeColor: const Color(0xFFFFD54F),
+                label: "Available",
+                value: "${_summary.availableRewards}",
+              ),
             ),
           ),
-          Container(width: 1, height: 36, color: Colors.white12),
+          Container(width: 1.2, height: 32, color: Colors.white24),
           Expanded(
-            child: _buildStatItem(
-              icon: Icons.check_circle_rounded,
-              iconColor: const Color(0xFF4ADE80),
-              label: "Claimed",
-              value: "${_summary.claimedRewards}",
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: _buildStatItem(
+                icon: Icons.check_circle_rounded,
+                badgeColor: const Color(0xFF00E676),
+                label: "Claimed",
+                value: "${_summary.claimedRewards}",
+              ),
             ),
           ),
-          Container(width: 1, height: 36, color: Colors.white12),
+          Container(width: 1.2, height: 32, color: Colors.white24),
           Expanded(
-            child: _buildStatItem(
-              icon: Icons.monetization_on_rounded,
-              iconColor: const Color(0xFFFFB300),
-              label: "Coins Earned",
-              value: "${_summary.totalCoinsEarned}",
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: _buildStatItem(
+                icon: Icons.monetization_on_rounded,
+                badgeColor: const Color(0xFFFFD700),
+                label: "Coins Earned",
+                value: "${_summary.totalCoinsEarned}",
+              ),
             ),
           ),
         ],
@@ -356,7 +441,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
 
   Widget _buildStatItem({
     required IconData icon,
-    required Color iconColor,
+    required Color badgeColor,
     required String label,
     required String value,
   }) {
@@ -366,40 +451,49 @@ class _RewardsScreenState extends State<RewardsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: iconColor, size: 16),
-            const SizedBox(width: 5),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: badgeColor.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+                border: Border.all(color: badgeColor, width: 1.0),
+              ),
+              child: Icon(icon, color: badgeColor, size: 14),
+            ),
+            const SizedBox(width: 6),
             Text(
               value,
               style: const TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                fontSize: 17,
+                letterSpacing: 0.3,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 3),
         Text(
           label,
           style: const TextStyle(
             color: Color(0xFF90A4AE),
             fontSize: 11,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
     );
   }
 
-  // --- Tab Bar ---
+  // --- 2. Dual 3D Tab Switcher: Available Rewards vs My History ---
   Widget _buildCustomTabBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFF101A2E),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
+        color: const Color(0xFF071434).withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF00B0FF).withValues(alpha: 0.4), width: 1.2),
       ),
       child: Row(
         children: [
@@ -410,6 +504,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
               icon: Icons.card_giftcard_rounded,
             ),
           ),
+          const SizedBox(width: 4),
           Expanded(
             child: _buildTabButton(
               index: 1,
@@ -434,37 +529,58 @@ class _RewardsScreenState extends State<RewardsScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFFD700) : Colors.transparent,
-          borderRadius: BorderRadius.circular(9),
+          gradient: isSelected
+              ? const LinearGradient(
+                  colors: [
+                    Color(0xFFFFEE58),
+                    Color(0xFFFFB300),
+                    Color(0xFFFF8F00),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                )
+              : null,
+          color: isSelected ? null : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: isSelected ? Border.all(color: const Color(0xFFFFF9C4), width: 1.1) : null,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFFFB300).withValues(alpha: 0.5),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isSelected ? const Color(0xFF091428) : const Color(0xFF90A4AE),
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: isSelected ? const Color(0xFF091428) : const Color(0xFF90A4AE),
+              ),
+              const SizedBox(width: 6),
+              Text(
                 label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: isSelected ? const Color(0xFF091428) : const Color(0xFF90A4AE),
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                  color: isSelected ? const Color(0xFF091428) : Colors.white70,
+                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
                   fontSize: 12,
+                  letterSpacing: 0.2,
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // --- Main Content Body ---
+  // --- 3. Main Content Body ---
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
@@ -524,7 +640,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
     }
   }
 
-  // --- 1. Available Rewards List ---
+  // --- 4. Available Rewards List ---
   Widget _buildAvailableRewardsList() {
     if (_availableRewards.isEmpty) {
       return RefreshIndicator(
@@ -563,7 +679,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
       backgroundColor: const Color(0xFF141F36),
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         itemCount: _availableRewards.length,
         separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
@@ -579,97 +695,112 @@ class _RewardsScreenState extends State<RewardsScreen> {
     final isClaimed = reward.isClaimed;
     final canClaim = reward.canClaim && !isClaimed;
 
+    // Glowing Golden Card for ready-to-claim reward (matching Master Player reference)
+    final isSpecialHighlight = canClaim;
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF141F36),
-        borderRadius: BorderRadius.circular(16),
+        gradient: isSpecialHighlight
+            ? const LinearGradient(
+                colors: [
+                  Color(0xFF2E1C00), // Rich amber gold
+                  Color(0xFF181002),
+                  Color(0xFF0C2456),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : const LinearGradient(
+                colors: [
+                  Color(0xFF0C2456), // Electric royal blue
+                  Color(0xFF071738), // Dark navy
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isClaimed
-              ? Colors.white12
-              : const Color(0xFFFFD700).withValues(alpha: 0.35),
-          width: isClaimed ? 1.0 : 1.3,
+          color: isSpecialHighlight
+              ? const Color(0xFFFFD700)
+              : const Color(0xFF00B0FF).withValues(alpha: 0.65),
+          width: isSpecialHighlight ? 1.8 : 1.2,
         ),
-        boxShadow: isClaimed
-            ? null
-            : [
-                BoxShadow(
-                  color: const Color(0xFFFFD700).withValues(alpha: 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+        boxShadow: [
+          if (isSpecialHighlight)
+            BoxShadow(
+              color: const Color(0xFFFFD700).withValues(alpha: 0.40),
+              blurRadius: 14,
+              spreadRadius: 0.5,
+              offset: const Offset(0, 3),
+            ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          // Icon Container
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: isClaimed
-                  ? const Color(0xFF1A2640)
-                  : const Color(0xFFFFD700).withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isClaimed
-                    ? Colors.white12
-                    : const Color(0xFFFFD700).withValues(alpha: 0.4),
-              ),
-            ),
-            child: Icon(
-              _getRewardIcon(reward.icon),
-              color: isClaimed ? const Color(0xFF90A4AE) : const Color(0xFFFFD700),
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 14),
+          // Themed Icon Container (Crowned for Master, Calendar for Login/Streak, People for Community, etc.)
+          _buildThemedRewardIcon(reward, isSpecialHighlight, isClaimed),
+          const SizedBox(width: 12),
 
-          // Title & Description
+          // Title & Description & Coin Pill
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  reward.title,
-                  style: TextStyle(
-                    color: isClaimed ? const Color(0xFF90A4AE) : Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14.5,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    reward.title,
+                    style: TextStyle(
+                      color: isClaimed ? const Color(0xFFECEFF1) : Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14.5,
+                      letterSpacing: 0.2,
+                    ),
                   ),
                 ),
                 if (reward.description.isNotEmpty) ...[
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   Text(
                     reward.description,
-                    style: const TextStyle(
-                      color: Color(0xFF90A4AE),
-                      fontSize: 11.5,
+                    style: TextStyle(
+                      color: isSpecialHighlight ? const Color(0xFFFFE082) : const Color(0xFF90A4AE),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-                const SizedBox(height: 6),
+                const SizedBox(height: 5),
 
-                // Amount Chip
+                // Golden Coin Amount Pill
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1F2E4D),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.3)),
+                    gradient: const LinearGradient(
+                      colors: [Color(0x33FFB300), Color(0x1AFF8F00)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.6)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.monetization_on_rounded, color: Color(0xFFFFD700), size: 14),
+                      const Icon(Icons.monetization_on_rounded, color: Color(0xFFFFD700), size: 13),
                       const SizedBox(width: 4),
                       Text(
                         "+${reward.rewardValue} Coins",
                         style: const TextStyle(
                           color: Color(0xFFFFD700),
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w900,
                           fontSize: 11,
                         ),
                       ),
@@ -679,28 +810,43 @@ class _RewardsScreenState extends State<RewardsScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
 
-          // Action Button (CLAIM vs CLAIMED)
+          // Action Button: 3D Glossy "CLAIM" vs "CLAIMED" Badge
           if (isClaimed) ...[
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: const Color(0xFF16233B),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF4ADE80).withValues(alpha: 0.4)),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF00E676),
+                    Color(0xFF00C853),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFB9F6CA), width: 1.1),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF00E676).withValues(alpha: 0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.check_circle_rounded, color: Color(0xFF4ADE80), size: 14),
+                  Icon(Icons.check_rounded, color: Colors.white, size: 14),
                   SizedBox(width: 4),
                   Text(
                     "CLAIMED",
                     style: TextStyle(
-                      color: Color(0xFF4ADE80),
-                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
                       fontSize: 11,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
@@ -712,11 +858,18 @@ class _RewardsScreenState extends State<RewardsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFFD700),
                 foregroundColor: const Color(0xFF091428),
-                disabledBackgroundColor: const Color(0xFF26334D),
+                disabledBackgroundColor: const Color(0xFF1E2D4A),
                 disabledForegroundColor: Colors.white38,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 3,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(
+                    color: canClaim ? const Color(0xFFFFF9C4) : Colors.white12,
+                    width: 1.2,
+                  ),
+                ),
+                elevation: canClaim ? 4 : 0,
+                shadowColor: const Color(0xFFFFB300).withValues(alpha: 0.6),
               ),
               child: isClaimingThis
                   ? const SizedBox(
@@ -729,7 +882,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                     )
                   : const Text(
                       "CLAIM",
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12.5, letterSpacing: 0.4),
                     ),
             ),
           ],
@@ -738,7 +891,134 @@ class _RewardsScreenState extends State<RewardsScreen> {
     );
   }
 
-  // --- 2. My Rewards History List ---
+  Widget _buildThemedRewardIcon(RewardItem reward, bool isSpecial, bool isClaimed) {
+    final iconKey = reward.icon.toLowerCase();
+    final isMaster = isSpecial || iconKey == 'master_player' || reward.id.contains('master');
+
+    if (isMaster) {
+      // 3D Crown on Red Velvet Cushion for Master Player
+      return Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const RadialGradient(
+            colors: [Color(0xFF880E4F), Color(0xFF310018)],
+          ),
+          border: Border.all(color: const Color(0xFFFFD700), width: 1.6),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFD700).withValues(alpha: 0.5),
+              blurRadius: 8,
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700), size: 26),
+        ),
+      );
+    }
+
+    if (iconKey.contains('login') || iconKey.contains('streak')) {
+      // Calendar with Star
+      return Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFE53935), Color(0xFFB71C1C)],
+          ),
+          border: Border.all(color: const Color(0xFFFFCDD2), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFE53935).withValues(alpha: 0.35),
+              blurRadius: 6,
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Icon(Icons.calendar_month_rounded, color: Colors.white, size: 22),
+        ),
+      );
+    }
+
+    if (iconKey.contains('community')) {
+      // Community colorful avatars
+      return Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF00E5FF), Color(0xFF0091EA)],
+          ),
+          border: Border.all(color: const Color(0xFFE0F7FA), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
+              blurRadius: 6,
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Icon(Icons.groups_rounded, color: Colors.white, size: 22),
+        ),
+      );
+    }
+
+    if (iconKey.contains('referral') || iconKey.contains('share')) {
+      // Share icon
+      return Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF00B0FF), Color(0xFF0277BD)],
+          ),
+          border: Border.all(color: const Color(0xFF80D8FF), width: 1.2),
+        ),
+        child: const Center(
+          child: Icon(Icons.share_rounded, color: Colors.white, size: 20),
+        ),
+      );
+    }
+
+    if (iconKey.contains('weekend') || iconKey.contains('rush')) {
+      // Lightning bolt in purple
+      return Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+            colors: [Color(0xFFAB47BC), Color(0xFF6A1B9A)],
+          ),
+          border: Border.all(color: const Color(0xFFE1BEE7), width: 1.2),
+        ),
+        child: const Center(
+          child: Icon(Icons.bolt_rounded, color: Color(0xFFFFEE58), size: 24),
+        ),
+      );
+    }
+
+    // Default gift medallion
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+        border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.6), width: 1.2),
+      ),
+      child: const Center(
+        child: Icon(Icons.card_giftcard_rounded, color: Color(0xFFFFD700), size: 22),
+      ),
+    );
+  }
+
+  // --- 5. My Rewards History List ---
   Widget _buildMyRewardsHistoryList() {
     if (_myRewards.isEmpty) {
       return RefreshIndicator(
@@ -777,7 +1057,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
       backgroundColor: const Color(0xFF141F36),
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         itemCount: _myRewards.length,
         separatorBuilder: (context, index) => const SizedBox(height: 8),
         itemBuilder: (context, index) {
@@ -790,60 +1070,87 @@ class _RewardsScreenState extends State<RewardsScreen> {
 
   Widget _buildHistoryCard(UserRewardClaim claim) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF141F36),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white10),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF0C2456),
+            Color(0xFF071738),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFF00B0FF).withValues(alpha: 0.6), width: 1.1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: const Color(0xFF4ADE80).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFF4ADE80).withValues(alpha: 0.3)),
+              shape: BoxShape.circle,
+              color: const Color(0xFF00E676).withValues(alpha: 0.15),
+              border: Border.all(color: const Color(0xFF00E676), width: 1.3),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF00E676).withValues(alpha: 0.3),
+                  blurRadius: 6,
+                ),
+              ],
             ),
-            child: const Icon(Icons.check_circle_rounded, color: Color(0xFF4ADE80), size: 20),
+            child: const Icon(Icons.check_circle_rounded, color: Color(0xFF00E676), size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   claim.title,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w900,
                     fontSize: 14,
+                    letterSpacing: 0.2,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   claim.claimedAt != null ? _formatDateTime(claim.claimedAt!) : "Claimed",
                   style: const TextStyle(
-                    color: Color(0xFF90A4AE),
+                    color: Color(0xFF8FA8CE),
                     fontSize: 11,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: const Color(0xFF1B2E5C),
-              borderRadius: BorderRadius.circular(8),
+              gradient: const LinearGradient(
+                colors: [Color(0x33FFB300), Color(0x1AFF8F00)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.8), width: 1.1),
             ),
             child: Text(
               "+${claim.rewardValue} Coins",
               style: const TextStyle(
                 color: Color(0xFFFFD700),
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                fontSize: 11.5,
               ),
             ),
           ),
@@ -863,29 +1170,261 @@ class _RewardsScreenState extends State<RewardsScreen> {
     final min = local.minute.toString().padLeft(2, '0');
     return "$m $d, $y • $hour:$min $ampm";
   }
+}
 
-  IconData _getRewardIcon(String iconKey) {
-    switch (iconKey.toLowerCase()) {
-      case 'daily_login':
-      case 'streak_2':
-      case 'streak_3':
-        return Icons.calendar_today_rounded;
-      case 'welcome_bonus':
-        return Icons.celebration_rounded;
-      case 'first_win':
-        return Icons.emoji_events_rounded;
-      case 'lucky_spin':
-        return Icons.casino_rounded;
-      case 'weekend_rush':
-        return Icons.bolt_rounded;
-      case 'referral_bonus':
-        return Icons.share_rounded;
-      case 'master_player':
-        return Icons.workspace_premium_rounded;
-      case 'community':
-        return Icons.groups_rounded;
-      default:
-        return Icons.card_giftcard_rounded;
+// ============================================================================
+// 3D CUSTOM PAINTER FOR REWARDS & BONUSES BACKGROUND
+// ============================================================================
+
+/// 3D Cosmic Background Painter: 3D Dice, Floating Coins, Pedestal, Gift Box
+class _RewardsCosmicBackgroundPainter extends CustomPainter {
+  const _RewardsCosmicBackgroundPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // ── 1. Cosmic Deep Space Gradient ─────────────────────────────────
+    final bgPaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(0, -0.3),
+        radius: 1.25,
+        colors: const [
+          Color(0xFF0E2868), // Radiant royal blue
+          Color(0xFF081844),
+          Color(0xFF040D26), // Midnight abyss
+          Color(0xFF020614),
+        ],
+        stops: const [0.0, 0.40, 0.75, 1.0],
+      ).createShader(Rect.fromLTWH(0, 0, w, h));
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), bgPaint);
+
+    // Diagonal Radiant Cyan Light Streaks
+    final streakPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0x0000E5FF),
+          Color(0x2200E5FF),
+          Color(0x4400E5FF),
+          Color(0x0000E5FF),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(0, 0, w, h))
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawLine(Offset(0, h * 0.3), Offset(w, h * 0.6), streakPaint);
+    canvas.drawLine(Offset(0, h * 0.5), Offset(w, h * 0.8), streakPaint);
+
+    // ── 2. Top Left: 3D White Ludo Dice with Blue Pips & Floating Coins
+    final dice1X = w * 0.12;
+    final dice1Y = h * 0.09;
+    final diceSize = 32.0;
+
+    void draw3dDice(double x, double y, double size, {required bool bluePips}) {
+      final half = size / 2;
+
+      // Shadow
+      final shadowPath = Path()
+        ..moveTo(x - half * 1.1, y + half * 1.2)
+        ..lineTo(x + half * 1.2, y + half * 1.2)
+        ..lineTo(x + half * 1.5, y + half * 0.5)
+        ..lineTo(x - half * 0.8, y + half * 0.5)
+        ..close();
+      canvas.drawPath(
+        shadowPath,
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+      );
+
+      // Top Face
+      final topPath = Path()
+        ..moveTo(x, y - half * 0.85)
+        ..lineTo(x + half * 0.9, y - half * 0.3)
+        ..lineTo(x, y + half * 0.25)
+        ..lineTo(x - half * 0.9, y - half * 0.3)
+        ..close();
+      canvas.drawPath(
+        topPath,
+        Paint()
+          ..shader = const LinearGradient(
+            colors: [Color(0xFFFFFFFF), Color(0xFFECEFF1)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ).createShader(Rect.fromLTWH(x - half, y - half, size, size)),
+      );
+
+      // Left Face
+      final leftPath = Path()
+        ..moveTo(x - half * 0.9, y - half * 0.3)
+        ..lineTo(x, y + half * 0.25)
+        ..lineTo(x, y + half * 1.05)
+        ..lineTo(x - half * 0.9, y + half * 0.5)
+        ..close();
+      canvas.drawPath(
+        leftPath,
+        Paint()
+          ..shader = const LinearGradient(
+            colors: [Color(0xFFCFD8DC), Color(0xFF90A4AE)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ).createShader(Rect.fromLTWH(x - half, y, half, half)),
+      );
+
+      // Right Face
+      final rightPath = Path()
+        ..moveTo(x, y + half * 0.25)
+        ..lineTo(x + half * 0.9, y - half * 0.3)
+        ..lineTo(x + half * 0.9, y + half * 0.5)
+        ..lineTo(x, y + half * 1.05)
+        ..close();
+      canvas.drawPath(
+        rightPath,
+        Paint()
+          ..shader = const LinearGradient(
+            colors: [Color(0xFFB0BEC5), Color(0xFF78909C)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ).createShader(Rect.fromLTWH(x, y, half, half)),
+      );
+
+      // Edges Stroke
+      final edgePaint = Paint()
+        ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.7)
+        ..strokeWidth = 1.0
+        ..style = PaintingStyle.stroke;
+      canvas.drawPath(topPath, edgePaint);
+      canvas.drawPath(leftPath, edgePaint);
+      canvas.drawPath(rightPath, edgePaint);
+
+      // Pips Color
+      final pipPaint = Paint()..color = bluePips ? const Color(0xFF0D47A1) : const Color(0xFF1E293B);
+      // Top face pip (center)
+      canvas.drawCircle(Offset(x, y - half * 0.3), 2.2, pipPaint);
+      // Left face pips (2 pips)
+      canvas.drawCircle(Offset(x - half * 0.5, y + half * 0.05), 1.8, pipPaint);
+      canvas.drawCircle(Offset(x - half * 0.35, y + half * 0.65), 1.8, pipPaint);
+      // Right face pips (3 pips)
+      canvas.drawCircle(Offset(x + half * 0.35, y + half * 0.05), 1.8, pipPaint);
+      canvas.drawCircle(Offset(x + half * 0.45, y + half * 0.38), 1.8, pipPaint);
+      canvas.drawCircle(Offset(x + half * 0.55, y + half * 0.70), 1.8, pipPaint);
     }
+
+    draw3dDice(dice1X, dice1Y, diceSize, bluePips: true);
+
+    void drawCoin(double x, double y, double r, [double tilt = 0.65]) {
+      final coinRect = Rect.fromCenter(center: Offset(x, y), width: r * 2, height: r * 2 * tilt);
+      final coinGrad = const LinearGradient(
+        colors: [Color(0xFFFFF9C4), Color(0xFFFFD54F), Color(0xFFFF8F00)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(coinRect);
+      canvas.drawOval(coinRect, Paint()..shader = coinGrad);
+      canvas.drawOval(
+        coinRect,
+        Paint()
+          ..color = const Color(0xFFFFFDE7)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8,
+      );
+    }
+
+    drawCoin(dice1X + 22, dice1Y + 20, 8.5, 0.6);
+    drawCoin(dice1X - 14, dice1Y + 28, 7.5, 0.55);
+
+    // ── 3. Top Right: 3D Golden Gift Box with Red Ribbon ──────────────
+    final giftX = w * 0.88;
+    final giftY = h * 0.12;
+
+    void draw3dGift(double x, double y) {
+      // Box body
+      final boxRect = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(x, y + 6), width: 34, height: 26),
+        const Radius.circular(5),
+      );
+      final boxPaint = Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFFFEE58), Color(0xFFFFB300), Color(0xFFFF8F00)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(boxRect.outerRect);
+      canvas.drawRRect(boxRect, boxPaint);
+
+      // Red vertical ribbon
+      canvas.drawRect(
+        Rect.fromCenter(center: Offset(x, y + 6), width: 6, height: 26),
+        Paint()..color = const Color(0xFFD50000),
+      );
+      // Red horizontal ribbon
+      canvas.drawRect(
+        Rect.fromCenter(center: Offset(x, y + 6), width: 34, height: 6),
+        Paint()..color = const Color(0xFFD50000),
+      );
+
+      // Ribbon Bow on top
+      final bowPaint = Paint()..color = const Color(0xFFFF1744);
+      canvas.drawOval(Rect.fromCenter(center: Offset(x - 6, y - 8), width: 12, height: 8), bowPaint);
+      canvas.drawOval(Rect.fromCenter(center: Offset(x + 6, y - 8), width: 12, height: 8), bowPaint);
+      canvas.drawCircle(Offset(x, y - 8), 3.5, Paint()..color = const Color(0xFFD50000));
+    }
+
+    draw3dGift(giftX, giftY);
+    drawCoin(giftX - 22, giftY + 22, 9.0, 0.7);
+    drawCoin(giftX + 10, giftY + 28, 8.0, 0.6);
+
+    // ── 4. Bottom Center: 3D Dice on Glowing Neon Platform (Pedestal) ─
+    final platX = w * 0.5;
+    final platY = h * 0.94;
+
+    // Outer Neon Glow Rings
+    final platGlow = Paint()
+      ..color = const Color(0xFF00E5FF).withValues(alpha: 0.35)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
+    canvas.drawOval(Rect.fromCenter(center: Offset(platX, platY + 12), width: 140, height: 42), platGlow);
+
+    final magentaGlow = Paint()
+      ..color = const Color(0xFFE040FB).withValues(alpha: 0.25)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawOval(Rect.fromCenter(center: Offset(platX, platY + 12), width: 110, height: 32), magentaGlow);
+
+    // Concentric Neon Rings
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(platX, platY + 12), width: 120, height: 36),
+      Paint()
+        ..color = const Color(0xFF00E5FF)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(platX, platY + 12), width: 90, height: 26),
+      Paint()
+        ..color = const Color(0xFFE040FB)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+
+    // 3D White Dice on the Platform
+    draw3dDice(platX, platY - 4, 38.0, bluePips: false);
+
+    // ── 5. Bottom Left & Right: Tall Stacks of 3D Gold Coins ──────────
+    void drawCoinStack(double x, double baseY, int count) {
+      for (int i = 0; i < count; i++) {
+        drawCoin(x, baseY - (i * 5.0), 12.0, 0.60);
+      }
+    }
+
+    // Left Stacks
+    drawCoinStack(w * 0.08, h * 0.96, 5);
+    drawCoinStack(w * 0.18, h * 0.97, 4);
+
+    // Right Stacks
+    drawCoinStack(w * 0.92, h * 0.96, 5);
+    drawCoinStack(w * 0.82, h * 0.97, 4);
   }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

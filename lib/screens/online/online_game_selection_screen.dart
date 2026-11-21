@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/online_game_mode.dart';
@@ -12,12 +13,14 @@ import 'online_matchmaking_screen.dart';
 /// D. POPULAR
 /// E. MASK
 ///
-/// Features:
-/// - Ludo Supreme Royal Sapphire & Gold visual theme
-/// - Single mode selection with golden check indicators
-/// - Data-driven mode configurations
-/// - Interactive Next button with blue gradient, gold glow, and press animation
-/// - Responsive layout supporting small to large Android devices without overflow
+/// Follows Ludo Supreme Royal Gaming Design matching the reference:
+/// - 3D Jeweled crown on top of "SELECT GAME" banner
+/// - 3D Circular back button & help button
+/// - Coins capsule pill with green add button
+/// - "CHOOSE BATTLE MODE" banner with yellow gamepad icon
+/// - Entry fee & prize pool selector
+/// - 3D multi-layered shadow cards with custom emblems
+/// - Bottom bar with blue 3D "NEXT" button and exterior pawns/dice
 class OnlineGameSelectionScreen extends StatefulWidget {
   final List<OnlineGameMode>? modes;
 
@@ -27,7 +30,8 @@ class OnlineGameSelectionScreen extends StatefulWidget {
   });
 
   @override
-  State<OnlineGameSelectionScreen> createState() => _OnlineGameSelectionScreenState();
+  State<OnlineGameSelectionScreen> createState() =>
+      _OnlineGameSelectionScreenState();
 }
 
 class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
@@ -90,14 +94,7 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
     super.dispose();
   }
 
-  /// Hook for future backend integration to fetch real-time player counts and room statistics
-  Future<void> _loadOnlineLobbyStats() async {
-    // TODO: Connect to backend service (e.g. OnlineLobbyService.fetchActivePlayerCounts())
-    // final stats = await OnlineLobbyService.getPlayerCounts();
-    // if (mounted) {
-    //   setState(() { ... update mode counts ... });
-    // }
-  }
+  Future<void> _loadOnlineLobbyStats() async {}
 
   void _selectMode(OnlineGameMode mode) {
     setState(() {
@@ -110,7 +107,6 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
       HapticFeedback.lightImpact();
     } catch (_) {}
 
-    // Pass the currently selected mode to the matchmaking flow
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -133,7 +129,8 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
         ),
         title: const Row(
           children: [
-            Icon(Icons.help_outline_rounded, color: Color(0xFFFFD700), size: 24),
+            Icon(Icons.help_outline_rounded,
+                color: Color(0xFFFFD700), size: 24),
             SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -233,32 +230,16 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
       backgroundColor: const Color(0xFF060B19),
       body: Stack(
         children: [
-          // 1. Luxury Background Wallpaper with dark overlay
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/ludo_supreme_bg.jpg',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF060B19), Color(0xFF0F1A34), Color(0xFF060B19)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // 2. Dark Luxury Gradient Overlay for Contrast & Readability
+          // 1. Cosmic Gradient Background Wallpaper
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xF0060B19),
-                    Color(0xD9060E22),
-                    Color(0xF8030712),
+                    Color(0xFF040816),
+                    Color(0xFF0A183C),
+                    Color(0xFF060D24),
+                    Color(0xFF02040B),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -267,51 +248,74 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
             ),
           ),
 
+          // 2. Floating 3D Dice at Top Corners
+          const Positioned(
+            top: 48,
+            left: 10,
+            child: CustomPaint(
+              size: Size(32, 32),
+              painter: _RoyalDicePainter(angle: -0.25),
+            ),
+          ),
+          const Positioned(
+            top: 48,
+            right: 12,
+            child: CustomPaint(
+              size: Size(30, 30),
+              painter: _RoyalDicePainter(angle: 0.3),
+            ),
+          ),
+
           // 3. Screen Content
           SafeArea(
             child: Column(
               children: [
-                // Top Header (Back, "SELECT GAME", Coins & Help)
+                // Top Header (Back, Crown + "SELECT GAME", Coins & Help)
                 _buildHeader(context),
 
-                // Main Selectable Modes List (Responsive Scroll)
+                // Main Selectable Modes List
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       return SingleChildScrollView(
                         physics: const BouncingScrollPhysics(),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 18.0,
-                          vertical: 12.0,
+                          horizontal: 14.0,
+                          vertical: 8.0,
                         ),
                         child: Center(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 540),
+                            constraints: const BoxConstraints(maxWidth: 520),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                // Subtitle banner
+                                // Subtitle banner: CHOOSE BATTLE MODE
                                 _buildSectionBanner(),
 
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 10),
 
                                 // Entry Fee & Prize Pool Selector
                                 _buildEntryFeeSelector(),
 
-                                const SizedBox(height: 14),
+                                const SizedBox(height: 12),
 
-                                // Data-driven list of 5 game modes with staggered entrance animation
+                                // Data-driven list of 5 game modes with staggered animation
                                 ...List.generate(_modes.length, (index) {
                                   final mode = _modes[index];
-                                  final isSelected = _selectedMode.id == mode.id;
+                                  final isSelected =
+                                      _selectedMode.id == mode.id;
 
-                                  final start = (index * 0.12).clamp(0.0, 1.0);
-                                  final end = (start + 0.4).clamp(0.0, 1.0);
+                                  final start =
+                                      (index * 0.10).clamp(0.0, 1.0);
+                                  final end = (start + 0.35).clamp(0.0, 1.0);
 
-                                  final itemAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+                                  final itemAnimation = Tween<double>(
+                                          begin: 0.0, end: 1.0)
+                                      .animate(
                                     CurvedAnimation(
                                       parent: _animController,
-                                      curve: Interval(start, end, curve: Curves.easeOutCubic),
+                                      curve: Interval(start, end,
+                                          curve: Curves.easeOutCubic),
                                     ),
                                   );
 
@@ -321,7 +325,10 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
                                       return Opacity(
                                         opacity: itemAnimation.value,
                                         child: Transform.translate(
-                                          offset: Offset(0, 20 * (1 - itemAnimation.value)),
+                                          offset: Offset(
+                                              0,
+                                              16 *
+                                                  (1 - itemAnimation.value)),
                                           child: child,
                                         ),
                                       );
@@ -344,7 +351,7 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
                   ),
                 ),
 
-                // Bottom Action Bar: NEXT Button
+                // Bottom Action Bar: NEXT Button with Pawns
                 _buildBottomBar(),
               ],
             ),
@@ -354,95 +361,142 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
     );
   }
 
-  /// Header with Back Button, Center Title "SELECT GAME", Coins Badge and Help Button
+  /// Header with Back Button, 3D Crown over "SELECT GAME", Coins Badge and Help Button
   Widget _buildHeader(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 360;
-
         return Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: isNarrow ? 10 : 16,
-            vertical: 10,
-          ),
-          decoration: BoxDecoration(
-            color: const Color(0xFF091530).withValues(alpha: 0.88),
-            border: Border(
-              bottom: BorderSide(
-                color: const Color(0xFFFFD700).withValues(alpha: 0.22),
-                width: 1.0,
-              ),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
+          padding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 8,
           ),
           child: Row(
             children: [
-              // Back Button
+              // 3D Circular Back Button
               Material(
                 color: Colors.transparent,
                 child: InkWell(
                   key: const Key('online_game_selection_back_button'),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(20),
                   onTap: () => Navigator.pop(context),
                   child: Container(
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF132244),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        width: 1.0,
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1E88E5), Color(0xFF0D47A1)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
+                      border: Border.all(
+                        color: const Color(0xFFFFD700),
+                        width: 1.8,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0D47A1).withValues(alpha: 0.6),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: const Icon(
                       Icons.arrow_back_ios_new_rounded,
                       color: Colors.white,
-                      size: 18,
+                      size: 16,
                     ),
                   ),
                 ),
               ),
 
-              SizedBox(width: isNarrow ? 6 : 10),
+              const SizedBox(width: 8),
 
-              // Center Title
+              // Center: Crown + "SELECT GAME" Capsule Banner
               Expanded(
-                child: Center(
-                  child: Text(
-                    "SELECT GAME",
-                    key: const Key('online_game_selection_title'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isNarrow ? 16 : 19,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: isNarrow ? 1.2 : 2.0,
-                      shadows: const [
-                        Shadow(
-                          color: Color(0x66FFD700),
-                          offset: Offset(0, 2),
-                          blurRadius: 10,
+                child: Stack(
+                  alignment: Alignment.topCenter,
+                  clipBehavior: Clip.none,
+                  children: [
+                    // Main Capsule Banner
+                    Container(
+                      margin: const EdgeInsets.only(top: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: const Color(0xFFFFD54F),
+                          width: 2.2,
                         ),
-                      ],
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFF6A1B9A),
+                            Color(0xFF4A148C),
+                            Color(0xFF240046),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                const Color(0xFF6A1B9A).withValues(alpha: 0.6),
+                            blurRadius: 12,
+                            offset: const Offset(0, 3),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Text(
+                          "SELECT GAME",
+                          key: Key('online_game_selection_title'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.6,
+                            shadows: [
+                              Shadow(
+                                color: Color(0xFFFFD54F),
+                                blurRadius: 6,
+                              ),
+                              Shadow(
+                                color: Colors.black,
+                                blurRadius: 4,
+                                offset: Offset(0, 1.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+
+                    // 3D Jeweled Golden Crown perched on top
+                    const Positioned(
+                      top: -6,
+                      child: CustomPaint(
+                        size: Size(44, 26),
+                        painter: _RoyalCrownPainter(),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
-              SizedBox(width: isNarrow ? 6 : 8),
+              const SizedBox(width: 8),
 
-              // Coins Badge
+              // Coins Badge with Green + Button
               _buildCoinsBadge(),
 
-              SizedBox(width: isNarrow ? 6 : 8),
+              const SizedBox(width: 6),
 
               // Help / Question Mark Button
               Material(
@@ -452,20 +506,20 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
                   borderRadius: BorderRadius.circular(12),
                   onTap: _showHelpDialog,
                   child: Container(
-                    width: 38,
-                    height: 38,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: const Color(0xFF132244),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFFFFD700).withValues(alpha: 0.35),
+                        color: const Color(0xFFFFD700).withValues(alpha: 0.4),
                         width: 1.0,
                       ),
                     ),
                     child: const Icon(
                       Icons.help_outline_rounded,
                       color: Color(0xFFFFD700),
-                      size: 20,
+                      size: 19,
                     ),
                   ),
                 ),
@@ -477,17 +531,23 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
     );
   }
 
-  /// Coins balance pill matching Ludo Supreme luxury look
+  /// Coins balance pill matching reference look with green + button
   Widget _buildCoinsBadge() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF181202),
-        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF140F00),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: const Color(0xFFFFD700).withValues(alpha: 0.75),
-          width: 1.2,
+          color: const Color(0xFFFFD700),
+          width: 1.4,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.25),
+            blurRadius: 8,
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -497,13 +557,28 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
             color: Color(0xFFFFD700),
             size: 15,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           Text(
             "$_coins",
             style: const TextStyle(
               color: Colors.white,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w900,
               fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 4),
+          // Green Circular + button
+          Container(
+            width: 18,
+            height: 18,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFF00E676),
+            ),
+            child: const Icon(
+              Icons.add_rounded,
+              color: Colors.black,
+              size: 14,
             ),
           ),
         ],
@@ -511,24 +586,35 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
     );
   }
 
-  /// Section instruction banner
+  /// Section instruction banner: "CHOOSE BATTLE MODE"
   Widget _buildSectionBanner() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        color: const Color(0xFF0C1935).withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF091B42),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: const Color(0xFFFFD54F).withValues(alpha: 0.5),
+          width: 1.2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1E88E5).withValues(alpha: 0.3),
+            blurRadius: 10,
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(6),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Color(0xFF122858),
+              color: const Color(0xFF0D47A1),
+              border: Border.all(
+                color: const Color(0xFFFFD700),
+                width: 1.0,
+              ),
             ),
             child: const Icon(
               Icons.sports_esports_rounded,
@@ -536,7 +622,7 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
               size: 18,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -547,15 +633,15 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
                     color: Color(0xFFFFD700),
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 1.0,
+                    letterSpacing: 0.8,
                   ),
                 ),
                 SizedBox(height: 2),
                 Text(
                   "Select a game mode below to enter the live multiplayer lobby",
                   style: TextStyle(
-                    color: Color(0xFF90A4AE),
-                    fontSize: 11,
+                    color: Colors.white70,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -567,19 +653,20 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
     );
   }
 
+  /// Entry fee and prize pool selector
   Widget _buildEntryFeeSelector() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C1833).withValues(alpha: 0.9),
+        color: const Color(0xFF08183A),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFFFFD700).withValues(alpha: 0.35),
-          width: 1.2,
+          color: const Color(0xFFFFD700).withValues(alpha: 0.6),
+          width: 1.4,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
+            color: Colors.black.withValues(alpha: 0.5),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -588,6 +675,7 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Top row: ENTRY FEE & Prize Badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -597,28 +685,36 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
                   Icon(
                     Icons.monetization_on_rounded,
                     color: Color(0xFFFFD700),
-                    size: 14,
+                    size: 15,
                   ),
                   SizedBox(width: 4),
                   Text(
                     "ENTRY FEE",
                     style: TextStyle(
                       color: Color(0xFFFFD700),
-                      fontSize: 10.5,
+                      fontSize: 11,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
+                      letterSpacing: 0.6,
                     ),
                   ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0A3B22),
-                  borderRadius: BorderRadius.circular(10),
+                  color: const Color(0xFF063A1F),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF00E676).withValues(alpha: 0.6),
+                    color: const Color(0xFF00E676),
+                    width: 1.0,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF00E676).withValues(alpha: 0.35),
+                      blurRadius: 6,
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -626,15 +722,15 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
                     const Icon(
                       Icons.emoji_events_rounded,
                       color: Color(0xFFFFD700),
-                      size: 12,
+                      size: 13,
                     ),
                     const SizedBox(width: 3),
                     Text(
                       "Prize: $_currentPrizePool",
                       style: const TextStyle(
                         color: Color(0xFF00E676),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 10.5,
                       ),
                     ),
                   ],
@@ -643,6 +739,8 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
             ],
           ),
           const SizedBox(height: 8),
+
+          // Bottom row: [-], Center Pill, [+]
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -653,17 +751,19 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF050E22),
-                    borderRadius: BorderRadius.circular(10),
+                    color: const Color(0xFF030A1A),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: const Color(0xFFFFD700),
                       width: 1.4,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFFD700).withValues(alpha: 0.2),
+                        color:
+                            const Color(0xFFFFD700).withValues(alpha: 0.25),
                         blurRadius: 8,
                       ),
                     ],
@@ -677,25 +777,25 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
                         const Icon(
                           Icons.monetization_on_rounded,
                           color: Color(0xFFFFD700),
-                          size: 16,
+                          size: 18,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 5),
                         Text(
                           "$_currentEntryFee",
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 17,
+                            fontSize: 18,
                             fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
+                            letterSpacing: 0.6,
                           ),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 5),
                         const Text(
                           "COINS",
                           style: TextStyle(
                             color: Color(0xFFFFD700),
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
                       ],
@@ -726,57 +826,99 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          width: 38,
-          height: 38,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
-            color: isEnabled
-                ? const Color(0xFF132857)
-                : const Color(0xFF0A1428),
-            borderRadius: BorderRadius.circular(10),
+            gradient: isEnabled
+                ? const LinearGradient(
+                    colors: [Color(0xFF1E88E5), Color(0xFF0D47A1)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: isEnabled ? null : const Color(0xFF0A1428),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isEnabled
-                  ? const Color(0xFFFFD700).withValues(alpha: 0.7)
+                  ? const Color(0xFFFFD700)
                   : Colors.white12,
-              width: 1.2,
+              width: 1.4,
             ),
+            boxShadow: isEnabled
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF0D47A1).withValues(alpha: 0.6),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           child: Icon(
             icon,
-            color: isEnabled ? const Color(0xFFFFD700) : Colors.white24,
-            size: 20,
+            color: isEnabled ? Colors.white : Colors.white24,
+            size: 22,
           ),
         ),
       ),
     );
   }
 
-  /// Bottom pinned action bar with glowing blue "NEXT" button
+  /// Bottom pinned action bar with blue 3D "NEXT" button & exterior pawns/dice
   Widget _buildBottomBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF091428).withValues(alpha: 0.96),
+        color: const Color(0xFF050E22).withValues(alpha: 0.96),
         border: Border(
           top: BorderSide(
-            color: const Color(0xFFFFD700).withValues(alpha: 0.25),
-            width: 1.2,
+            color: const Color(0xFFFFD700).withValues(alpha: 0.35),
+            width: 1.4,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.6),
+            color: Colors.black.withValues(alpha: 0.7),
             blurRadius: 18,
-            offset: const Offset(0, -5),
+            offset: const Offset(0, -6),
           ),
         ],
       ),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 540),
-          child: _NextButton(
-            onPressed: _onNext,
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              // Bottom Exterior Pawns: Red (Left) & Blue (Right)
+              const Positioned(
+                bottom: -2,
+                left: -8,
+                child: CustomPaint(
+                  size: Size(22, 32),
+                  painter: _RoyalPawnPainter(color: Color(0xFFE53935)),
+                ),
+              ),
+              const Positioned(
+                bottom: -2,
+                right: -8,
+                child: CustomPaint(
+                  size: Size(22, 32),
+                  painter: _RoyalPawnPainter(color: Color(0xFF1E88E5)),
+                ),
+              ),
+
+              // Main NEXT Button
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: _NextButton(
+                  onPressed: _onNext,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -807,8 +949,7 @@ class _NextButtonState extends State<_NextButton> {
         width: double.infinity,
         height: 52,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          // Metallic Gold outer border
+          borderRadius: BorderRadius.circular(26),
           gradient: const LinearGradient(
             colors: [
               Color(0xFFFFFDE7),
@@ -820,7 +961,6 @@ class _NextButtonState extends State<_NextButton> {
             end: Alignment.bottomRight,
           ),
           boxShadow: [
-            // Golden Glow
             BoxShadow(
               color: const Color(0xFFFFB300).withValues(
                 alpha: _isPressed ? 0.65 : 0.45,
@@ -830,22 +970,25 @@ class _NextButtonState extends State<_NextButton> {
               offset: const Offset(0, 3),
             ),
             BoxShadow(
+              color: const Color(0xFF1E88E5).withValues(alpha: 0.5),
+              blurRadius: 14,
+            ),
+            BoxShadow(
               color: Colors.black.withValues(alpha: 0.6),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
           ],
         ),
-        padding: const EdgeInsets.all(2.0), // Golden border thickness
+        padding: const EdgeInsets.all(2.2),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            // Blue Gradient as required
+            borderRadius: BorderRadius.circular(24),
             gradient: const LinearGradient(
               colors: [
-                Color(0xFF1E88E5), // Cobalt top
-                Color(0xFF1565C0), // Royal blue middle
-                Color(0xFF0D47A1), // Deep navy bottom
+                Color(0xFF29B6F6),
+                Color(0xFF1E88E5),
+                Color(0xFF0D47A1),
               ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -855,7 +998,7 @@ class _NextButtonState extends State<_NextButton> {
             color: Colors.transparent,
             child: InkWell(
               key: const Key('online_game_selection_next_button'),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(24),
               splashColor: const Color(0xFFFFD700).withValues(alpha: 0.25),
               onTapDown: (_) => setState(() => _isPressed = true),
               onTapUp: (_) => setState(() => _isPressed = false),
@@ -874,7 +1017,7 @@ class _NextButtonState extends State<_NextButton> {
                         letterSpacing: 2.2,
                         shadows: [
                           Shadow(
-                            color: Color(0x66000000),
+                            color: Colors.black87,
                             offset: Offset(0, 2),
                             blurRadius: 4,
                           ),
@@ -896,4 +1039,180 @@ class _NextButtonState extends State<_NextButton> {
       ),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Custom Painters for Crown, Pawn, and Dice
+// ---------------------------------------------------------------------------
+
+class _RoyalCrownPainter extends CustomPainter {
+  const _RoyalCrownPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final width = size.width;
+    final height = size.height;
+
+    final path = Path()
+      ..moveTo(width * 0.12, height * 0.88)
+      ..lineTo(width * 0.05, height * 0.32)
+      ..lineTo(width * 0.28, height * 0.58)
+      ..lineTo(width * 0.50, height * 0.08)
+      ..lineTo(width * 0.72, height * 0.58)
+      ..lineTo(width * 0.95, height * 0.32)
+      ..lineTo(width * 0.88, height * 0.88)
+      ..close();
+
+    final crownPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0xFFFFFDE7),
+          Color(0xFFFFE082),
+          Color(0xFFFFB300),
+          Color(0xFFC45A00),
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(0, 0, width, height));
+    canvas.drawPath(path, crownPaint);
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xFF5D2E00)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4,
+    );
+
+    // Center Ruby
+    final rubyPaint = Paint()..color = const Color(0xFFD50000);
+    canvas.save();
+    canvas.translate(width * 0.50, height * 0.65);
+    canvas.rotate(math.pi / 4);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset.zero, width: 6, height: 6),
+        const Radius.circular(1.2),
+      ),
+      rubyPaint,
+    );
+    canvas.restore();
+
+    final pearlPaint = Paint()..color = Colors.white;
+    for (final pt in [
+      Offset(width * 0.05, height * 0.32),
+      Offset(width * 0.50, height * 0.08),
+      Offset(width * 0.95, height * 0.32),
+    ]) {
+      canvas.drawCircle(pt, 2.5, pearlPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _RoyalPawnPainter extends CustomPainter {
+  final Color color;
+
+  const _RoyalPawnPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    final baseRect = Rect.fromCenter(
+      center: Offset(w * 0.5, h * 0.88),
+      width: w * 0.85,
+      height: h * 0.18,
+    );
+    final basePaint = Paint()
+      ..shader = LinearGradient(
+        colors: [color, color.withValues(alpha: 0.6), Colors.black],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(baseRect);
+    canvas.drawOval(baseRect, basePaint);
+
+    final bodyPath = Path()
+      ..moveTo(w * 0.38, h * 0.44)
+      ..lineTo(w * 0.62, h * 0.44)
+      ..lineTo(w * 0.78, h * 0.82)
+      ..lineTo(w * 0.22, h * 0.82)
+      ..close();
+    canvas.drawPath(bodyPath, basePaint);
+
+    final collarRect = Rect.fromCenter(
+      center: Offset(w * 0.5, h * 0.44),
+      width: w * 0.45,
+      height: h * 0.10,
+    );
+    canvas.drawOval(collarRect, Paint()..color = const Color(0xFFFFD54F));
+
+    final headCenter = Offset(w * 0.5, h * 0.24);
+    final headRadius = w * 0.28;
+    final headPaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.3, -0.3),
+        colors: [Colors.white.withValues(alpha: 0.9), color, Colors.black],
+        stops: const [0.0, 0.5, 1.0],
+      ).createShader(Rect.fromCircle(center: headCenter, radius: headRadius));
+    canvas.drawCircle(headCenter, headRadius, headPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _RoyalDicePainter extends CustomPainter {
+  final double angle;
+
+  const _RoyalDicePainter({this.angle = 0.0});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    canvas.save();
+    canvas.translate(w * 0.5, h * 0.5);
+    canvas.rotate(angle);
+
+    final diceRect = Rect.fromCenter(
+      center: Offset.zero,
+      width: w * 0.75,
+      height: h * 0.75,
+    );
+    final diceRRect =
+        RRect.fromRectAndRadius(diceRect, const Radius.circular(5));
+
+    canvas.drawRRect(
+      diceRRect,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFFFFFFF), Color(0xFFE0E0E0), Color(0xFFBDBDBD)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(diceRect),
+    );
+
+    canvas.drawRRect(
+      diceRRect,
+      Paint()
+        ..color = const Color(0xFFFFD54F)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
+
+    final dotPaint = Paint()..color = const Color(0xFFD50000);
+    canvas.drawCircle(Offset.zero, 2.0, dotPaint);
+    canvas.drawCircle(const Offset(-5, -5), 2.0, dotPaint);
+    canvas.drawCircle(const Offset(5, 5), 2.0, dotPaint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

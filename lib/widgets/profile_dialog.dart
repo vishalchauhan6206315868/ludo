@@ -223,6 +223,8 @@ class PlayerProfileScreen extends StatelessWidget {
                 child: Image.asset(
                   'assets/images/ludo_supreme_bg.jpg',
                   fit: BoxFit.cover,
+                  cacheWidth: 280,
+                  cacheHeight: 280,
                   errorBuilder: (_, _, _) => const SizedBox(),
                 ),
               ),
@@ -239,6 +241,8 @@ class PlayerProfileScreen extends StatelessWidget {
                 child: Image.asset(
                   'assets/images/ludo_supreme_bg.jpg',
                   fit: BoxFit.cover,
+                  cacheWidth: 280,
+                  cacheHeight: 280,
                   errorBuilder: (_, _, _) => const SizedBox(),
                 ),
               ),
@@ -459,6 +463,7 @@ class PlayerProfileScreen extends StatelessWidget {
                   child: Image.asset(
                     'assets/images/ludo_supreme_bg.jpg',
                     fit: BoxFit.cover,
+                    cacheWidth: 800,
                     alignment: Alignment.topCenter,
                     errorBuilder: (_, _, _) => const SizedBox(),
                   ),

@@ -350,5 +350,29 @@ void main() {
       expect(find.text('Server error: database timeout'), findsOneWidget);
       expect(find.text('Retry'), findsOneWidget);
     });
+
+    testWidgets('Small screen (320x568) renders WalletScreen without RenderFlex overflow',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final fakeApi = FakeWalletApiService();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: WalletScreen(apiService: fakeApi),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('MY WALLET'), findsOneWidget);
+      expect(find.text('AVAILABLE BALANCE'), findsOneWidget);
+      expect(find.text('ACTIVE'), findsOneWidget);
+      expect(find.text('COINS'), findsOneWidget);
+    });
   });
 }

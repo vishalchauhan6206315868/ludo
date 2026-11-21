@@ -13,6 +13,7 @@ import '../widgets/dice/animated_dice.dart';
 import '../widgets/player_card.dart';
 import '../widgets/settings_dialog.dart';
 import '../widgets/victory_dialog.dart';
+import '../widgets/game_exit_dialog.dart';
 
 class GameScreen extends StatefulWidget {
   final GameMode mode;
@@ -309,34 +310,27 @@ class _GameScreenState extends State<GameScreen>
 
     final shouldLeave = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: LudoColors.surfaceDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isOnline ? "Leave Match?" : (isPassNPlay ? "Exit Game?" : "Exit to Main Menu?"),
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: Text(
-          isOnline
-              ? "If you leave now you forfeit this online match and your opponent wins."
-              : isPassNPlay
-              ? "Are you sure you want to exit the current Pass N Play match? Your progress will be saved."
-              : "Your current match progress is saved automatically. You can resume anytime from the home screen.",
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(isOnline ? "Stay" : (isPassNPlay ? "CANCEL" : "Continue Playing"),
-                style: const TextStyle(color: Colors.white60)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.amber,
-              foregroundColor: Colors.black87,
-            ),
-            child: Text(isOnline ? "Leave & Forfeit" : (isPassNPlay ? "EXIT" : "Save & Exit")),
-          ),
-        ],
+      barrierColor: Colors.black.withValues(alpha: 0.65),
+      builder: (ctx) => GameExitDialog(
+        title: isOnline
+            ? "Leave Match?"
+            : (isPassNPlay ? "Exit Game?" : "Exit to Main Menu?"),
+        message: isOnline
+            ? "If you leave now you forfeit this online match and your opponent wins."
+            : isPassNPlay
+                ? "Are you sure you want to exit the current Pass N Play match? Your progress will be saved."
+                : "Your current match progress is saved automatically. You can resume anytime from the home screen.",
+        highlightText: isOnline
+            ? "forfeit this online match"
+            : (isPassNPlay ? "Your progress will be saved" : "saved automatically"),
+        cancelText: isOnline
+            ? "Stay"
+            : (isPassNPlay ? "CANCEL" : "Continue Playing"),
+        confirmText: isOnline
+            ? "Leave & Forfeit"
+            : (isPassNPlay ? "EXIT" : "Save & Exit"),
+        onCancel: () => Navigator.pop(ctx, false),
+        onConfirm: () => Navigator.pop(ctx, true),
       ),
     );
 
@@ -487,6 +481,8 @@ class _GameScreenState extends State<GameScreen>
               child: Image.asset(
                 'assets/images/ludo_supreme_bg.jpg',
                 fit: BoxFit.cover,
+                cacheWidth: 1080,
+                filterQuality: FilterQuality.medium,
                 errorBuilder: (context, error, stackTrace) => Container(
                   color: const Color(0xFF060B19),
                 ),

@@ -15,7 +15,7 @@ void main() {
   });
 
   group('Home Dashboard 3 Game Mode Cards UI & Layout Tests', () {
-    testWidgets('Renders all 5 game mode cards with correct titles and keys',
+    testWidgets('Renders all 6 game mode cards with correct titles and keys',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(360, 640);
       tester.view.devicePixelRatio = 1.0;
@@ -31,17 +31,19 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Check all 5 card keys
-      expect(find.byKey(const Key('play_with_friends_card')), findsOneWidget);
+      // Check all 6 card keys
+      expect(find.byKey(const Key('tournaments_card')), findsOneWidget);
       expect(find.byKey(const Key('online_card')), findsOneWidget);
       expect(find.byKey(const Key('team_up_card')), findsOneWidget);
+      expect(find.byKey(const Key('play_with_friends_card')), findsOneWidget);
       expect(find.byKey(const Key('play_vs_computer_card')), findsOneWidget);
       expect(find.byKey(const Key('pass_n_play_card')), findsOneWidget);
 
       // Check titles
-      expect(find.text('PLAY WITH FRIENDS'), findsOneWidget);
+      expect(find.text('TOURNAMENTS'), findsOneWidget);
       expect(find.text('ONLINE'), findsOneWidget);
       expect(find.text('TEAM UP'), findsOneWidget);
+      expect(find.text('PLAY WITH FRIENDS'), findsOneWidget);
       expect(find.text('PLAY VS COMPUTER'), findsOneWidget);
       expect(find.text('PASS N PLAY'), findsOneWidget);
 
@@ -49,6 +51,31 @@ void main() {
       expect(find.text('Classic Mode'), findsNothing);
       expect(find.text('2-4 Players'), findsNothing);
       expect(find.text('Fun & Strategy'), findsNothing);
+    });
+
+    testWidgets('Tapping TOURNAMENTS opens TournamentsDialog',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: HomeMenuScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('tournaments_card')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('LUDO TOURNAMENTS'), findsOneWidget);
+      expect(find.text('GRAND CHAMPIONSHIP'), findsOneWidget);
+      expect(find.text('DAILY KNOCKOUT'), findsOneWidget);
+      expect(find.text('WEEKEND BLITZ'), findsOneWidget);
     });
 
     testWidgets('Tapping PLAY WITH FRIENDS opens player count selection dialog',
@@ -67,6 +94,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      await tester.ensureVisible(find.byKey(const Key('play_with_friends_card')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('play_with_friends_card')));
       await tester.pumpAndSettle();
 
