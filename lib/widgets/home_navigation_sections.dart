@@ -32,19 +32,19 @@ class HomeNavigationBar extends StatelessWidget {
       badgeIcon: Icons.casino_rounded,
       label: 'HOME',
       key: Key('nav_item_home'),
-      accentColor: Color(0xFFF59E0B),
-      iconColor: Color(0xFFFFCA28),
+      accentColor: Color(0xFFFFB300),
+      iconColor: Color(0xFFFFD54F),
       badgeColor: Color(0xFFFFE082),
       labelColor: Colors.white,
       activeGradient: [
-        Color(0xFF2563EB),
-        Color(0xFF1D4ED8),
-        Color(0xFF16347A),
+        Color(0xFFFFEA79),
+        Color(0xFFFFB300),
+        Color(0xFFFF8F00),
       ],
       inactiveGradient: [
-        Color(0xFF142347),
-        Color(0xFF0E1A36),
-        Color(0xFF0A1226),
+        Color(0xFF4A148C),
+        Color(0xFF2E0854),
+        Color(0xFF1A0033),
       ],
       lightGradient: [
         Color(0xFFFFFDF5),
@@ -58,19 +58,19 @@ class HomeNavigationBar extends StatelessWidget {
       label: 'EVENT',
       key: Key('nav_item_event'),
       accentColor: Color(0xFFEF4444),
-      iconColor: Color(0xFFFF5252),
+      iconColor: Color(0xFFFF8A80),
       badgeColor: Color(0xFFFFD700),
       labelColor: Colors.white,
       notificationBadge: '1',
       activeGradient: [
-        Color(0xFF2563EB),
-        Color(0xFF1D4ED8),
-        Color(0xFF16347A),
+        Color(0xFFFFEA79),
+        Color(0xFFFFB300),
+        Color(0xFFFF8F00),
       ],
       inactiveGradient: [
-        Color(0xFF142347),
-        Color(0xFF0E1A36),
-        Color(0xFF0A1226),
+        Color(0xFF4A148C),
+        Color(0xFF2E0854),
+        Color(0xFF1A0033),
       ],
       lightGradient: [
         Color(0xFFFFF8F8),
@@ -79,23 +79,23 @@ class HomeNavigationBar extends StatelessWidget {
       ],
     ),
     NavItemData(
-      icon: Icons.mic_rounded,
-      badgeIcon: Icons.graphic_eq_rounded,
+      icon: Icons.casino_rounded,
+      badgeIcon: Icons.casino_rounded,
       label: 'ADDA',
       key: Key('nav_item_adda'),
-      accentColor: Color(0xFF00B4D8),
-      iconColor: Color(0xFF38BDF8),
-      badgeColor: Color(0xFF7DD3FC),
+      accentColor: Color(0xFFFFD700),
+      iconColor: Color(0xFFFFD700),
+      badgeColor: Color(0xFFFFFDE7),
       labelColor: Colors.white,
       activeGradient: [
-        Color(0xFF2563EB),
-        Color(0xFF1D4ED8),
-        Color(0xFF16347A),
+        Color(0xFFFFEA79),
+        Color(0xFFFFB300),
+        Color(0xFFFF8F00),
       ],
       inactiveGradient: [
-        Color(0xFF142347),
-        Color(0xFF0E1A36),
-        Color(0xFF0A1226),
+        Color(0xFF4A148C),
+        Color(0xFF2E0854),
+        Color(0xFF1A0033),
       ],
       lightGradient: [
         Color(0xFFF0F9FF),
@@ -104,23 +104,23 @@ class HomeNavigationBar extends StatelessWidget {
       ],
     ),
     NavItemData(
-      icon: Icons.casino_rounded,
+      icon: Icons.inventory_2_rounded,
       badgeIcon: Icons.diamond_rounded,
       label: 'INVENTORY',
       key: Key('nav_item_inventory'),
-      accentColor: Color(0xFF8B5CF6),
-      iconColor: Color(0xFFC084FC),
-      badgeColor: Color(0xFFF0ABFC),
+      accentColor: Color(0xFFFFD700),
+      iconColor: Color(0xFFFFD54F),
+      badgeColor: Color(0xFFFFFDE7),
       labelColor: Colors.white,
       activeGradient: [
-        Color(0xFF2563EB),
-        Color(0xFF1D4ED8),
-        Color(0xFF16347A),
+        Color(0xFFFFEA79),
+        Color(0xFFFFB300),
+        Color(0xFFFF8F00),
       ],
       inactiveGradient: [
-        Color(0xFF142347),
-        Color(0xFF0E1A36),
-        Color(0xFF0A1226),
+        Color(0xFF4A148C),
+        Color(0xFF2E0854),
+        Color(0xFF1A0033),
       ],
       lightGradient: [
         Color(0xFFFAF5FF),
@@ -133,19 +133,19 @@ class HomeNavigationBar extends StatelessWidget {
       badgeIcon: Icons.chat_bubble_rounded,
       label: 'SOCIAL',
       key: Key('nav_item_social'),
-      accentColor: Color(0xFF10B981),
-      iconColor: Color(0xFF34D399),
-      badgeColor: Color(0xFFA7F3D0),
+      accentColor: Color(0xFFFFD700),
+      iconColor: Color(0xFFFFD54F),
+      badgeColor: Color(0xFFFFFDE7),
       labelColor: Colors.white,
       activeGradient: [
-        Color(0xFF2563EB),
-        Color(0xFF1D4ED8),
-        Color(0xFF16347A),
+        Color(0xFFFFEA79),
+        Color(0xFFFFB300),
+        Color(0xFFFF8F00),
       ],
       inactiveGradient: [
-        Color(0xFF142347),
-        Color(0xFF0E1A36),
-        Color(0xFF0A1226),
+        Color(0xFF4A148C),
+        Color(0xFF2E0854),
+        Color(0xFF1A0033),
       ],
       lightGradient: [
         Color(0xFFF0FDF4),
@@ -297,53 +297,48 @@ class _NavSquareCardState extends State<_NavSquareCard>
         );
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        transform: Matrix4.translationValues(0.0, isSelected ? -2.5 : 0.0, 0.0),
+        transform: Matrix4.translationValues(0.0, isSelected ? -7.0 : 0.0, 0.0),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(isSelected ? 32 : 13),
           gradient: LinearGradient(
             colors: isSelected ? item.activeGradient : item.inactiveGradient,
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
           border: Border.all(
-            // Golden accent border on active item, subtle deep-blue on inactive
+            // Golden accent border on active circular item, rich purple on inactive square
             color: isSelected
-                ? const Color(0xFFFFD700).withValues(alpha: 0.90)
-                : const Color(0xFF223A68).withValues(alpha: 0.55),
-            width: isSelected ? 1.5 : 1.0,
+                ? const Color(0xFFFFFDE7)
+                : const Color(0xFFAB47BC).withValues(alpha: 0.65),
+            width: isSelected ? 2.0 : 1.1,
           ),
           boxShadow: [
-            if (isSelected) ...[
-              // Soft outer electric-blue glow
-              BoxShadow(
-                color: const Color(0xFF3B82F6).withValues(alpha: 0.48),
-                blurRadius: 10,
-                spreadRadius: 1.0,
-                offset: const Offset(0, 2),
-              ),
-              // Subtle golden aura
-              BoxShadow(
-                color: const Color(0xFFFFD700).withValues(alpha: 0.28),
-                blurRadius: 6,
-                spreadRadius: 0.5,
-                offset: const Offset(0, 1),
-              ),
-              // Contact drop shadow
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.45),
-                blurRadius: 6,
-                offset: const Offset(0, 4),
-              ),
-            ] else ...[
-              // Inactive subtle contact drop shadow
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.35),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            BoxShadow(
+              color: isSelected
+                  ? const Color(0xFFFFB300).withValues(alpha: 0.65)
+                  : Colors.black.withValues(alpha: 0.40),
+              blurRadius: isSelected ? 14.0 : 5.0,
+              spreadRadius: isSelected ? 1.5 : 0.0,
+              offset: Offset(0, isSelected ? 3.0 : 2.0),
+            ),
+            BoxShadow(
+              color: isSelected
+                  ? const Color(0xFFFFD54F).withValues(alpha: 0.40)
+                  : Colors.transparent,
+              blurRadius: isSelected ? 6.0 : 0.0,
+              spreadRadius: 0.0,
+              offset: const Offset(0, 1.0),
+            ),
+            BoxShadow(
+              color: isSelected
+                  ? Colors.black.withValues(alpha: 0.45)
+                  : Colors.transparent,
+              blurRadius: isSelected ? 8.0 : 0.0,
+              spreadRadius: 0.0,
+              offset: Offset(0, isSelected ? 5.0 : 0.0),
+            ),
           ],
         ),
         clipBehavior: Clip.antiAlias,
@@ -351,7 +346,7 @@ class _NavSquareCardState extends State<_NavSquareCard>
           color: Colors.transparent,
           child: InkWell(
             key: item.key,
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(isSelected ? 32 : 13),
             onTap: _handleTap,
             splashColor: item.accentColor.withValues(alpha: 0.30),
             highlightColor: Colors.white.withValues(alpha: 0.20),
@@ -432,18 +427,24 @@ class _NavSquareCardState extends State<_NavSquareCard>
                             fontWeight:
                                 isSelected ? FontWeight.w900 : FontWeight.w700,
                             color: isSelected
-                                ? Colors.white
-                                : const Color(0xFFCFDCF5),
+                                ? const Color(0xFF3E2723)
+                                : Colors.white,
                             letterSpacing: 0.3,
                             shadows: isSelected
                                 ? [
                                     Shadow(
-                                      color: Colors.black.withValues(alpha: 0.65),
-                                      blurRadius: 3,
+                                      color: const Color(0xFFFFD54F).withValues(alpha: 0.5),
+                                      blurRadius: 2,
                                       offset: const Offset(0, 1),
                                     ),
                                   ]
-                                : null,
+                                : [
+                                    const Shadow(
+                                      color: Colors.black87,
+                                      blurRadius: 2,
+                                      offset: Offset(0, 1),
+                                    ),
+                                  ],
                           ),
                         ),
                       ),
@@ -508,15 +509,17 @@ class _GameNavIconBadge extends StatelessWidget {
             child: Icon(
               item.icon,
               size: primaryIconSize,
-              color: item.iconColor,
+              color: isSelected ? const Color(0xFF3E2723) : item.iconColor,
               shadows: [
                 Shadow(
-                  color: item.accentColor.withValues(alpha: isSelected ? 0.70 : 0.40),
-                  blurRadius: isSelected ? 8 : 4,
+                  color: isSelected
+                      ? const Color(0xFFFFD54F).withValues(alpha: 0.70)
+                      : item.accentColor.withValues(alpha: 0.40),
+                  blurRadius: isSelected ? 6 : 4,
                   offset: const Offset(0, 1),
                 ),
                 Shadow(
-                  color: Colors.black.withValues(alpha: 0.50),
+                  color: Colors.black.withValues(alpha: 0.40),
                   blurRadius: 2,
                   offset: const Offset(0, 1),
                 ),

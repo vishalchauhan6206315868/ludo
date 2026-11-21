@@ -21,6 +21,7 @@ class GameModeCard extends StatefulWidget {
   final Color accentColor;
   final List<Color>? cardGradient;
   final bool showPedestalShadow;
+  final bool isShield;
 
   const GameModeCard({
     super.key,
@@ -35,6 +36,7 @@ class GameModeCard extends StatefulWidget {
     this.accentColor = const Color(0xFFFFD700),
     this.cardGradient,
     this.showPedestalShadow = false,
+    this.isShield = false,
   });
 
   @override
@@ -284,38 +286,16 @@ class _GameModeCardState extends State<GameModeCard> {
       width: double.infinity,
       padding: EdgeInsets.symmetric(
         horizontal: 4,
-        vertical: isVertical ? 8.0 : 6.0,
+        vertical: isVertical ? 6.0 : 4.5,
       ),
+      margin: const EdgeInsets.only(bottom: 5, left: 4, right: 4),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFFFFF9C4), // Highlight gold
-            Color(0xFFFFE082), // Warm yellow gold
-            Color(0xFFFFB300), // Main royal gold
-            Color(0xFFFF8F00), // Deep golden amber
-            Color(0xFFC45A00), // Bronze shadow
-          ],
-          stops: [0.0, 0.22, 0.52, 0.82, 1.0],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+        color: const Color(0xFF070F22).withValues(alpha: 0.70),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: const Color(0xFFFFD700).withValues(alpha: 0.5),
+          width: 0.8,
         ),
-        border: const Border(
-          top: BorderSide(
-            color: Color(0xFFFFFDE7),
-            width: 1.2,
-          ),
-          bottom: BorderSide(
-            color: Color(0xFF6D3200),
-            width: 2.5, // 3D depth bottom lip
-          ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.40),
-            offset: const Offset(0, -1),
-            blurRadius: 2,
-          ),
-        ],
       ),
       child: Center(
         child: FittedBox(
@@ -324,45 +304,26 @@ class _GameModeCardState extends State<GameModeCard> {
             padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Left decorative golden diamond stud
                 _buildBannerNotch(),
-                const SizedBox(width: 3.5),
-
-                // Title text with high-contrast outline
+                const SizedBox(width: 4),
                 Text(
                   titleText,
-                  maxLines: 1,
+                  maxLines: 2,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Roboto',
-                    fontSize: isVertical ? 13.0 : 11.2,
+                    fontSize: isVertical ? 12.5 : 11.2,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: isVertical ? 0.8 : 0.4,
+                    letterSpacing: 0.5,
                     color: Colors.white,
                     shadows: const [
-                      // 8-directional outline shadows for bold crisp game outline
-                      Shadow(offset: Offset(-1.2, -1.2), color: Color(0xFF3E1800)),
-                      Shadow(offset: Offset(1.2, -1.2), color: Color(0xFF3E1800)),
-                      Shadow(offset: Offset(-1.2, 1.2), color: Color(0xFF3E1800)),
-                      Shadow(offset: Offset(1.2, 1.2), color: Color(0xFF3E1800)),
-                      Shadow(offset: Offset(0, -1.4), color: Color(0xFF3E1800)),
-                      Shadow(offset: Offset(0, 1.4), color: Color(0xFF3E1800)),
-                      Shadow(offset: Offset(-1.4, 0), color: Color(0xFF3E1800)),
-                      Shadow(offset: Offset(1.4, 0), color: Color(0xFF3E1800)),
-                      // 3D Bottom Drop Shadow
-                      Shadow(
-                        color: Color(0x99000000),
-                        offset: Offset(0, 2.0),
-                        blurRadius: 2.5,
-                      ),
+                      Shadow(offset: Offset(0, 1.5), blurRadius: 3, color: Colors.black),
+                      Shadow(offset: Offset(0, 3), blurRadius: 6, color: Colors.black87),
                     ],
                   ),
                 ),
-
-                const SizedBox(width: 3.5),
-                // Right decorative golden diamond stud
+                const SizedBox(width: 4),
                 _buildBannerNotch(),
               ],
             ),

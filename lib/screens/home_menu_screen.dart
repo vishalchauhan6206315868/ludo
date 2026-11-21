@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/network/api_service.dart';
@@ -19,7 +20,6 @@ import '../widgets/tournament_payment_dialog.dart';
 import 'game_screen.dart';
 import 'leaderboard_screen.dart';
 import 'login_screen.dart';
-import 'rewards_screen.dart';
 import 'wallet_screen.dart';
 import 'online/online_game_selection_screen.dart';
 import 'pass_n_play_setup_screen.dart';
@@ -623,38 +623,36 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFD700).withValues(alpha: 0.16),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            "LVL ${_userProfile?.level ?? 1}",
-                            style: const TextStyle(
-                              color: Color(0xFFFFD700),
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF8E24AA), Color(0xFF5E1275)],
                         ),
-                        if (!isCompact) ...[
-                          const SizedBox(width: 4),
-                          const Text(
-                            "• Stats",
-                            style: TextStyle(
-                              color: Color(0xFF90A4AE),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFFFD700), width: 1.0),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFAB47BC).withValues(alpha: 0.35),
+                            blurRadius: 4,
                           ),
                         ],
-                      ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star_rounded, color: Color(0xFFFFD700), size: 12),
+                          const SizedBox(width: 3),
+                          Text(
+                            "LVL ${_userProfile?.level ?? 1}",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -677,20 +675,20 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
             },
             child: Container(
               padding: EdgeInsets.symmetric(
-                horizontal: isCompact ? 8 : 10,
-                vertical: isCompact ? 5 : 6,
+                horizontal: isCompact ? 7 : 9,
+                vertical: isCompact ? 4 : 5,
               ),
               margin: EdgeInsets.only(right: isCompact ? 5 : 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF141F36),
+                color: const Color(0xFF0C1934),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: const Color(0xFFFFD700).withValues(alpha: 0.4),
-                  width: 1.2,
+                  color: const Color(0xFFFFD700),
+                  width: 1.4,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.25),
                     blurRadius: 8,
                   ),
                 ],
@@ -700,18 +698,53 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.monetization_on_rounded,
-                      color: const Color(0xFFFFD700),
-                      size: isCompact ? 14 : 16,
+                    // Golden Rupee Coin
+                    Container(
+                      width: 17,
+                      height: 17,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFFFEA79), Color(0xFFFFB300), Color(0xFFFF8F00)],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          "₹",
+                          style: TextStyle(
+                            color: Color(0xFF3E2723),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 5),
                     Text(
                       formattedCoins,
                       style: TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: isCompact ? 11 : 12,
+                        fontWeight: FontWeight.w900,
+                        fontSize: isCompact ? 11 : 12.5,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    // Plus Action Button
+                    Container(
+                      width: 15,
+                      height: 15,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFFFEA79), Color(0xFFFFB300)],
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        size: 12,
+                        color: Color(0xFF3E2723),
                       ),
                     ),
                   ],
@@ -720,33 +753,11 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
             ),
           ),
 
-          // Action: Rewards Button (On regular / wide screens)
-          if (!isCompact) ...[
-            _buildActionButton(
-              size: actionBtnSize,
-              iconSize: isCompact ? 18 : 20,
-              icon: Icons.card_giftcard_rounded,
-              tooltip: "Rewards",
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RewardsScreen(
-                      onRewardClaimed: _loadUserInfo,
-                    ),
-                  ),
-                );
-                _loadUserInfo();
-              },
-            ),
-            SizedBox(width: isCompact ? 6 : 8),
-          ],
-
-          // Action 1: Leaderboard Button
+          // Action 1: Leaderboard / Stats Button
           _buildActionButton(
             size: actionBtnSize,
             iconSize: isCompact ? 18 : 20,
-            icon: Icons.leaderboard_rounded,
+            icon: Icons.bar_chart_rounded,
             tooltip: "Leaderboard",
             onTap: () {
               Navigator.push(
@@ -757,7 +768,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
               );
             },
           ),
-          SizedBox(width: isCompact ? 5 : 8),
+          SizedBox(width: isCompact ? 5 : 7),
 
           // Action 2: Settings Button
           _buildActionButton(
@@ -772,7 +783,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
               );
             },
           ),
-          SizedBox(width: isCompact ? 5 : 8),
+          SizedBox(width: isCompact ? 5 : 7),
 
           // Action 3: Exit / Logout Button
           _buildActionButton(
@@ -820,317 +831,18 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
     );
   }
 
-  // --- Center 3D Card Emblem on Glowing Pedestal with Crown ---
-  Widget _buildHeroEmblem({double scale = 1.0}) {
-    final emblem = SizedBox(
-      width: 190,
-      height: 185,
-      child: Stack(
-        alignment: Alignment.center,
-        clipBehavior: Clip.none,
-        children: [
-          // 1. Bottom 3D Glowing Pedestal
-          Positioned(
-            bottom: 4,
-            child: Container(
-              width: 160,
-              height: 36,
-              decoration: BoxDecoration(
-                borderRadius:
-                    const BorderRadius.all(Radius.elliptical(160, 36)),
-                gradient: const RadialGradient(
-                  colors: [
-                    Color(0xFF3A2B14),
-                    Color(0xFF14203D),
-                    Color(0xFF060B19),
-                  ],
-                  radius: 0.85,
-                ),
-                border: Border.all(
-                  color: const Color(0xFFFFD700).withValues(alpha: 0.7),
-                  width: 1.8,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFFD700).withValues(alpha: 0.35),
-                    blurRadius: 22,
-                    spreadRadius: 3,
-                    offset: const Offset(0, 4),
-                  ),
-                  BoxShadow(
-                    color: const Color(0xFF00B4D8).withValues(alpha: 0.25),
-                    blurRadius: 28,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Container(
-                  width: 120,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    borderRadius:
-                        const BorderRadius.all(Radius.elliptical(120, 18)),
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFFFFD700).withValues(alpha: 0.6),
-                        const Color(0xFFFF8F00).withValues(alpha: 0.3),
-                        Colors.transparent,
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // 2. The 3D Rounded Gold Card Badge
-          Positioned(
-            top: 14,
-            child: Container(
-              width: 136,
-              height: 136,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(26),
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFFFFE082),
-                    Color(0xFFFFB300),
-                    Color(0xFFFF8F00),
-                    Color(0xFFFF6F00),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFFD700).withValues(alpha: 0.45),
-                    blurRadius: 26,
-                    spreadRadius: 4,
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.65),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.all(3.2), // Metallic golden frame rim
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(23),
-                  color: const Color(0xFF0A1329),
-                  border: Border.all(
-                    color: const Color(0xFF1E2F54),
-                    width: 1.5,
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(22),
-                  child: Image.asset(
-                    'assets/images/ludo_supreme_emblem.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      decoration: const BoxDecoration(
-                        gradient: RadialGradient(
-                          colors: [Color(0xFF2A1B4E), Color(0xFF0B1736)],
-                        ),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.casino_rounded,
-                            color: Color(0xFFFFD700), size: 64),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // 3. Golden Royal Crown on Top of Card
-          Positioned(
-            top: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFFD700).withValues(alpha: 0.8),
-                    blurRadius: 16,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.military_tech_rounded,
-                color: Color(0xFFFFD700),
-                size: 32,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (scale != 1.0) {
-      return Transform.scale(
-        scale: scale,
-        child: emblem,
-      );
-    }
-    return emblem;
-  }
-
-  // --- Branding Title ---
-  Widget _buildBrandingTitle({bool isShort = false}) {
-    return Column(
-      children: [
-        // Mini Golden Crown
-        Icon(
-          Icons.military_tech_rounded,
-          color: const Color(0xFFFFD700),
-          size: isShort ? 16 : 20,
-        ),
-        const SizedBox(height: 2),
-
-        // LUDO SUPREME 3D Metallic Text
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                "LUDO ",
-                style: TextStyle(
-                  color: const Color(0xFFEDEDED),
-                  fontSize: isShort ? 26 : 32,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2.5,
-                  shadows: const [
-                    Shadow(
-                      color: Colors.black87,
-                      offset: Offset(0, 3),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-              ),
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [
-                    Color(0xFFFFF176),
-                    Color(0xFFFFD54F),
-                    Color(0xFFFFB300),
-                    Color(0xFFFF8F00),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ).createShader(bounds),
-                child: Text(
-                  "SUPREME",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isShort ? 26 : 32,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2.5,
-                    shadows: const [
-                      Shadow(
-                        color: Color(0x66FF8F00),
-                        offset: Offset(0, 2),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 4),
-
-        // Tagline
-        Text(
-          "THE CLASSIC BOARD GAME EXPERIENCE",
-          style: TextStyle(
-            color: const Color(0xFFB0BEC5),
-            fontSize: isShort ? 9.5 : 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: isShort ? 1.6 : 2.2,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // --- 4 Player Color Dots & Golden Slider ---
-  Widget _buildColorDotsWithSlider() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildGlowingDot(const Color(0xFFE53935)),
-            _buildGlowingDot(const Color(0xFF43A047)),
-            _buildGlowingDot(const Color(0xFFFFB300)),
-            _buildGlowingDot(const Color(0xFF1E88E5)),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Container(
-          width: 38,
-          height: 3,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(2),
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFFD700), Color(0xFFFFA000)],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFFD700).withValues(alpha: 0.6),
-                blurRadius: 6,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGlowingDot(Color color) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 5),
-      width: 11,
-      height: 11,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.7),
-            blurRadius: 6,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-    );
-  }
-
   // --- Card 0: TOURNAMENTS (First Row Left) ---
   Widget _buildTournamentsCard(BuildContext context, [double height = 136]) {
     return GameModeCard(
       cardKey: const Key('tournaments_card'),
       title: "TOURNAMENTS",
       height: height,
-      glowColor: const Color(0xFFFF9100),
+      glowColor: const Color(0xFFFF4081),
       accentColor: const Color(0xFFFFD700),
       cardGradient: const [
-        Color(0xFF2B0C58),
-        Color(0xFF160636),
-        Color(0xFF07011C),
+        Color(0xFF5E1335),
+        Color(0xFF38071D),
+        Color(0xFF1F030F),
       ],
       illustration: const TournamentsIllustration(),
       onTap: () => _openTournamentsMode(context),
@@ -1143,12 +855,13 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
       cardKey: const Key('play_with_friends_card'),
       title: "PLAY WITH FRIENDS",
       height: height,
-      glowColor: const Color(0xFFFFB300),
+      isShield: true,
+      glowColor: const Color(0xFF00E676),
       accentColor: const Color(0xFFFFD700),
       cardGradient: const [
-        Color(0xFF1544A2),
-        Color(0xFF0C2B72),
-        Color(0xFF040F2D),
+        Color(0xFF1B5E20),
+        Color(0xFF004D40),
+        Color(0xFF052414),
       ],
       illustration: const PlayWithFriendsIllustration(),
       onTap: _openFriendsSelection,
@@ -1164,9 +877,9 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
       glowColor: const Color(0xFF00E5FF),
       accentColor: const Color(0xFF80D8FF),
       cardGradient: const [
-        Color(0xFF0E4EAE),
-        Color(0xFF093175),
-        Color(0xFF031438),
+        Color(0xFF0077B6),
+        Color(0xFF023E8A),
+        Color(0xFF011848),
       ],
       illustration: const OnlineIllustration(),
       onTap: () => _openOnlineMode(context),
@@ -1179,12 +892,12 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
       cardKey: const Key('team_up_card'),
       title: "TEAM UP",
       height: height,
-      glowColor: const Color(0xFFFFB300),
+      glowColor: const Color(0xFFE040FB),
       accentColor: const Color(0xFFFFD700),
       cardGradient: const [
-        Color(0xFF1E3898),
-        Color(0xFF122266),
-        Color(0xFF060D2D),
+        Color(0xFF6A1B9A),
+        Color(0xFF38006B),
+        Color(0xFF1E0038),
       ],
       illustration: const TeamUpIllustration(),
       onTap: () => _openTeamUpMode(context),
@@ -1197,12 +910,13 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
       cardKey: const Key('play_vs_computer_card'),
       title: "PLAY VS COMPUTER",
       height: height,
-      glowColor: const Color(0xFFFFB300),
+      isShield: true,
+      glowColor: const Color(0xFF2979FF),
       accentColor: const Color(0xFFFFD700),
       cardGradient: const [
-        Color(0xFF0F265C),
-        Color(0xFF08173E),
-        Color(0xFF030718),
+        Color(0xFF0D47A1),
+        Color(0xFF0A2B66),
+        Color(0xFF031433),
       ],
       illustration: const PlayVsComputerIllustration(),
       onTap: () => _startGame(context, GameMode.vsComputer),
@@ -1215,12 +929,13 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
       cardKey: const Key('pass_n_play_card'),
       title: "PASS N PLAY",
       height: height,
+      isShield: true,
       glowColor: const Color(0xFFFFB300),
       accentColor: const Color(0xFFFFD700),
       cardGradient: const [
-        Color(0xFF261D5C),
-        Color(0xFF141344),
-        Color(0xFF060924),
+        Color(0xFF8D5B18),
+        Color(0xFF5A3305),
+        Color(0xFF2E1601),
       ],
       illustration: const PassNPlayIllustration(),
       onTap: _openPassNPlaySetup,
@@ -1475,8 +1190,8 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
         return SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.symmetric(
-            horizontal: constraints.maxWidth < 360 ? 12 : 20,
-            vertical: isShortScreen ? 4 : 8,
+            horizontal: constraints.maxWidth < 360 ? 10 : 16,
+            vertical: isShortScreen ? 2 : 4,
           ),
           child: ConstrainedBox(
             constraints: BoxConstraints(
@@ -1486,38 +1201,29 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 3D Emblem & Pedestal
-                _buildHeroEmblem(scale: isShortScreen ? 0.85 : 1.0),
+                // 1. Royal 3D Crown, Laurel Wreath & LUDO SUPREME Branding
+                _buildRoyalBrandingHeader(isShort: isShortScreen),
 
-                SizedBox(height: isShortScreen ? 6 : 12),
+                // 2. 3D Floating Isometric Ludo Board with Pawns & Die
+                _buildIsometricLudoBoardSection(context, isShort: isShortScreen),
 
-                // Branding Title (LUDO SUPREME + Tagline)
-                _buildBrandingTitle(isShort: isShortScreen),
-
-                SizedBox(height: isShortScreen ? 8 : 16),
-
-                // 4-Color Player Indicator Dots & Glowing Divider
-                _buildColorDotsWithSlider(),
-
-                SizedBox(height: isShortScreen ? 14 : 24),
+                SizedBox(height: isShortScreen ? 4 : 8),
 
                 // Resume Match Card (if exists)
                 if (_hasSavedMatch && _savedState != null) ...[
                   _buildResumeCard(context, _savedState!),
-                  SizedBox(height: isShortScreen ? 10 : 16),
+                  SizedBox(height: isShortScreen ? 8 : 12),
                 ],
 
-                // ==========================================
-                // GAME MODE CARDS SECTION (3 + 2 Centered)
-                // ==========================================
+                // 3. Six 3D Game Mode Cards (3 in Row 1, 3 in Row 2)
                 _buildGameModesSection(context),
 
-                SizedBox(height: isShortScreen ? 14 : 22),
+                SizedBox(height: isShortScreen ? 8 : 14),
 
-                // How to Play & Rules Link
+                // 4. How to Play & Rules Link (Golden Bordered Capsule Pill)
                 _buildRulesLink(context),
 
-                SizedBox(height: isShortScreen ? 8 : 14),
+                SizedBox(height: isShortScreen ? 6 : 10),
               ],
             ),
           ),
@@ -1526,41 +1232,205 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
     );
   }
 
-  // --- How to Play & Rules Link ---
-  Widget _buildRulesLink(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => _showRules(context),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  color: Color(0xFFFFD700),
-                  size: 16,
-                ),
-                SizedBox(width: 6),
-                Text(
-                  "How to Play & Rules",
-                  style: TextStyle(
-                    color: Color(0xFFFFD700),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+  // --- 1. Royal 3D Crown, Laurel Wreath & LUDO SUPREME Branding ---
+  Widget _buildRoyalBrandingHeader({required bool isShort}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Crown flanked by Laurel Wreaths & Sunburst Rays
+        SizedBox(
+          width: 140,
+          height: isShort ? 34 : 42,
+          child: CustomPaint(
+            painter: _HeaderCrownLaurelPainter(),
+          ),
+        ),
+        const SizedBox(height: 2),
+
+        // LUDO 3D Golden Chrome Metallic Typography
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: ShaderMask(
+            shaderCallback: (bounds) => const LinearGradient(
+              colors: [
+                Color(0xFFFFFDE7),
+                Color(0xFFFFEA79),
+                Color(0xFFFFB300),
+                Color(0xFFFF8F00),
+                Color(0xFF793B00),
+              ],
+              stops: [0.0, 0.25, 0.55, 0.82, 1.0],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ).createShader(bounds),
+            child: Text(
+              "LUDO",
+              style: TextStyle(
+                fontSize: isShort ? 28 : 34,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 3.5,
+                color: Colors.white,
+                shadows: const [
+                  Shadow(
+                    color: Color(0xFF3E1800),
+                    offset: Offset(0, 3),
+                    blurRadius: 6,
                   ),
-                ),
-                SizedBox(width: 4),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFFFFD700),
-                  size: 18,
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
+
+        // SUPREME Royal Purple Ribbon Banner with Gold Border
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 3.5),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFF8E24AA),
+                Color(0xFF6A1B9A),
+                Color(0xFF4A148C),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: const Color(0xFFFFD700),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFAB47BC).withValues(alpha: 0.55),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+              const BoxShadow(
+                color: Colors.black45,
+                blurRadius: 6,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Text(
+            "SUPREME",
+            style: TextStyle(
+              fontSize: isShort ? 12 : 14,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2.5,
+              color: Colors.white,
+              shadows: const [
+                Shadow(
+                  color: Colors.black87,
+                  offset: Offset(0, 1.5),
+                  blurRadius: 3,
                 ),
               ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+
+        // Tagline: ✦ THE CLASSIC BOARD GAME EXPERIENCE ✦
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.star_rate_rounded, color: Color(0xFFFFD700), size: 10),
+              const SizedBox(width: 4),
+              Text(
+                "THE CLASSIC BOARD GAME EXPERIENCE",
+                style: TextStyle(
+                  color: const Color(0xFFB0BEC5),
+                  fontSize: isShort ? 8.5 : 9.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.8,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.star_rate_rounded, color: Color(0xFFFFD700), size: 10),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- 2. 3D Floating Isometric Ludo Board Canvas ---
+  Widget _buildIsometricLudoBoardSection(BuildContext context, {required bool isShort}) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final boardHeight = (screenWidth * 0.45).clamp(135.0, 185.0);
+
+    return SizedBox(
+      width: double.infinity,
+      height: boardHeight,
+      child: CustomPaint(
+        painter: _IsometricBoardPainter(),
+      ),
+    );
+  }
+
+  // --- How to Play & Rules Link ---
+  Widget _buildRulesLink(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF08142C).withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: const Color(0xFFFFD700).withValues(alpha: 0.70),
+          width: 1.3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.22),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: () => _showRules(context),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    color: Color(0xFFFFD700),
+                    size: 16,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    "How to Play & Rules",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  SizedBox(width: 6),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFFFFD700),
+                    size: 18,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1722,4 +1592,738 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
     );
   }
 }
+
+/// 3D Golden Crown flanked by Laurel Wreaths and radiating light rays
+class _HeaderCrownLaurelPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height * 0.58;
+
+    // 1. Sunburst Light Rays behind crown
+    final rayPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFFFFD700).withValues(alpha: 0.45),
+          const Color(0xFFFFB300).withValues(alpha: 0.15),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset(cx, cy - 2), radius: 36))
+      ..strokeWidth = 1.6
+      ..style = PaintingStyle.stroke;
+
+    for (int i = -5; i <= 5; i++) {
+      final angle = -math.pi / 2 + (i * (math.pi / 16));
+      final p1 = Offset(cx + math.cos(angle) * 14, (cy - 4) + math.sin(angle) * 14);
+      final p2 = Offset(cx + math.cos(angle) * 34, (cy - 4) + math.sin(angle) * 34);
+      canvas.drawLine(p1, p2, rayPaint);
+    }
+
+    // 2. Laurel Wreath Branches (Left and Right)
+    final goldLeafPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFFFF59D), Color(0xFFFFD700), Color(0xFFFF8F00)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(cx - 44, cy - 18, 88, 32))
+      ..style = PaintingStyle.fill;
+
+    final leafStroke = Paint()
+      ..color = const Color(0xFF5D4037)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+
+    void drawLeaf(double x, double y, double rotation, double length, double width) {
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(rotation);
+      final leafPath = Path()
+        ..moveTo(0, 0)
+        ..quadraticBezierTo(length * 0.5, -width, length, 0)
+        ..quadraticBezierTo(length * 0.5, width, 0, 0)
+        ..close();
+      canvas.drawPath(leafPath, goldLeafPaint);
+      canvas.drawPath(leafPath, leafStroke);
+      canvas.restore();
+    }
+
+    // Left Laurel Branch (5 leaves)
+    drawLeaf(cx - 16, cy + 8, -math.pi * 0.85, 9, 3.5);
+    drawLeaf(cx - 24, cy + 4, -math.pi * 0.72, 10, 4.0);
+    drawLeaf(cx - 30, cy - 2, -math.pi * 0.58, 11, 4.0);
+    drawLeaf(cx - 32, cy - 9, -math.pi * 0.42, 11, 4.0);
+    drawLeaf(cx - 27, cy - 16, -math.pi * 0.28, 10, 3.5);
+
+    // Right Laurel Branch (5 leaves)
+    drawLeaf(cx + 16, cy + 8, -math.pi * 0.15, 9, 3.5);
+    drawLeaf(cx + 24, cy + 4, -math.pi * 0.28, 10, 4.0);
+    drawLeaf(cx + 30, cy - 2, -math.pi * 0.42, 11, 4.0);
+    drawLeaf(cx + 32, cy - 9, -math.pi * 0.58, 11, 4.0);
+    drawLeaf(cx + 27, cy - 16, -math.pi * 0.72, 10, 3.5);
+
+    // 3. Velvet interior crown cap
+    final velvetPath = Path()
+      ..moveTo(cx - 19, cy + 4)
+      ..quadraticBezierTo(cx - 20, cy - 8, cx, cy - 13)
+      ..quadraticBezierTo(cx + 20, cy - 8, cx + 19, cy + 4)
+      ..close();
+    final velvetPaint = Paint()
+      ..shader = const RadialGradient(
+        colors: [Color(0xFFE91E63), Color(0xFF880E4F), Color(0xFF31021A)],
+        center: Alignment(0, -0.3),
+        radius: 0.85,
+      ).createShader(Rect.fromLTWH(cx - 20, cy - 14, 40, 20));
+    canvas.drawPath(velvetPath, velvetPaint);
+
+    // 4. Crown Gold Body & 5 Peaks
+    final crownPath = Path()
+      ..moveTo(cx - 22, cy + 6)
+      ..lineTo(cx - 23, cy - 4) // Outer left peak
+      ..lineTo(cx - 16, cy + 1) // valley
+      ..lineTo(cx - 11, cy - 9) // Mid left peak
+      ..lineTo(cx - 5, cy + 0) // valley
+      ..lineTo(cx, cy - 15) // Tall Center Peak
+      ..lineTo(cx + 5, cy + 0) // valley
+      ..lineTo(cx + 11, cy - 9) // Mid right peak
+      ..lineTo(cx + 16, cy + 1) // valley
+      ..lineTo(cx + 23, cy - 4) // Outer right peak
+      ..lineTo(cx + 22, cy + 6)
+      ..quadraticBezierTo(cx, cy + 9, cx - 22, cy + 6)
+      ..close();
+
+    final crownGoldPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0xFFFFFDE7),
+          Color(0xFFFFEA79),
+          Color(0xFFFFB300),
+          Color(0xFFFF8F00),
+          Color(0xFFB26A00),
+        ],
+        stops: [0.0, 0.25, 0.55, 0.82, 1.0],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(cx - 24, cy - 16, 48, 26))
+      ..style = PaintingStyle.fill;
+
+    final crownShadowPaint = Paint()
+      ..color = const Color(0x66000000)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+    canvas.drawPath(crownPath.shift(const Offset(0, 1.8)), crownShadowPaint);
+    canvas.drawPath(crownPath, crownGoldPaint);
+
+    final crownOutlinePaint = Paint()
+      ..color = const Color(0xFF5D4037)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawPath(crownPath, crownOutlinePaint);
+
+    // 5. Golden Spheres / Pearls on Peak tips
+    void drawPeakPearl(double x, double y, double radius) {
+      final pearlPaint = Paint()
+        ..shader = RadialGradient(
+          colors: const [Color(0xFFFFFFFF), Color(0xFFFFD54F), Color(0xFFFF8F00)],
+          center: const Alignment(-0.35, -0.35),
+          radius: 0.8,
+        ).createShader(Rect.fromCircle(center: Offset(x, y), radius: radius));
+      canvas.drawCircle(Offset(x, y), radius, pearlPaint);
+      canvas.drawCircle(Offset(x, y), radius, leafStroke);
+    }
+
+    drawPeakPearl(cx, cy - 15, 3.2);
+    drawPeakPearl(cx - 11, cy - 9, 2.4);
+    drawPeakPearl(cx + 11, cy - 9, 2.4);
+    drawPeakPearl(cx - 23, cy - 4, 1.9);
+    drawPeakPearl(cx + 23, cy - 4, 1.9);
+
+    // 6. Base Arch Band with Gems
+    final bandPath = Path()
+      ..moveTo(cx - 22, cy + 4)
+      ..quadraticBezierTo(cx, cy + 7, cx + 22, cy + 4)
+      ..lineTo(cx + 21, cy + 8)
+      ..quadraticBezierTo(cx, cy + 11, cx - 21, cy + 8)
+      ..close();
+
+    final bandPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFFFEA79), Color(0xFFFFB300), Color(0xFFE65100)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(cx - 22, cy + 4, 44, 7));
+    canvas.drawPath(bandPath, bandPaint);
+
+    // Gems on band
+    canvas.drawCircle(Offset(cx, cy + 8), 1.8, Paint()..color = const Color(0xFFE91E63));
+    canvas.drawCircle(Offset(cx - 10, cy + 7), 1.5, Paint()..color = const Color(0xFF00E5FF));
+    canvas.drawCircle(Offset(cx + 10, cy + 7), 1.5, Paint()..color = const Color(0xFF00E5FF));
+
+    // Center Crown Ruby Diamond on Center Peak
+    final rubyPath = Path()
+      ..moveTo(cx, cy - 9)
+      ..lineTo(cx + 3.2, cy - 5.5)
+      ..lineTo(cx, cy - 2)
+      ..lineTo(cx - 3.2, cy - 5.5)
+      ..close();
+    final rubyPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFFF5252), Color(0xFFD50000), Color(0xFF880E4F)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(cx - 3.5, cy - 9, 7, 7));
+    canvas.drawPath(rubyPath, rubyPaint);
+    canvas.drawPath(rubyPath, leafStroke);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// 3D Perspective Isometric Ludo Board with Pillars, 4 Quadrants, Pawns & 3D Center Die
+class _IsometricBoardPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height * 0.48;
+
+    // Board perspective parameters
+    final baseHalfWidth = (size.width * 0.38).clamp(110.0, 155.0);
+    final baseHalfHeight = (size.height * 0.36).clamp(48.0, 68.0);
+    const depthExtrusion = 10.0; // 3D bevel thickness
+
+    // Helper: Map normalized 2D board coords (bx, by) in [-1, 1] to perspective screen coords
+    Offset toBoard(double bx, double by) {
+      final perspective = 1.0 + (by * 0.28);
+      final x = cx + bx * (baseHalfWidth * perspective);
+      final y = cy + by * baseHalfHeight;
+      return Offset(x, y);
+    }
+
+    // --- 1. Background Palace Hall Pillars & Royal Banners ---
+    _drawPalacePillarsAndBanners(canvas, size);
+
+    // --- 2. Board Contact & Ambient Shadow ---
+    final shadowPath = Path()
+      ..moveTo(toBoard(-1.03, -1.03).dx, toBoard(-1.03, -1.03).dy + depthExtrusion + 4)
+      ..lineTo(toBoard(1.03, -1.03).dx, toBoard(1.03, -1.03).dy + depthExtrusion + 4)
+      ..lineTo(toBoard(1.03, 1.03).dx, toBoard(1.03, 1.03).dy + depthExtrusion + 6)
+      ..lineTo(toBoard(-1.03, 1.03).dx, toBoard(-1.03, 1.03).dy + depthExtrusion + 6)
+      ..close();
+    canvas.drawPath(
+      shadowPath,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.55)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10.0),
+    );
+
+    // --- 3. 3D Golden Bevel Extrusion (Front & Side Faces) ---
+    final frontFacePath = Path()
+      ..moveTo(toBoard(-1.0, 1.0).dx, toBoard(-1.0, 1.0).dy)
+      ..lineTo(toBoard(1.0, 1.0).dx, toBoard(1.0, 1.0).dy)
+      ..lineTo(toBoard(1.0, 1.0).dx, toBoard(1.0, 1.0).dy + depthExtrusion)
+      ..lineTo(toBoard(-1.0, 1.0).dx, toBoard(-1.0, 1.0).dy + depthExtrusion)
+      ..close();
+
+    final frontBevelPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0xFF8D6E12),
+          Color(0xFFFFB300),
+          Color(0xFFFFD54F),
+          Color(0xFFFF8F00),
+          Color(0xFF5D4037),
+        ],
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+      ).createShader(Rect.fromLTWH(cx - baseHalfWidth * 1.3, cy + baseHalfHeight, baseHalfWidth * 2.6, depthExtrusion));
+    canvas.drawPath(frontFacePath, frontBevelPaint);
+
+    // Left bevel face
+    final leftFacePath = Path()
+      ..moveTo(toBoard(-1.0, -1.0).dx, toBoard(-1.0, -1.0).dy)
+      ..lineTo(toBoard(-1.0, 1.0).dx, toBoard(-1.0, 1.0).dy)
+      ..lineTo(toBoard(-1.0, 1.0).dx, toBoard(-1.0, 1.0).dy + depthExtrusion)
+      ..lineTo(toBoard(-1.0, -1.0).dx, toBoard(-1.0, -1.0).dy + depthExtrusion * 0.6)
+      ..close();
+    final leftBevelPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF3E2723), Color(0xFF6D4C41), Color(0xFF8D6E12)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(cx - baseHalfWidth * 1.3, cy - baseHalfHeight, baseHalfWidth, baseHalfHeight * 2));
+    canvas.drawPath(leftFacePath, leftBevelPaint);
+
+    // Right bevel face
+    final rightFacePath = Path()
+      ..moveTo(toBoard(1.0, -1.0).dx, toBoard(1.0, -1.0).dy)
+      ..lineTo(toBoard(1.0, 1.0).dx, toBoard(1.0, 1.0).dy)
+      ..lineTo(toBoard(1.0, 1.0).dx, toBoard(1.0, 1.0).dy + depthExtrusion)
+      ..lineTo(toBoard(1.0, -1.0).dx, toBoard(1.0, -1.0).dy + depthExtrusion * 0.6)
+      ..close();
+    final rightBevelPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF3E2723), Color(0xFF5D4037), Color(0xFF8D6E12)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(cx + baseHalfWidth * 0.5, cy - baseHalfHeight, baseHalfWidth, baseHalfHeight * 2));
+    canvas.drawPath(rightFacePath, rightBevelPaint);
+
+    // --- 4. Outer Metallic Golden Rim Frame ---
+    final boardFramePath = Path()
+      ..moveTo(toBoard(-1.0, -1.0).dx, toBoard(-1.0, -1.0).dy)
+      ..lineTo(toBoard(1.0, -1.0).dx, toBoard(1.0, -1.0).dy)
+      ..lineTo(toBoard(1.0, 1.0).dx, toBoard(1.0, 1.0).dy)
+      ..lineTo(toBoard(-1.0, 1.0).dx, toBoard(-1.0, 1.0).dy)
+      ..close();
+
+    final goldRimPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0xFFFFFDE7),
+          Color(0xFFFFEA79),
+          Color(0xFFFFB300),
+          Color(0xFFFF8F00),
+          Color(0xFF8D6E12),
+        ],
+        stops: [0.0, 0.25, 0.55, 0.85, 1.0],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: baseHalfWidth * 1.3))
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(boardFramePath, goldRimPaint);
+
+    // Inner surface backing
+    final innerSurfacePath = Path()
+      ..moveTo(toBoard(-0.95, -0.95).dx, toBoard(-0.95, -0.95).dy)
+      ..lineTo(toBoard(0.95, -0.95).dx, toBoard(0.95, -0.95).dy)
+      ..lineTo(toBoard(0.95, 0.95).dx, toBoard(0.95, 0.95).dy)
+      ..lineTo(toBoard(-0.95, 0.95).dx, toBoard(-0.95, 0.95).dy)
+      ..close();
+    canvas.drawPath(innerSurfacePath, Paint()..color = const Color(0xFFFAF7F2));
+
+    // --- 5. Four Colored Quadrants (Bases) ---
+    // Helper to draw a colored quadrant base with 4 pawn sockets
+    void drawQuadrant({
+      required double x1,
+      required double y1,
+      required double x2,
+      required double y2,
+      required Color baseColor,
+      required Color darkColor,
+    }) {
+      final quadPath = Path()
+        ..moveTo(toBoard(x1, y1).dx, toBoard(x1, y1).dy)
+        ..lineTo(toBoard(x2, y1).dx, toBoard(x2, y1).dy)
+        ..lineTo(toBoard(x2, y2).dx, toBoard(x2, y2).dy)
+        ..lineTo(toBoard(x1, y2).dx, toBoard(x1, y2).dy)
+        ..close();
+
+      final quadPaint = Paint()
+        ..shader = LinearGradient(
+          colors: [baseColor, darkColor],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(Rect.fromPoints(toBoard(x1, y1), toBoard(x2, y2)));
+      canvas.drawPath(quadPath, quadPaint);
+
+      // White inner panel
+      final innerPadX = (x2 - x1) * 0.15;
+      final innerPadY = (y2 - y1) * 0.15;
+      final whitePath = Path()
+        ..moveTo(toBoard(x1 + innerPadX, y1 + innerPadY).dx, toBoard(x1 + innerPadX, y1 + innerPadY).dy)
+        ..lineTo(toBoard(x2 - innerPadX, y1 + innerPadY).dx, toBoard(x2 - innerPadX, y1 + innerPadY).dy)
+        ..lineTo(toBoard(x2 - innerPadX, y2 - innerPadY).dx, toBoard(x2 - innerPadX, y2 - innerPadY).dy)
+        ..lineTo(toBoard(x1 + innerPadX, y2 - innerPadY).dx, toBoard(x1 + innerPadX, y2 - innerPadY).dy)
+        ..close();
+      canvas.drawPath(whitePath, Paint()..color = Colors.white);
+
+      // 4 pawn circles inside white panel
+      final cx1 = x1 + (x2 - x1) * 0.34;
+      final cx2 = x1 + (x2 - x1) * 0.66;
+      final cy1 = y1 + (y2 - y1) * 0.34;
+      final cy2 = y1 + (y2 - y1) * 0.66;
+      final dotPaint = Paint()..color = baseColor;
+      for (final p in [
+        toBoard(cx1, cy1),
+        toBoard(cx2, cy1),
+        toBoard(cx1, cy2),
+        toBoard(cx2, cy2),
+      ]) {
+        canvas.drawOval(Rect.fromCenter(center: p, width: 7.0, height: 4.5), dotPaint);
+      }
+    }
+
+    // Top-Left: RED
+    drawQuadrant(
+      x1: -0.92,
+      y1: -0.92,
+      x2: -0.22,
+      y2: -0.22,
+      baseColor: const Color(0xFFE53935),
+      darkColor: const Color(0xFFB71C1C),
+    );
+
+    // Top-Right: GREEN
+    drawQuadrant(
+      x1: 0.22,
+      y1: -0.92,
+      x2: 0.92,
+      y2: -0.22,
+      baseColor: const Color(0xFF43A047),
+      darkColor: const Color(0xFF1B5E20),
+    );
+
+    // Bottom-Left: BLUE
+    drawQuadrant(
+      x1: -0.92,
+      y1: 0.22,
+      x2: -0.22,
+      y2: 0.92,
+      baseColor: const Color(0xFF1E88E5),
+      darkColor: const Color(0xFF0D47A1),
+    );
+
+    // Bottom-Right: YELLOW
+    drawQuadrant(
+      x1: 0.22,
+      y1: 0.22,
+      x2: 0.92,
+      y2: 0.92,
+      baseColor: const Color(0xFFFFB300),
+      darkColor: const Color(0xFFE65100),
+    );
+
+    // --- 6. Colored Home Run Paths & Center Triangle ---
+    // Red home track (horizontal from left to center)
+    final redTrack = Path()
+      ..moveTo(toBoard(-0.92, -0.07).dx, toBoard(-0.92, -0.07).dy)
+      ..lineTo(toBoard(-0.20, -0.07).dx, toBoard(-0.20, -0.07).dy)
+      ..lineTo(toBoard(-0.20, 0.07).dx, toBoard(-0.20, 0.07).dy)
+      ..lineTo(toBoard(-0.92, 0.07).dx, toBoard(-0.92, 0.07).dy)
+      ..close();
+    canvas.drawPath(redTrack, Paint()..color = const Color(0xFFE53935));
+
+    // Green home track (vertical from top to center)
+    final greenTrack = Path()
+      ..moveTo(toBoard(-0.07, -0.92).dx, toBoard(-0.07, -0.92).dy)
+      ..lineTo(toBoard(0.07, -0.92).dx, toBoard(0.07, -0.92).dy)
+      ..lineTo(toBoard(0.07, -0.20).dx, toBoard(0.07, -0.20).dy)
+      ..lineTo(toBoard(-0.07, -0.20).dx, toBoard(-0.07, -0.20).dy)
+      ..close();
+    canvas.drawPath(greenTrack, Paint()..color = const Color(0xFF43A047));
+
+    // Blue home track (vertical from bottom to center)
+    final blueTrack = Path()
+      ..moveTo(toBoard(-0.07, 0.20).dx, toBoard(-0.07, 0.20).dy)
+      ..lineTo(toBoard(0.07, 0.20).dx, toBoard(0.07, 0.20).dy)
+      ..lineTo(toBoard(0.07, 0.92).dx, toBoard(0.07, 0.92).dy)
+      ..lineTo(toBoard(-0.07, 0.92).dx, toBoard(-0.07, 0.92).dy)
+      ..close();
+    canvas.drawPath(blueTrack, Paint()..color = const Color(0xFF1E88E5));
+
+    // Yellow home track (horizontal from right to center)
+    final yellowTrack = Path()
+      ..moveTo(toBoard(0.20, -0.07).dx, toBoard(0.20, -0.07).dy)
+      ..lineTo(toBoard(0.92, -0.07).dx, toBoard(0.92, -0.07).dy)
+      ..lineTo(toBoard(0.92, 0.07).dx, toBoard(0.92, 0.07).dy)
+      ..lineTo(toBoard(0.20, 0.07).dx, toBoard(0.20, 0.07).dy)
+      ..close();
+    canvas.drawPath(yellowTrack, Paint()..color = const Color(0xFFFFB300));
+
+    // Center Home Finish Triangles
+    final centerPt = toBoard(0.0, 0.0);
+    // Red Triangle (Left)
+    final redTri = Path()
+      ..moveTo(centerPt.dx, centerPt.dy)
+      ..lineTo(toBoard(-0.20, -0.20).dx, toBoard(-0.20, -0.20).dy)
+      ..lineTo(toBoard(-0.20, 0.20).dx, toBoard(-0.20, 0.20).dy)
+      ..close();
+    canvas.drawPath(redTri, Paint()..color = const Color(0xFFD32F2F));
+
+    // Green Triangle (Top)
+    final greenTri = Path()
+      ..moveTo(centerPt.dx, centerPt.dy)
+      ..lineTo(toBoard(-0.20, -0.20).dx, toBoard(-0.20, -0.20).dy)
+      ..lineTo(toBoard(0.20, -0.20).dx, toBoard(0.20, -0.20).dy)
+      ..close();
+    canvas.drawPath(greenTri, Paint()..color = const Color(0xFF388E3C));
+
+    // Yellow Triangle (Right)
+    final yellowTri = Path()
+      ..moveTo(centerPt.dx, centerPt.dy)
+      ..lineTo(toBoard(0.20, -0.20).dx, toBoard(0.20, -0.20).dy)
+      ..lineTo(toBoard(0.20, 0.20).dx, toBoard(0.20, 0.20).dy)
+      ..close();
+    canvas.drawPath(yellowTri, Paint()..color = const Color(0xFFFFA000));
+
+    // Blue Triangle (Bottom)
+    final blueTri = Path()
+      ..moveTo(centerPt.dx, centerPt.dy)
+      ..lineTo(toBoard(-0.20, 0.20).dx, toBoard(-0.20, 0.20).dy)
+      ..lineTo(toBoard(0.20, 0.20).dx, toBoard(0.20, 0.20).dy)
+      ..close();
+    canvas.drawPath(blueTri, Paint()..color = const Color(0xFF1976D2));
+
+    // Track grid lines
+    final gridPaint = Paint()
+      ..color = const Color(0xFFCFD8DC)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6;
+    for (double i = -0.92; i <= 0.92; i += 0.14) {
+      canvas.drawLine(toBoard(i, -0.20), toBoard(i, 0.20), gridPaint);
+      canvas.drawLine(toBoard(-0.20, i), toBoard(0.20, i), gridPaint);
+    }
+
+    // --- 7. Standing 3D Pawns ---
+    // Helper to draw a rich 3D turned pawn
+    void drawPawn3D({
+      required Offset boardPos,
+      required Color primaryColor,
+      required Color darkColor,
+      required Color lightColor,
+      double scale = 1.0,
+    }) {
+      final px = boardPos.dx;
+      final py = boardPos.dy;
+
+      // Soft contact shadow on board
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(px, py + 1), width: 18 * scale, height: 7 * scale),
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.45)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+      );
+
+      // Base ring
+      final baseRect = Rect.fromCenter(center: Offset(px, py - 3 * scale), width: 14 * scale, height: 6 * scale);
+      canvas.drawOval(
+        baseRect,
+        Paint()
+          ..shader = LinearGradient(
+            colors: [lightColor, primaryColor, darkColor],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ).createShader(baseRect),
+      );
+
+      // Torso / Stem
+      final torsoPath = Path()
+        ..moveTo(px - 5 * scale, py - 4 * scale)
+        ..quadraticBezierTo(px - 2.5 * scale, py - 12 * scale, px - 3.5 * scale, py - 15 * scale)
+        ..lineTo(px + 3.5 * scale, py - 15 * scale)
+        ..quadraticBezierTo(px + 2.5 * scale, py - 12 * scale, px + 5 * scale, py - 4 * scale)
+        ..close();
+      canvas.drawPath(
+        torsoPath,
+        Paint()
+          ..shader = LinearGradient(
+            colors: [lightColor, primaryColor, darkColor],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ).createShader(Rect.fromLTWH(px - 6 * scale, py - 16 * scale, 12 * scale, 14 * scale)),
+      );
+
+      // Golden Collar Ring
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(px, py - 15 * scale), width: 8.5 * scale, height: 3.5 * scale),
+        Paint()
+          ..shader = const LinearGradient(
+            colors: [Color(0xFFFFFDE7), Color(0xFFFFD700), Color(0xFFFF8F00)],
+          ).createShader(Rect.fromLTWH(px - 5 * scale, py - 17 * scale, 10 * scale, 4 * scale)),
+      );
+
+      // 3D Spherical Head with Specular Gloss
+      final headCenter = Offset(px, py - 20 * scale);
+      final headRadius = 5.2 * scale;
+      final headPaint = Paint()
+        ..shader = RadialGradient(
+          colors: [Colors.white, lightColor, primaryColor, darkColor],
+          stops: const [0.0, 0.22, 0.65, 1.0],
+          center: const Alignment(-0.35, -0.40),
+          radius: 0.85,
+        ).createShader(Rect.fromCircle(center: headCenter, radius: headRadius));
+      canvas.drawCircle(headCenter, headRadius, headPaint);
+
+      // Bright specular glint
+      canvas.drawCircle(
+        Offset(headCenter.dx - 1.8 * scale, headCenter.dy - 1.8 * scale),
+        1.3 * scale,
+        Paint()..color = Colors.white.withValues(alpha: 0.9),
+      );
+    }
+
+    // Draw 4 pawns proudly positioned in their home corners
+    drawPawn3D(
+      boardPos: toBoard(-0.55, -0.55),
+      primaryColor: const Color(0xFFE53935),
+      darkColor: const Color(0xFF880E4F),
+      lightColor: const Color(0xFFFF8A80),
+      scale: 1.05,
+    );
+    drawPawn3D(
+      boardPos: toBoard(0.55, -0.55),
+      primaryColor: const Color(0xFF2E7D32),
+      darkColor: const Color(0xFF003300),
+      lightColor: const Color(0xFF81C784),
+      scale: 1.05,
+    );
+    drawPawn3D(
+      boardPos: toBoard(-0.55, 0.55),
+      primaryColor: const Color(0xFF1565C0),
+      darkColor: const Color(0xFF0D47A1),
+      lightColor: const Color(0xFF64B5F6),
+      scale: 1.15,
+    );
+    drawPawn3D(
+      boardPos: toBoard(0.55, 0.55),
+      primaryColor: const Color(0xFFFF8F00),
+      darkColor: const Color(0xFFE65100),
+      lightColor: const Color(0xFFFFD54F),
+      scale: 1.15,
+    );
+
+    // --- 8. Center 3D Isometric White Die ---
+    _drawCenter3DDie(canvas, centerPt);
+  }
+
+  void _drawPalacePillarsAndBanners(Canvas canvas, Size size) {
+    // Left Pillar
+    final leftPillarRect = Rect.fromLTWH(0, 0, 26, size.height);
+    final leftPillarPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF1E2F54), Color(0xFF0D1B36), Color(0xFF060B18)],
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+      ).createShader(leftPillarRect);
+    canvas.drawRect(leftPillarRect, leftPillarPaint);
+
+    // Left Purple Banner
+    final leftBannerPath = Path()
+      ..moveTo(8, 0)
+      ..lineTo(22, 0)
+      ..lineTo(22, size.height * 0.75)
+      ..lineTo(15, size.height * 0.82)
+      ..lineTo(8, size.height * 0.75)
+      ..close();
+    final bannerPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF8E24AA), Color(0xFF6A1B9A), Color(0xFF4A148C)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(8, 0, 14, size.height * 0.85));
+    canvas.drawPath(leftBannerPath, bannerPaint);
+    // Gold crown insignia on left banner
+    canvas.drawCircle(Offset(15, size.height * 0.38), 3.0, Paint()..color = const Color(0xFFFFD700));
+
+    // Right Pillar
+    final rightPillarRect = Rect.fromLTWH(size.width - 26, 0, 26, size.height);
+    final rightPillarPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF060B18), Color(0xFF0D1B36), Color(0xFF1E2F54)],
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+      ).createShader(rightPillarRect);
+    canvas.drawRect(rightPillarRect, rightPillarPaint);
+
+    // Right Purple Banner
+    final rightBannerPath = Path()
+      ..moveTo(size.width - 22, 0)
+      ..lineTo(size.width - 8, 0)
+      ..lineTo(size.width - 8, size.height * 0.75)
+      ..lineTo(size.width - 15, size.height * 0.82)
+      ..lineTo(size.width - 22, size.height * 0.75)
+      ..close();
+    canvas.drawPath(rightBannerPath, bannerPaint);
+    // Gold crown insignia on right banner
+    canvas.drawCircle(Offset(size.width - 15, size.height * 0.38), 3.0, Paint()..color = const Color(0xFFFFD700));
+  }
+
+  void _drawCenter3DDie(Canvas canvas, Offset center) {
+    final dx = center.dx;
+    final dy = center.dy - 6;
+
+    // Contact drop shadow on board
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(dx, dy + 18), width: 34, height: 14),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.55)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.0),
+    );
+
+    // 1. Top Face (Diamond/Rhombus - Bright white)
+    final topFace = Path()
+      ..moveTo(dx, dy - 18)
+      ..lineTo(dx + 16, dy - 9)
+      ..lineTo(dx, dy)
+      ..lineTo(dx - 16, dy - 9)
+      ..close();
+    final topPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFFFFFFF), Color(0xFFF1F5F9)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(dx - 16, dy - 18, 32, 18));
+    canvas.drawPath(topFace, topPaint);
+
+    // 2. Left Face (Medium light white)
+    final leftFace = Path()
+      ..moveTo(dx - 16, dy - 9)
+      ..lineTo(dx, dy)
+      ..lineTo(dx, dy + 16)
+      ..lineTo(dx - 16, dy + 7)
+      ..close();
+    final leftPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFE2E8F0), Color(0xFFCBD5E1)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(dx - 16, dy - 9, 16, 25));
+    canvas.drawPath(leftFace, leftPaint);
+
+    // 3. Right Face (Shaded white)
+    final rightFace = Path()
+      ..moveTo(dx, dy)
+      ..lineTo(dx + 16, dy - 9)
+      ..lineTo(dx + 16, dy + 7)
+      ..lineTo(dx, dy + 16)
+      ..close();
+    final rightPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFCBD5E1), Color(0xFF94A3B8)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(dx, dy - 9, 16, 25));
+    canvas.drawPath(rightFace, rightPaint);
+
+    // Outer subtle border stroke
+    final edgePaint = Paint()
+      ..color = const Color(0xFF64748B).withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    canvas.drawPath(topFace, edgePaint);
+    canvas.drawPath(leftFace, edgePaint);
+    canvas.drawPath(rightFace, edgePaint);
+
+    // Center Pip on Top Face (Indented black circle)
+    final pipPaint = Paint()
+      ..shader = const RadialGradient(
+        colors: [Color(0xFF0F172A), Color(0xFF334155)],
+        radius: 0.8,
+      ).createShader(Rect.fromCircle(center: Offset(dx, dy - 9), radius: 2.8));
+    canvas.drawOval(Rect.fromCenter(center: Offset(dx, dy - 9), width: 5.2, height: 3.2), pipPaint);
+
+    // Pips on Left Face (3 dots diagonal)
+    for (int i = -1; i <= 1; i++) {
+      final pipPos = Offset(dx - 8 + (i * 4.5), dy + 3.5 + (i * 4.5));
+      canvas.drawOval(Rect.fromCenter(center: pipPos, width: 3.2, height: 3.8), pipPaint);
+    }
+
+    // Pips on Right Face (2 dots diagonal)
+    canvas.drawOval(Rect.fromCenter(center: Offset(dx + 5, dy + 2), width: 3.2, height: 3.8), pipPaint);
+    canvas.drawOval(Rect.fromCenter(center: Offset(dx + 11, dy + 9), width: 3.2, height: 3.8), pipPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 
