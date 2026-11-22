@@ -56,163 +56,194 @@ class _GameModeCardState extends State<GameModeCard> {
           Color(0xFF040F2D), // Midnight Perimeter
         ];
 
+    Widget buildInnerCardContent() {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onTap,
+          onHighlightChanged: (highlighted) {
+            if (mounted) {
+              setState(() => _isPressed = highlighted);
+            }
+          },
+          splashColor: widget.accentColor.withValues(alpha: 0.22),
+          highlightColor: Colors.white.withValues(alpha: 0.12),
+          child: Stack(
+            children: [
+              // 1. Core Card Content (Illustration + 3D Banner)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Upper Illustration Arena
+                  Expanded(
+                    child: widget.illustration,
+                  ),
+
+                  // Lower 3D Golden Plaque Title Banner
+                  _buildGoldenTitleBanner(
+                    widget.title,
+                    isVertical: widget.isVertical,
+                  ),
+                  if (widget.isShield) const SizedBox(height: 6.0),
+                ],
+              ),
+
+              // 2. Glossy Specular Glass Reflection Sheen
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: widget.height * 0.46,
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withValues(alpha: 0.20),
+                          Colors.white.withValues(alpha: 0.05),
+                          Colors.transparent,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        stops: const [0.0, 0.48, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 3. Top Specular Highlight Edge Line
+              Positioned(
+                top: 0,
+                left: 14,
+                right: 14,
+                height: 1.5,
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          Colors.white.withValues(alpha: 0.70),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 4. Decorative Golden Corner Rivets / Studs
+              Positioned(
+                top: 5,
+                left: 5,
+                child: _buildCornerStud(),
+              ),
+              Positioned(
+                top: 5,
+                right: 5,
+                child: _buildCornerStud(),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final cardBody = widget.isShield
+        ? CustomPaint(
+            painter: _ShieldCardBorderPainter(
+              glowColor: widget.glowColor,
+              isPressed: _isPressed,
+            ),
+            child: ClipPath(
+              clipper: _ShieldCardClipper(),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(0.0, -0.2),
+                    radius: 0.90,
+                    colors: effectiveColors,
+                  ),
+                ),
+                child: buildInnerCardContent(),
+              ),
+            ),
+          )
+        : AnimatedContainer(
+            duration: const Duration(milliseconds: 110),
+            curve: Curves.easeOutCubic,
+            width: widget.width,
+            height: widget.height,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              // 3D Metallic Golden Outer Bevel Frame (matches emblem frame)
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFFFFFDE7), // Bright top highlight
+                  Color(0xFFFFE082), // Light warm gold
+                  Color(0xFFFFB300), // Pure golden luster
+                  Color(0xFFFF8F00), // Amber mid-tone
+                  Color(0xFF8D4B00), // Deep bronze bevel edge
+                  Color(0xFFFFD54F), // Bottom reflection
+                ],
+                stops: [0.0, 0.18, 0.42, 0.68, 0.88, 1.0],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                // Layer 1: Warm Golden Halo Bloom (matching emblem outer glow)
+                BoxShadow(
+                  color: widget.glowColor.withValues(
+                    alpha: _isPressed ? 0.65 : 0.42,
+                  ),
+                  blurRadius: _isPressed ? 14 : 24,
+                  spreadRadius: _isPressed ? 1.0 : 3.0,
+                  offset: const Offset(0, 4),
+                ),
+                // Layer 2: Deep 3D Drop Shadow (Floating altitude)
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.78),
+                  blurRadius: 18,
+                  offset: const Offset(0, 9),
+                ),
+                // Layer 3: Sharp contact rim shadow
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.92),
+                  blurRadius: 5,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(3.2), // Physical golden rim thickness
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(19),
+                // Dual Gold Rim: Secondary inner golden border like the emblem
+                border: Border.all(
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.55),
+                  width: 1.1,
+                ),
+                // Deep Radial Sapphire Background
+                gradient: RadialGradient(
+                  center: const Alignment(0.0, -0.2),
+                  radius: 0.90,
+                  colors: effectiveColors,
+                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: buildInnerCardContent(),
+            ),
+          );
+
     final cardContent = AnimatedScale(
       scale: _isPressed ? 0.96 : 1.0,
       duration: const Duration(milliseconds: 110),
       curve: Curves.easeOutCubic,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 110),
-        curve: Curves.easeOutCubic,
+      child: SizedBox(
         width: widget.width,
         height: widget.height,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          // 3D Metallic Golden Outer Bevel Frame (matches emblem frame)
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFFFFFDE7), // Bright top highlight
-              Color(0xFFFFE082), // Light warm gold
-              Color(0xFFFFB300), // Pure golden luster
-              Color(0xFFFF8F00), // Amber mid-tone
-              Color(0xFF8D4B00), // Deep bronze bevel edge
-              Color(0xFFFFD54F), // Bottom reflection
-            ],
-            stops: [0.0, 0.18, 0.42, 0.68, 0.88, 1.0],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            // Layer 1: Warm Golden Halo Bloom (matching emblem outer glow)
-            BoxShadow(
-              color: widget.glowColor.withValues(
-                alpha: _isPressed ? 0.65 : 0.42,
-              ),
-              blurRadius: _isPressed ? 14 : 24,
-              spreadRadius: _isPressed ? 1.0 : 3.0,
-              offset: const Offset(0, 4),
-            ),
-            // Layer 2: Deep 3D Drop Shadow (Floating altitude)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.78),
-              blurRadius: 18,
-              offset: const Offset(0, 9),
-            ),
-            // Layer 3: Sharp contact rim shadow
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.92),
-              blurRadius: 5,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(3.2), // Physical golden rim thickness
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(19),
-            // Dual Gold Rim: Secondary inner golden border like the emblem
-            border: Border.all(
-              color: const Color(0xFFFFD700).withValues(alpha: 0.55),
-              width: 1.1,
-            ),
-            // Deep Radial Sapphire Background
-            gradient: RadialGradient(
-              center: const Alignment(0.0, -0.2),
-              radius: 0.90,
-              colors: effectiveColors,
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: widget.onTap,
-              onHighlightChanged: (highlighted) {
-                if (mounted) {
-                  setState(() => _isPressed = highlighted);
-                }
-              },
-              splashColor: widget.accentColor.withValues(alpha: 0.22),
-              highlightColor: Colors.white.withValues(alpha: 0.12),
-              child: Stack(
-                children: [
-                  // 1. Core Card Content (Illustration + 3D Banner)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Upper Illustration Arena
-                      Expanded(
-                        child: widget.illustration,
-                      ),
-
-                      // Lower 3D Golden Plaque Title Banner
-                      _buildGoldenTitleBanner(
-                        widget.title,
-                        isVertical: widget.isVertical,
-                      ),
-                    ],
-                  ),
-
-                  // 2. Glossy Specular Glass Reflection Sheen
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: widget.height * 0.46,
-                    child: IgnorePointer(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.white.withValues(alpha: 0.20),
-                              Colors.white.withValues(alpha: 0.05),
-                              Colors.transparent,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            stops: const [0.0, 0.48, 1.0],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // 3. Top Specular Highlight Edge Line
-                  Positioned(
-                    top: 0,
-                    left: 14,
-                    right: 14,
-                    height: 1.5,
-                    child: IgnorePointer(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.transparent,
-                              Colors.white.withValues(alpha: 0.70),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // 4. Decorative Golden Corner Rivets / Studs
-                  Positioned(
-                    top: 5,
-                    left: 5,
-                    child: _buildCornerStud(),
-                  ),
-                  Positioned(
-                    top: 5,
-                    right: 5,
-                    child: _buildCornerStud(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        child: cardBody,
       ),
     );
 
@@ -286,7 +317,7 @@ class _GameModeCardState extends State<GameModeCard> {
       width: double.infinity,
       padding: EdgeInsets.symmetric(
         horizontal: 4,
-        vertical: isVertical ? 6.0 : 4.5,
+        vertical: isVertical ? 5.5 : 4.0,
       ),
       margin: const EdgeInsets.only(bottom: 5, left: 4, right: 4),
       decoration: BoxDecoration(
@@ -302,29 +333,55 @@ class _GameModeCardState extends State<GameModeCard> {
           fit: BoxFit.scaleDown,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: Row(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildBannerNotch(),
-                const SizedBox(width: 4),
-                Text(
-                  titleText,
-                  maxLines: 2,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Roboto',
-                    fontSize: isVertical ? 12.5 : 11.2,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
-                    color: Colors.white,
-                    shadows: const [
-                      Shadow(offset: Offset(0, 1.5), blurRadius: 3, color: Colors.black),
-                      Shadow(offset: Offset(0, 3), blurRadius: 6, color: Colors.black87),
-                    ],
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildBannerNotch(),
+                    const SizedBox(width: 4),
+                    Text(
+                      titleText,
+                      maxLines: 2,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        fontSize: isVertical ? 12.5 : 11.2,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                        color: Colors.white,
+                        shadows: const [
+                          Shadow(offset: Offset(0, 1.5), blurRadius: 3, color: Colors.black),
+                          Shadow(offset: Offset(0, 3), blurRadius: 6, color: Colors.black87),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    _buildBannerNotch(),
+                  ],
                 ),
-                const SizedBox(width: 4),
-                _buildBannerNotch(),
+                if (titleText == 'TOURNAMENTS') ...[
+                  const SizedBox(height: 1.5),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(
+                      3,
+                      (i) => const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 2.0),
+                        child: Icon(
+                          Icons.star_rounded,
+                          color: Color(0xFFFFD700),
+                          size: 9.0,
+                          shadows: [
+                            Shadow(color: Color(0xFFFFB300), blurRadius: 4),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -354,6 +411,108 @@ class _GameModeCardState extends State<GameModeCard> {
   }
 }
 
+/// Calculates the heraldic shield shape path with rounded top shoulders and downward chevron point
+Path getShieldPath(Size size, {double cornerRadius = 18.0, double chevronDepth = 11.0}) {
+  final w = size.width;
+  final h = size.height;
+  final r = cornerRadius;
+  final cd = chevronDepth;
+
+  final path = Path();
+  path.moveTo(r, 0);
+  path.lineTo(w - r, 0);
+  path.quadraticBezierTo(w, 0, w, r);
+  path.lineTo(w, h - cd - r);
+  path.quadraticBezierTo(w, h - cd, w - 4, h - cd + 2);
+  path.lineTo(w * 0.5, h);
+  path.lineTo(4, h - cd + 2);
+  path.quadraticBezierTo(0, h - cd, 0, h - cd - r);
+  path.lineTo(0, r);
+  path.quadraticBezierTo(0, 0, r, 0);
+  path.close();
+  return path;
+}
+
+/// Custom painter for the 3D Metallic Golden Outer Bevel Frame on Shield-Shaped Cards
+class _ShieldCardBorderPainter extends CustomPainter {
+  final Color glowColor;
+  final bool isPressed;
+
+  const _ShieldCardBorderPainter({
+    required this.glowColor,
+    required this.isPressed,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final outerPath = getShieldPath(size, cornerRadius: 20, chevronDepth: 11);
+
+    // 1. Halo Glow
+    final glowPaint = Paint()
+      ..color = glowColor.withValues(alpha: isPressed ? 0.65 : 0.42)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, isPressed ? 14 : 20);
+    canvas.drawPath(outerPath, glowPaint);
+
+    // 2. Deep Drop Shadow
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.75)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.save();
+    canvas.translate(0, 5);
+    canvas.drawPath(outerPath, shadowPaint);
+    canvas.restore();
+
+    // 3. 3D Metallic Golden Outer Bevel Frame
+    final strokePaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0xFFFFFDE7),
+          Color(0xFFFFE082),
+          Color(0xFFFFB300),
+          Color(0xFFFF8F00),
+          Color(0xFF8D4B00),
+          Color(0xFFFFD54F),
+        ],
+        stops: [0.0, 0.18, 0.42, 0.68, 0.88, 1.0],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.4;
+    canvas.drawPath(outerPath, strokePaint);
+
+    // 4. Secondary Inner Gold Rim
+    final innerPath = getShieldPath(
+      Size(size.width - 4, size.height - 4),
+      cornerRadius: 18,
+      chevronDepth: 10,
+    );
+    canvas.save();
+    canvas.translate(2, 2);
+    final innerRimPaint = Paint()
+      ..color = const Color(0xFFFFD700).withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.1;
+    canvas.drawPath(innerPath, innerRimPaint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _ShieldCardBorderPainter oldDelegate) =>
+      oldDelegate.isPressed != isPressed || oldDelegate.glowColor != glowColor;
+}
+
+/// Custom clipper to clip card content to heraldic shield shape
+class _ShieldCardClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    return getShieldPath(size, cornerRadius: 20, chevronDepth: 11);
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
 // ============================================================================
 // 1. PLAY WITH FRIENDS ILLUSTRATION (Directly based on ludo_supreme_emblem.png)
 // ============================================================================
@@ -381,53 +540,43 @@ class _FriendsIllustrationPainter extends CustomPainter {
     // B. Emblem Signature: 3D Segmented Gold-Rimmed Wheel Stage Pedestal
     _drawEmblemPedestal(canvas, Offset(cx, size.height * 0.82), size.width * 0.88, 26);
 
-    // C. 4 Glossy 3D Pawns from the Emblem (Red, Green, Yellow, Blue)
-    // 1. Blue Pawn (Top/Back Center)
+    // C. 3 Glossy 3D Pawns: Blue (Left), Red Hero (Center), Green (Right)
+    // 1. Blue Pawn (Left)
     _drawGlossyPawn(
       canvas,
-      center: Offset(cx - size.width * 0.16, cy - 8),
-      size: 32,
+      center: Offset(cx - size.width * 0.26, cy + 3),
+      size: 34,
       baseColor: const Color(0xFF0277BD),
       lightColor: const Color(0xFF29B6F6),
       darkColor: const Color(0xFF01579B),
     );
 
-    // 2. Yellow Pawn (Right foreground)
+    // 2. Green Pawn (Right)
     _drawGlossyPawn(
       canvas,
-      center: Offset(cx + size.width * 0.24, cy + 4),
-      size: 36,
-      baseColor: const Color(0xFFFBC02D),
-      lightColor: const Color(0xFFFFF59D),
-      darkColor: const Color(0xFFE65100),
-    );
-
-    // 3. Green Pawn (Left-mid foreground)
-    _drawGlossyPawn(
-      canvas,
-      center: Offset(cx - size.width * 0.26, cy + 4),
-      size: 36,
+      center: Offset(cx + size.width * 0.26, cy + 3),
+      size: 34,
       baseColor: const Color(0xFF2E7D32),
       lightColor: const Color(0xFF81C784),
       darkColor: const Color(0xFF1B5E20),
     );
 
-    // 4. Red Hero Pawn (Center foreground with gold crown collar)
+    // 3. Red Hero Pawn (Center elevated with gold crown)
     _drawGlossyPawn(
       canvas,
-      center: Offset(cx - size.width * 0.04, cy + 1),
-      size: 42,
+      center: Offset(cx, cy - 2),
+      size: 40,
       baseColor: const Color(0xFFE53935),
       lightColor: const Color(0xFFFF8A80),
       darkColor: const Color(0xFFB71C1C),
       hasGoldCrown: true,
     );
 
-    // D. Large 3D White Ivory Dice with Glossy Red Pips (from emblem)
+    // D. Large 3D White Ivory Dice with Glossy Red Pips
     _drawGlossyDice(
       canvas,
-      center: Offset(cx + size.width * 0.16, cy + 14),
-      size: 24,
+      center: Offset(cx + size.width * 0.16, cy + 15),
+      size: 22,
       pipColor: const Color(0xFFD32F2F),
       pipCount: 6,
       rotation: 0.12,
@@ -598,63 +747,33 @@ class _PassNPlayIllustrationPainter extends CustomPainter {
     _drawSparkle(canvas, Offset(cx, cy + 4), 4.5);
 
     // C. Dual Orbiting Pass-Handoff Energy Arrows (Pass the Phone!)
-    _drawPassArrows(canvas, Offset(cx, cy + 4), radius: 38);
+    _drawPassArrows(canvas, Offset(cx, cy + 4), radius: 36);
 
-    // D. 4 Local Multiplayer Pawns
-    // Green Pawn (Top-left)
+    // D. 2 Passing Players: Purple Pawn (Left) & Gold Pawn (Right)
+    // Purple Pawn (Left)
     _drawGlossyPawn(
       canvas,
-      center: Offset(cx - 30, cy - 14),
-      size: 28,
-      baseColor: const Color(0xFF2E7D32),
-      lightColor: const Color(0xFF81C784),
-      darkColor: const Color(0xFF1B5E20),
+      center: Offset(cx - 24, cy + 5),
+      size: 34,
+      baseColor: const Color(0xFF8E24AA),
+      lightColor: const Color(0xFFCE93D8),
+      darkColor: const Color(0xFF4A148C),
     );
 
-    // Blue Pawn (Top-right)
+    // Gold/Yellow Pawn (Right)
     _drawGlossyPawn(
       canvas,
-      center: Offset(cx + 30, cy - 14),
-      size: 28,
-      baseColor: const Color(0xFF0277BD),
-      lightColor: const Color(0xFF29B6F6),
-      darkColor: const Color(0xFF01579B),
-    );
-
-    // Main Red Pawn (Left)
-    _drawGlossyPawn(
-      canvas,
-      center: Offset(cx - 27, cy + 3),
-      size: 36,
-      baseColor: const Color(0xFFE53935),
-      lightColor: const Color(0xFFFF8A80),
-      darkColor: const Color(0xFFB71C1C),
-    );
-
-    // Main Yellow Pawn (Right)
-    _drawGlossyPawn(
-      canvas,
-      center: Offset(cx + 27, cy + 3),
-      size: 36,
+      center: Offset(cx + 24, cy + 5),
+      size: 34,
       baseColor: const Color(0xFFFBC02D),
       lightColor: const Color(0xFFFFF59D),
       darkColor: const Color(0xFFE65100),
     );
 
-    // E. 3D Tumbling Ivory Dice centered in foreground with Red Pips
-    _drawGlossyDice(
-      canvas,
-      center: Offset(cx, cy + 17),
-      size: 22,
-      pipColor: const Color(0xFFD32F2F),
-      pipCount: 5,
-      rotation: -0.12,
-    );
-
-    // F. Golden Sparkles
-    _drawSparkle(canvas, Offset(cx - 38, cy - 24), 5.5);
-    _drawSparkle(canvas, Offset(cx + 38, cy - 24), 6.5);
-    _drawSparkle(canvas, Offset(cx, cy - 32), 4.5);
+    // E. Golden Sparkles
+    _drawSparkle(canvas, Offset(cx - 36, cy - 22), 5.5);
+    _drawSparkle(canvas, Offset(cx + 36, cy - 22), 6.5);
+    _drawSparkle(canvas, Offset(cx, cy - 30), 4.5);
   }
 
   void _drawPassArrows(Canvas canvas, Offset center, {required double radius}) {
@@ -1299,17 +1418,16 @@ class _OnlineIllustrationPainter extends CustomPainter {
       baseColor: const Color(0xFFE53935),
       lightColor: const Color(0xFFFF8A80),
       darkColor: const Color(0xFFB71C1C),
-      hasGoldCrown: true,
     );
 
-    // Right Player: Vivid Emerald Green Pawn
+    // Right Player: Vivid Gold/Yellow Pawn
     _drawGlossyPawn(
       canvas,
       center: Offset(cx + 26 * scale, cy + 6 * scale),
       size: 28 * scale,
-      baseColor: const Color(0xFF2E7D32),
-      lightColor: const Color(0xFF81C784),
-      darkColor: const Color(0xFF1B5E20),
+      baseColor: const Color(0xFFFBC02D),
+      lightColor: const Color(0xFFFFF59D),
+      darkColor: const Color(0xFFE65100),
     );
 
     // 5. Orbiting Golden Wifi / Connection Signal Waves
@@ -1380,16 +1498,18 @@ class _TeamUpIllustrationPainter extends CustomPainter {
     // 2. Golden Heraldic Team Shield in Background
     _drawGoldenShield(canvas, Offset(cx, cy - 2 * scale), 46 * scale, 52 * scale);
 
-    // 3. Two Allied Pawns Side-by-Side (Teammates!)
-    // Teammate 1: Red Champion Pawn with Gold Crown (Left)
+    // 3. Imperial Golden Crown Arch above the duo
+    _drawMiniCrown(canvas, Offset(cx, cy - 24 * scale), 26 * scale);
+
+    // 4. Two Allied Pawns Side-by-Side (Teammates!)
+    // Teammate 1: Royal Blue Champion Pawn (Left)
     _drawGlossyPawn(
       canvas,
       center: Offset(cx - 15 * scale, cy + 5 * scale),
       size: 32 * scale,
-      baseColor: const Color(0xFFE53935),
-      lightColor: const Color(0xFFFF8A80),
-      darkColor: const Color(0xFFB71C1C),
-      hasGoldCrown: true,
+      baseColor: const Color(0xFF0277BD),
+      lightColor: const Color(0xFF29B6F6),
+      darkColor: const Color(0xFF01579B),
     );
 
     // Teammate 2: Gold/Yellow Partner Pawn (Right)
@@ -1402,10 +1522,10 @@ class _TeamUpIllustrationPainter extends CustomPainter {
       darkColor: const Color(0xFFE65100),
     );
 
-    // 4. "2v2" Golden Metallic Badge / Ribbon across bottom
+    // 5. "2 VS 2" Golden Metallic Badge / Ribbon across bottom
     _draw2v2Badge(canvas, Offset(cx, cy + 22 * scale), scale);
 
-    // 5. Golden Sparkles
+    // 6. Golden Sparkles
     _drawSparkle(canvas, Offset(cx - 28 * scale, cy - 18 * scale), 5.5 * scale);
     _drawSparkle(canvas, Offset(cx + 28 * scale, cy - 18 * scale), 6.0 * scale);
     _drawSparkle(canvas, Offset(cx, cy - 28 * scale), 5.0 * scale);

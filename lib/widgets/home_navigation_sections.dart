@@ -504,28 +504,87 @@ class _GameNavIconBadge extends StatelessWidget {
             ),
           ),
 
-          // Primary Colorful Game Icon
-          Center(
-            child: Icon(
-              item.icon,
-              size: primaryIconSize,
-              color: isSelected ? const Color(0xFF3E2723) : item.iconColor,
-              shadows: [
-                Shadow(
-                  color: isSelected
-                      ? const Color(0xFFFFD54F).withValues(alpha: 0.70)
-                      : item.accentColor.withValues(alpha: 0.40),
-                  blurRadius: isSelected ? 6 : 4,
-                  offset: const Offset(0, 1),
+          // Primary Colorful Game Icon (or Dual 3D Dice for ADDA)
+          if (item.label == 'ADDA')
+            Center(
+              child: SizedBox(
+                width: 28,
+                height: 24,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // First die (left, tilted slightly)
+                    Positioned(
+                      left: 0,
+                      top: 4,
+                      child: Transform.rotate(
+                        angle: -0.22,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(3),
+                            border: Border.all(color: const Color(0xFFFFD700), width: 0.8),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black45, blurRadius: 2, offset: Offset(1, 1)),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.circle, color: Color(0xFF1E293B), size: 3.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Second die (right, tilted other way)
+                    Positioned(
+                      right: 1,
+                      top: 0,
+                      child: Transform.rotate(
+                        angle: 0.22,
+                        child: Container(
+                          width: 15,
+                          height: 15,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(3.2),
+                            border: Border.all(color: const Color(0xFFFFD700), width: 0.8),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black54, blurRadius: 3, offset: Offset(1, 2)),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.circle, color: Color(0xFF1E293B), size: 3.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                Shadow(
-                  color: Colors.black.withValues(alpha: 0.40),
-                  blurRadius: 2,
-                  offset: const Offset(0, 1),
-                ),
-              ],
+              ),
+            )
+          else
+            Center(
+              child: Icon(
+                item.icon,
+                size: primaryIconSize,
+                color: isSelected ? const Color(0xFF3E2723) : item.iconColor,
+                shadows: [
+                  Shadow(
+                    color: isSelected
+                        ? const Color(0xFFFFD54F).withValues(alpha: 0.70)
+                        : item.accentColor.withValues(alpha: 0.40),
+                    blurRadius: isSelected ? 6 : 4,
+                    offset: const Offset(0, 1),
+                  ),
+                  Shadow(
+                    color: Colors.black.withValues(alpha: 0.40),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
             ),
-          ),
 
           // Decorative Signature Game Badge (Star, Mini Dice, Sound Waves, etc.)
           if (item.badgeIcon != null)

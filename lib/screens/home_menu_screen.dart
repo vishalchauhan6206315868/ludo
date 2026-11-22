@@ -543,43 +543,72 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
       ),
       child: Row(
         children: [
-          // Profile Avatar with Golden Ring (Clickable -> Opens Profile Dialog)
+          // Profile Avatar with Golden Ring & Mini Imperial Crown on Top-Left
           GestureDetector(
             onTap: _openProfileDialog,
             child: Tooltip(
               message: "View Profile",
-              child: Container(
-                width: avatarSize,
-                height: avatarSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF141F36),
-                  border: Border.all(color: const Color(0xFFFFD700), width: 1.8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFFD700).withValues(alpha: 0.35),
-                      blurRadius: 10,
-                      spreadRadius: 1,
+              child: SizedBox(
+                width: avatarSize + 6,
+                height: avatarSize + 6,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    // Avatar Ring with Radiant Golden Aura
+                    Container(
+                      width: avatarSize,
+                      height: avatarSize,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF141F36),
+                        border: Border.all(color: const Color(0xFFFFD700), width: 1.8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFFD700).withValues(alpha: 0.45),
+                            blurRadius: 10,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: (avatarUrl != null && avatarUrl.isNotEmpty)
+                          ? ClipOval(
+                              child: Image.network(
+                                avatarUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Icon(
+                                  Icons.person,
+                                  color: const Color(0xFFFFD700),
+                                  size: isCompact ? 22 : 26,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              Icons.person,
+                              color: const Color(0xFFFFD700),
+                              size: isCompact ? 22 : 26,
+                            ),
+                    ),
+
+                    // Mini Golden Imperial Crown Perched on Top-Left
+                    Positioned(
+                      top: -6,
+                      left: -4,
+                      child: Transform.rotate(
+                        angle: -0.25,
+                        child: Icon(
+                          Icons.military_tech_rounded,
+                          color: const Color(0xFFFFD700),
+                          size: isCompact ? 16 : 20,
+                          shadows: const [
+                            Shadow(color: Color(0xFFFFB300), blurRadius: 6),
+                            Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1)),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                child: (avatarUrl != null && avatarUrl.isNotEmpty)
-                    ? ClipOval(
-                        child: Image.network(
-                          avatarUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Icon(
-                            Icons.person,
-                            color: const Color(0xFFFFD700),
-                            size: isCompact ? 22 : 26,
-                          ),
-                        ),
-                      )
-                    : Icon(
-                        Icons.person,
-                        color: const Color(0xFFFFD700),
-                        size: isCompact ? 22 : 26,
-                      ),
               ),
             ),
           ),
@@ -675,21 +704,34 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
             },
             child: Container(
               padding: EdgeInsets.symmetric(
-                horizontal: isCompact ? 7 : 9,
-                vertical: isCompact ? 4 : 5,
+                horizontal: isCompact ? 7 : 10,
+                vertical: isCompact ? 4 : 5.5,
               ),
               margin: EdgeInsets.only(right: isCompact ? 5 : 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF0C1934),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF142448),
+                    Color(0xFF09142A),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: const Color(0xFFFFD700),
-                  width: 1.4,
+                  width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFFD700).withValues(alpha: 0.25),
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.35),
                     blurRadius: 8,
+                    spreadRadius: 0.5,
+                  ),
+                  const BoxShadow(
+                    color: Colors.black45,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
                   ),
                 ],
               ),
@@ -700,50 +742,64 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                   children: [
                     // Golden Rupee Coin
                     Container(
-                      width: 17,
-                      height: 17,
+                      width: 18,
+                      height: 18,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
-                          colors: [Color(0xFFFFEA79), Color(0xFFFFB300), Color(0xFFFF8F00)],
+                          colors: [Color(0xFFFFF9C4), Color(0xFFFFB300), Color(0xFFFF8F00)],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0x66FFB300),
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
                       ),
                       child: const Center(
                         child: Text(
                           "₹",
                           style: TextStyle(
                             color: Color(0xFF3E2723),
-                            fontSize: 11,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 5),
+                    const SizedBox(width: 6),
                     Text(
                       formattedCoins,
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
-                        fontSize: isCompact ? 11 : 12.5,
+                        fontSize: isCompact ? 11.5 : 13.0,
+                        letterSpacing: 0.3,
                       ),
                     ),
-                    const SizedBox(width: 5),
+                    const SizedBox(width: 6),
                     // Plus Action Button
                     Container(
-                      width: 15,
-                      height: 15,
+                      width: 16,
+                      height: 16,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
-                          colors: [Color(0xFFFFEA79), Color(0xFFFFB300)],
+                          colors: [Color(0xFFFFFDE7), Color(0xFFFFB300), Color(0xFFFF8F00)],
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0x66FFB300),
+                            blurRadius: 3,
+                          ),
+                        ],
                       ),
                       child: const Icon(
                         Icons.add,
-                        size: 12,
+                        size: 13,
                         color: Color(0xFF3E2723),
                       ),
                     ),
@@ -809,13 +865,25 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: const Color(0xFF162038).withValues(alpha: 0.85),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF1B2A4A),
+            Color(0xFF0F1B33),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
         borderRadius: BorderRadius.circular(size * 0.28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1.0),
+        border: Border.all(color: const Color(0x4480D8FF), width: 1.1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 8,
+            color: const Color(0xFF00E5FF).withValues(alpha: 0.18),
+            blurRadius: 6,
+            spreadRadius: 0.2,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -837,9 +905,11 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
       cardKey: const Key('tournaments_card'),
       title: "TOURNAMENTS",
       height: height,
-      glowColor: const Color(0xFFFF4081),
+      isShield: true,
+      glowColor: const Color(0xFFFF1744),
       accentColor: const Color(0xFFFFD700),
       cardGradient: const [
+        Color(0xFF880E4F),
         Color(0xFF5E1335),
         Color(0xFF38071D),
         Color(0xFF1F030F),
@@ -874,6 +944,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
       cardKey: const Key('online_card'),
       title: "ONLINE",
       height: height,
+      isShield: true,
       glowColor: const Color(0xFF00E5FF),
       accentColor: const Color(0xFF80D8FF),
       cardGradient: const [
@@ -892,11 +963,12 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
       cardKey: const Key('team_up_card'),
       title: "TEAM UP",
       height: height,
+      isShield: true,
       glowColor: const Color(0xFFE040FB),
       accentColor: const Color(0xFFFFD700),
       cardGradient: const [
-        Color(0xFF6A1B9A),
-        Color(0xFF38006B),
+        Color(0xFF7B1FA2),
+        Color(0xFF4A148C),
         Color(0xFF1E0038),
       ],
       illustration: const TeamUpIllustration(),
@@ -1223,7 +1295,12 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                 // 4. How to Play & Rules Link (Golden Bordered Capsule Pill)
                 _buildRulesLink(context),
 
-                SizedBox(height: isShortScreen ? 6 : 10),
+                SizedBox(height: isShortScreen ? 4 : 8),
+
+                // 5. Palace Floor Decor: Floating Corner 3D Dice & Center Crown Arch
+                _buildPalaceFooterDecor(context, isShort: isShortScreen),
+
+                SizedBox(height: isShortScreen ? 4 : 8),
               ],
             ),
           ),
@@ -1247,51 +1324,67 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
         ),
         const SizedBox(height: 2),
 
-        // LUDO 3D Golden Chrome Metallic Typography
+        // LUDO 3D Golden Chrome Metallic Typography with Flanking 3D Dice
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [
-                Color(0xFFFFFDE7),
-                Color(0xFFFFEA79),
-                Color(0xFFFFB300),
-                Color(0xFFFF8F00),
-                Color(0xFF793B00),
-              ],
-              stops: [0.0, 0.25, 0.55, 0.82, 1.0],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ).createShader(bounds),
-            child: Text(
-              "LUDO",
-              style: TextStyle(
-                fontSize: isShort ? 28 : 34,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 3.5,
-                color: Colors.white,
-                shadows: const [
-                  Shadow(
-                    color: Color(0xFF3E1800),
-                    offset: Offset(0, 3),
-                    blurRadius: 6,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Left Flanking 3D Die
+              _FloatingLogoDie(angle: -0.28, isShort: isShort, pipPattern: 3),
+              SizedBox(width: isShort ? 8 : 12),
+
+              // "LUDO" Golden Metallic Title
+              ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [
+                    Color(0xFFFFFDE7),
+                    Color(0xFFFFEA79),
+                    Color(0xFFFFB300),
+                    Color(0xFFFF8F00),
+                    Color(0xFF793B00),
+                  ],
+                  stops: [0.0, 0.25, 0.55, 0.82, 1.0],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ).createShader(bounds),
+                child: Text(
+                  "LUDO",
+                  style: TextStyle(
+                    fontSize: isShort ? 30 : 36,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 4.0,
+                    color: Colors.white,
+                    shadows: const [
+                      Shadow(
+                        color: Color(0xFF3E1800),
+                        offset: Offset(0, 3.5),
+                        blurRadius: 7,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+
+              SizedBox(width: isShort ? 8 : 12),
+              // Right Flanking 3D Die
+              _FloatingLogoDie(angle: 0.28, isShort: isShort, pipPattern: 5),
+            ],
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 3),
 
-        // SUPREME Royal Purple Ribbon Banner with Gold Border
+        // SUPREME 3D Crimson Red Ribbon Banner with Gold Border (matches reference image)
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 3.5),
+          padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 4.0),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [
-                Color(0xFF8E24AA),
-                Color(0xFF6A1B9A),
-                Color(0xFF4A148C),
+                Color(0xFFFF3D00),
+                Color(0xFFD50000),
+                Color(0xFFB71C1C),
+                Color(0xFF7F0000),
               ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -1299,16 +1392,16 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: const Color(0xFFFFD700),
-              width: 1.5,
+              width: 1.6,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFAB47BC).withValues(alpha: 0.55),
-                blurRadius: 10,
+                color: const Color(0xFFFF5252).withValues(alpha: 0.55),
+                blurRadius: 12,
                 offset: const Offset(0, 2),
               ),
               const BoxShadow(
-                color: Colors.black45,
+                color: Colors.black54,
                 blurRadius: 6,
                 offset: Offset(0, 3),
               ),
@@ -1317,9 +1410,9 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
           child: Text(
             "SUPREME",
             style: TextStyle(
-              fontSize: isShort ? 12 : 14,
+              fontSize: isShort ? 12.5 : 14.5,
               fontWeight: FontWeight.w900,
-              letterSpacing: 2.5,
+              letterSpacing: 2.8,
               color: Colors.white,
               shadows: const [
                 Shadow(
@@ -1333,29 +1426,108 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
         ),
         const SizedBox(height: 4),
 
-        // Tagline: ✦ THE CLASSIC BOARD GAME EXPERIENCE ✦
+        // Tagline: THE CLASSIC BOARD GAME EXPERIENCE
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.star_rate_rounded, color: Color(0xFFFFD700), size: 10),
-              const SizedBox(width: 4),
-              Text(
-                "THE CLASSIC BOARD GAME EXPERIENCE",
-                style: TextStyle(
-                  color: const Color(0xFFB0BEC5),
-                  fontSize: isShort ? 8.5 : 9.5,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.8,
-                ),
-              ),
-              const SizedBox(width: 4),
-              const Icon(Icons.star_rate_rounded, color: Color(0xFFFFD700), size: 10),
-            ],
+          child: Text(
+            "THE CLASSIC BOARD GAME EXPERIENCE",
+            style: TextStyle(
+              color: const Color(0xFFCFD8DC),
+              fontSize: isShort ? 8.5 : 9.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.8,
+            ),
           ),
         ),
+        const SizedBox(height: 3),
+
+        // 5-Star Golden Rating Arch
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(5, (index) {
+            final isCenter = index == 2;
+            final isNearCenter = index == 1 || index == 3;
+            final starSize = isCenter ? (isShort ? 13.0 : 15.0) : (isNearCenter ? (isShort ? 10.5 : 12.0) : (isShort ? 9.0 : 10.0));
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+              child: Icon(
+                Icons.star_rounded,
+                color: const Color(0xFFFFD700),
+                size: starSize,
+                shadows: const [
+                  Shadow(
+                    color: Color(0xFFFFB300),
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
+            );
+          }),
+        ),
       ],
+    );
+  }
+
+  // --- 5. Palace Footer Decor: Floating Corner Dice & Center Crown Arch ---
+  Widget _buildPalaceFooterDecor(BuildContext context, {required bool isShort}) {
+    return SizedBox(
+      height: isShort ? 36 : 46,
+      width: double.infinity,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          // Left Floating 3D Corner Die
+          Positioned(
+            left: 10,
+            bottom: 4,
+            child: _FloatingLogoDie(angle: -0.35, isShort: isShort, sizeMultiplier: 1.15, pipPattern: 6),
+          ),
+
+          // Center Crown Arch over the bottom navigation bar
+          Positioned(
+            bottom: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.military_tech_rounded,
+                  color: const Color(0xFFFFD700),
+                  size: isShort ? 22 : 28,
+                  shadows: const [
+                    Shadow(color: Color(0xFFFFB300), blurRadius: 10),
+                    Shadow(color: Colors.black87, blurRadius: 4, offset: Offset(0, 2)),
+                  ],
+                ),
+                Container(
+                  width: 50,
+                  height: 2,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(1),
+                    gradient: const LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        Color(0xFFFFD700),
+                        Color(0xFFFFEA79),
+                        Color(0xFFFFD700),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Right Floating 3D Corner Die
+          Positioned(
+            right: 10,
+            bottom: 4,
+            child: _FloatingLogoDie(angle: 0.35, isShort: isShort, sizeMultiplier: 1.15, pipPattern: 2),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2241,6 +2413,40 @@ class _IsometricBoardPainter extends CustomPainter {
     final dx = center.dx;
     final dy = center.dy - 6;
 
+    // Golden Motion Vortex Aura Rings around spinning center die
+    final auraPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..shader = const SweepGradient(
+        colors: [
+          Colors.transparent,
+          Color(0xFFFFD700),
+          Color(0xFFFFF9C4),
+          Color(0xFFFFB300),
+          Colors.transparent,
+        ],
+        stops: [0.0, 0.35, 0.6, 0.85, 1.0],
+      ).createShader(Rect.fromCircle(center: Offset(dx, dy), radius: 30));
+
+    canvas.save();
+    canvas.translate(dx, dy);
+    canvas.scale(1.0, 0.52); // Isometric board perspective compression
+    canvas.drawOval(Rect.fromCircle(center: Offset.zero, radius: 30), auraPaint);
+    canvas.drawOval(
+      Rect.fromCircle(center: Offset.zero, radius: 23),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6
+        ..color = const Color(0xFFFFEA79).withValues(alpha: 0.85)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+    );
+    // Dynamic sparkle dots
+    final sparklePaint = Paint()..color = const Color(0xFFFFD700);
+    canvas.drawCircle(const Offset(24, -10), 2.0, sparklePaint);
+    canvas.drawCircle(const Offset(-22, 12), 1.6, sparklePaint);
+    canvas.drawCircle(const Offset(15, 18), 1.8, sparklePaint);
+    canvas.restore();
+
     // Contact drop shadow on board
     canvas.drawOval(
       Rect.fromCenter(center: Offset(dx, dy + 18), width: 34, height: 14),
@@ -2324,6 +2530,140 @@ class _IsometricBoardPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// 3D Floating Ivory Die for the Supreme Title Header and Palace Footer Decor
+class _FloatingLogoDie extends StatelessWidget {
+  final double angle;
+  final bool isShort;
+  final double sizeMultiplier;
+  final int pipPattern;
+
+  const _FloatingLogoDie({
+    required this.angle,
+    required this.isShort,
+    this.sizeMultiplier = 1.0,
+    this.pipPattern = 3,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final baseSize = (isShort ? 32.0 : 38.0) * sizeMultiplier;
+    return Transform.rotate(
+      angle: angle,
+      child: Container(
+        width: baseSize,
+        height: baseSize,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(baseSize * 0.22),
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFFFFFFFF),
+              Color(0xFFF8FAFC),
+              Color(0xFFE2E8F0),
+              Color(0xFFCBD5E1),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.85),
+            width: 1.3,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFD700).withValues(alpha: 0.40),
+              blurRadius: 10,
+              spreadRadius: 1,
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.65),
+              blurRadius: 8,
+              offset: const Offset(2, 4),
+            ),
+          ],
+        ),
+        child: CustomPaint(
+          painter: _DiePipsPainter(pipCount: pipPattern),
+        ),
+      ),
+    );
+  }
+}
+
+/// Custom painter for dice pips (dots) on 3D Floating Ivory Dice
+class _DiePipsPainter extends CustomPainter {
+  final int pipCount;
+  const _DiePipsPainter({required this.pipCount});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final pipRadius = w * 0.088;
+
+    final pipPaint = Paint()
+      ..shader = const RadialGradient(
+        colors: [Color(0xFF090D16), Color(0xFF1E293B)],
+      ).createShader(Rect.fromLTWH(0, 0, w, h));
+
+    final rimPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6;
+
+    void drawPip(double x, double y) {
+      canvas.drawCircle(Offset(x, y), pipRadius, pipPaint);
+      canvas.drawCircle(Offset(x, y), pipRadius, rimPaint);
+    }
+
+    final cx = w * 0.5;
+    final cy = h * 0.5;
+    final l = w * 0.26;
+    final r = w * 0.74;
+    final t = h * 0.26;
+    final b = h * 0.74;
+
+    switch (pipCount) {
+      case 1:
+        drawPip(cx, cy);
+        break;
+      case 2:
+        drawPip(l, t);
+        drawPip(r, b);
+        break;
+      case 3:
+        drawPip(l, t);
+        drawPip(cx, cy);
+        drawPip(r, b);
+        break;
+      case 4:
+        drawPip(l, t);
+        drawPip(r, t);
+        drawPip(l, b);
+        drawPip(r, b);
+        break;
+      case 5:
+        drawPip(l, t);
+        drawPip(r, t);
+        drawPip(cx, cy);
+        drawPip(l, b);
+        drawPip(r, b);
+        break;
+      case 6:
+      default:
+        drawPip(l, t);
+        drawPip(l, cy);
+        drawPip(l, b);
+        drawPip(r, t);
+        drawPip(r, cy);
+        drawPip(r, b);
+        break;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DiePipsPainter oldDelegate) => oldDelegate.pipCount != pipCount;
 }
 
 
