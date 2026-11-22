@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/widgets.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -60,13 +61,29 @@ class AuthService {
   /// Current authenticated Firebase user (null if not logged in via Firebase)
   static User? get currentFirebaseUser => _auth?.currentUser;
 
-  /// Initialize default sample user in SharedPreferences if not already present
+  /// Initialize default sample user in SharedPreferences if not already present.
+  /// Each physical device receives a unique player ID so two testing devices
+  /// (such as tablet and mobile) do not conflict as the same user.
   static Future<void> initSampleData() async {
     final prefs = await SharedPreferences.getInstance();
-    if (!prefs.containsKey(_keyUserEmail)) {
-      await prefs.setString(_keyUserEmail, defaultEmail);
+    final currentEmail = prefs.getString(_keyUserEmail);
+    if (currentEmail == null || currentEmail.isEmpty || currentEmail == defaultEmail) {
+      var deviceId = prefs.getString('device_unique_id');
+      if (deviceId == null || deviceId.isEmpty) {
+        final rand = Random().nextInt(9000) + 1000;
+        final ts = (DateTime.now().millisecondsSinceEpoch % 100000);
+        deviceId = '$ts$rand';
+        await prefs.setString('device_unique_id', deviceId);
+      }
+      final uniqueEmail = 'player_$deviceId@ludo.com';
+      final uniqueName = 'Player $deviceId';
+      await prefs.setString(_keyUserEmail, uniqueEmail);
       await prefs.setString(_keyUserPassword, defaultPassword);
-      await prefs.setString(_keyUserName, defaultName);
+      await prefs.setString(_keyUserName, uniqueName);
+      // Clear any cached token from previous shared admin session
+      if (currentEmail == defaultEmail) {
+        await ApiService().clearSession();
+      }
     }
   }
 
@@ -94,15 +111,15 @@ class AuthService {
     }
 
     final prefs = await SharedPreferences.getInstance();
-    final effectiveEmail = (email != null && email.isNotEmpty)
-        ? email
-        : (prefs.getString(_keyUserEmail) ?? defaultEmail);
-    final effectiveName = (name != null && name.isNotEmpty)
-        ? name
-        : (prefs.getString(_keyUserName) ?? defaultName);
-    final effectivePassword = (password != null && password.isNotEmpty)
-        ? password
-        : (prefs.getString(_keyUserPassword) ?? defaultPassword);
+    var effectiveEmail = email ?? prefs.getString(_keyUserEmail);
+    var effectiveName = name ?? prefs.getString(_keyUserName);
+    final effectivePassword = password ?? (prefs.getString(_keyUserPassword) ?? defaultPassword);
+
+    if (effectiveEmail == null || effectiveEmail.isEmpty || effectiveEmail == defaultEmail) {
+      await initSampleData();
+      effectiveEmail = prefs.getString(_keyUserEmail) ?? 'player_${Random().nextInt(9000) + 1000}@ludo.com';
+      effectiveName = prefs.getString(_keyUserName) ?? 'Player';
+    }
 
     // Format valid email if user entered username
     final cleanEmail = effectiveEmail.contains('@')
@@ -124,7 +141,7 @@ class AuthService {
     // 3. If login failed because user doesn't exist on backend, try auto-register
     try {
       final regRes = await ApiService().register(
-        name: effectiveName,
+        name: effectiveName ?? 'Player',
         email: cleanEmail,
         password: effectivePassword,
       );
