@@ -1,24 +1,35 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../core/network/api_service.dart';
 import '../../models/game_state.dart';
 import '../../models/online_game_mode.dart';
+import '../../models/room_model.dart';
+import '../../services/auth_service.dart';
+import '../../services/ludo_socket_service.dart';
 import '../game_screen.dart';
 
-/// Placeholder Matchmaking screen opened when the user taps "NEXT".
+/// Realtime Online Matchmaking & Room Lobby Screen.
 ///
-/// Pre-structured with clean TODO integration points for:
-/// - Socket.IO / WebSocket realtime lobby connections
-/// - Live player search queue
-/// - Matchmaking ticket polling
-/// - Game room assignment & handoff to online game session
+/// Features:
+/// - Real backend room creation (/api/rooms/create)
+/// - Live 6-character room code with Copy & Share
+/// - Real-time Socket.IO synchronization (player_joined, match_started)
+/// - 2 Player pods (Host & Opponent) with live connection status
+/// - 15-second Smart Bot Fallback so players are never left waiting
+/// - Seamless handoff to GameScreen with selected OnlineModeType
 class OnlineMatchmakingScreen extends StatefulWidget {
   final OnlineGameMode selectedMode;
   final int entryFee;
+  final RoomModel? initialRoom;
+  final bool isHost;
 
   const OnlineMatchmakingScreen({
     super.key,
     required this.selectedMode,
     this.entryFee = 100,
+    this.initialRoom,
+    this.isHost = true,
   });
 
   @override
@@ -30,8 +41,21 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   Timer? _searchTimer;
+  Timer? _pollTimer;
   int _secondsElapsed = 0;
-  String _statusText = "Connecting to global matchmaking server...";
+  String _statusText = "Connecting to matchmaking server...";
+  bool _navigatedToGame = false;
+  bool _isCopied = false;
+
+  // Real room state
+  RoomModel? _currentRoom;
+  String? _roomCode;
+  String? _opponentName;
+  bool _opponentJoined = false;
+  int _countdownSeconds = 3;
+  Timer? _countdownTimer;
+
+  final List<StreamSubscription<dynamic>> _socketSubs = [];
 
   @override
   void initState() {
@@ -39,47 +63,281 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
 
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
 
-    _pulseAnimation = Tween<double>(begin: 0.92, end: 1.08).animate(
+    _pulseAnimation = Tween<double>(begin: 0.94, end: 1.06).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Simulated matchmaking heartbeat with status progression
+    _currentRoom = widget.initialRoom;
+    if (widget.initialRoom != null) {
+      _roomCode = widget.initialRoom!.roomCode.toUpperCase();
+      if (widget.initialRoom!.players.length >= 2) {
+        _opponentJoined = true;
+        _opponentName = widget.initialRoom!.players.length > 1
+            ? widget.initialRoom!.players[1]
+            : "Challenger";
+      }
+    }
+
+    _startSearchTimer();
+    _initializeOnlineLobby();
+  }
+
+  void _startSearchTimer() {
+    _searchTimer?.cancel();
     _searchTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
       }
-
-      if (_secondsElapsed >= 4) {
-        timer.cancel();
-        _showNoOpponentsFoundDialog();
-        return;
-      }
+      if (_opponentJoined) return;
 
       setState(() {
         _secondsElapsed++;
         if (_secondsElapsed == 2) {
           _statusText = "Searching for opponents in ${widget.selectedMode.title}...";
         } else if (_secondsElapsed == 6) {
-          _statusText = "Analyzing skill rating & ping quality...";
-        } else if (_secondsElapsed == 10) {
-          _statusText = "Waiting for room confirmation...";
+          _statusText = "Room active! Waiting for opponent to join...";
+        } else if (_secondsElapsed == 12) {
+          _statusText = "Analyzing skill pool & live lobbies...";
+        } else if (_secondsElapsed >= 18) {
+          _statusText = "Still searching... Share room code or play vs Smart Bot!";
         }
       });
-
-      // TODO: Connect to backend matchmaking service:
-      // final matchTicket = await MatchmakingService.joinQueue(mode: widget.selectedMode.id);
-      // matchTicket.onMatchFound((roomData) {
-      //   Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => OnlineGameScreen(room: roomData)));
-      // });
     });
   }
 
-  void _showNoOpponentsFoundDialog() {
-    if (!mounted) return;
+  Future<void> _initializeOnlineLobby() async {
+    try {
+      // 1. Ensure active backend session
+      await AuthService.ensureBackendSession();
+
+      if (widget.isHost && _currentRoom == null) {
+        // 2. Call backend /api/rooms/create
+        final modeKey = widget.selectedMode.id;
+        var response = await ApiService().createRoom(
+          maxPlayers: 2,
+          gameMode: modeKey,
+          entryFee: widget.entryFee,
+        );
+
+        // Auto-leave if previously in an active room
+        final rawError = response['message']?.toString().toLowerCase() ?? '';
+        final oldRoomCode = response['data'] is Map ? response['data']['roomCode']?.toString() : null;
+        if ((oldRoomCode != null && oldRoomCode.isNotEmpty) || rawError.contains('already in an active room')) {
+          if (oldRoomCode != null && oldRoomCode.isNotEmpty) {
+            await ApiService().leaveRoom(roomCode: oldRoomCode);
+          }
+          response = await ApiService().createRoom(
+            maxPlayers: 2,
+            gameMode: modeKey,
+            entryFee: widget.entryFee,
+          );
+        }
+
+        if (response['success'] == true && response['data'] != null) {
+          final data = response['data'];
+          if (data is Map<String, dynamic>) {
+            _currentRoom = RoomModel.fromJson(data);
+            _roomCode = _currentRoom?.roomCode.toUpperCase();
+          }
+        }
+      }
+
+      // 3. Connect to live Socket.IO channel
+      await _setupSocketListeners();
+
+      // 4. Fallback periodic polling every 4 seconds in case WebSocket drops
+      _setupFallbackPolling();
+    } catch (e) {
+      debugPrint("Matchmaking initialization notice: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          if (_roomCode != null) {
+            _statusText = "Room Code: $_roomCode - Waiting for opponent...";
+          }
+        });
+      }
+    }
+  }
+
+  Future<void> _setupSocketListeners() async {
+    if (_roomCode == null || _roomCode!.isEmpty) return;
+    final svc = LudoSocketService.instance;
+    final connected = await svc.ensureConnected();
+
+    if (connected && mounted) {
+      // Join room socket room channel
+      await svc.request('join_room', {'roomCode': _roomCode});
+
+      bool forThisRoom(Map<String, dynamic> e) {
+        final code = (e['roomCode'] ?? (e['room'] is Map ? e['room']['roomCode'] : null))?.toString().toUpperCase();
+        return code == _roomCode;
+      }
+
+      // Listen to player_joined event
+      _socketSubs.add(svc.on('player_joined').listen((e) {
+        if (forThisRoom(e)) {
+          _onOpponentJoined(e['player']?['name']?.toString() ?? e['playerName']?.toString());
+        }
+      }));
+
+      // Listen to room_state event
+      _socketSubs.add(svc.on('room_state').listen((e) {
+        if (forThisRoom(e)) {
+          final roomData = e['room'];
+          if (roomData is Map && (roomData['players'] as List?)?.length == 2) {
+            final players = roomData['players'] as List;
+            final other = players.firstWhere(
+              (p) => (p is Map) && p['seatIndex'] != 0,
+              orElse: () => null,
+            );
+            if (other is Map) {
+              _onOpponentJoined(other['name']?.toString());
+            }
+          }
+        }
+      }));
+
+      // Listen to match_started event
+      _socketSubs.add(svc.on('match_started').listen((e) {
+        if (forThisRoom(e)) {
+          _launchGameSession(e['sessionId']?.toString());
+        }
+      }));
+
+      // Listen to room_cancelled event
+      _socketSubs.add(svc.on('room_cancelled').listen((e) {
+        if (forThisRoom(e) && mounted && !_navigatedToGame) {
+          _showRoomCancelledAlert();
+        }
+      }));
+    }
+  }
+
+  void _setupFallbackPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
+      if (!mounted || _opponentJoined || _navigatedToGame || _roomCode == null) return;
+      try {
+        final res = await ApiService().getRoomDetails(roomCode: _roomCode!);
+        if (res['success'] == true && res['data'] != null) {
+          final room = RoomModel.fromJson(res['data']);
+          if (room.players.length >= 2) {
+            final opp = room.players.length > 1 ? room.players[1] : "Challenger";
+            _onOpponentJoined(opp);
+          }
+        }
+      } catch (_) {}
+    });
+  }
+
+  void _onOpponentJoined(String? name) {
+    if (_opponentJoined || _navigatedToGame || !mounted) return;
+    setState(() {
+      _opponentJoined = true;
+      _opponentName = name ?? "Player 2";
+      _statusText = "Opponent Connected! Match starting...";
+    });
+
+    HapticFeedback.mediumImpact();
+
+    // Start 3-second visual countdown to launch
+    _countdownSeconds = 3;
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {
+        _countdownSeconds--;
+      });
+      if (_countdownSeconds <= 0) {
+        t.cancel();
+        _launchGameSession(_currentRoom?.sessionId);
+      }
+    });
+  }
+
+  void _launchGameSession(String? sessionId) {
+    if (_navigatedToGame || !mounted) return;
+    _navigatedToGame = true;
+
+    _searchTimer?.cancel();
+    _pollTimer?.cancel();
+    _countdownTimer?.cancel();
+    for (final s in _socketSubs) {
+      s.cancel();
+    }
+    _socketSubs.clear();
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GameScreen(
+          mode: GameMode.twoPlayer,
+          sessionId: sessionId,
+          roomCode: _roomCode,
+          isOnlineMatch: true,
+          isHost: widget.isHost,
+          mySeatIndex: widget.isHost ? 0 : 1,
+          onlineModeType: widget.selectedMode.modeType,
+        ),
+      ),
+    );
+  }
+
+  void _playVsSmartBot() {
+    if (_navigatedToGame || !mounted) return;
+    _navigatedToGame = true;
+
+    _searchTimer?.cancel();
+    _pollTimer?.cancel();
+    _countdownTimer?.cancel();
+    for (final s in _socketSubs) {
+      s.cancel();
+    }
+    _socketSubs.clear();
+
+    if (_roomCode != null) {
+      ApiService().leaveRoom(roomCode: _roomCode!).catchError((_) => <String, dynamic>{});
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GameScreen(
+          mode: GameMode.twoPlayer,
+          onlineModeType: widget.selectedMode.modeType,
+        ),
+      ),
+    );
+  }
+
+  void _copyRoomCode() {
+    if (_roomCode == null) return;
+    Clipboard.setData(ClipboardData(text: _roomCode!));
+    setState(() => _isCopied = true);
+    HapticFeedback.lightImpact();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Room code $_roomCode copied! Share with your friend."),
+        backgroundColor: const Color(0xFF00C853),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _isCopied = false);
+    });
+  }
+
+  void _showRoomCancelledAlert() {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -87,54 +345,21 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
         backgroundColor: const Color(0xFF10192D),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0x44FFD700)),
+          side: const BorderSide(color: Color(0xFFFF5252)),
         ),
-        title: const Row(
-          children: [
-            Icon(Icons.wifi_tethering_off_rounded, color: Color(0xFFFFD700)),
-            SizedBox(width: 10),
-            Flexible(
-              child: Text(
-                "Matchmaking Notice",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-            ),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "No live opponents found in your matchmaking pool right now.\n\nGlobal online multiplayer servers are launching in the upcoming v1.1 release! In the meantime, you can challenge our smart AI bot or enjoy Pass N Play.",
-              style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
-            ),
-          ],
+        title: const Text("Room Cancelled", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text(
+          "The room was cancelled by the host or session timed out.",
+          style: TextStyle(color: Colors.white70, fontSize: 13),
         ),
         actions: [
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
               Navigator.pop(context);
             },
-            child: const Text("Back to Menu", style: TextStyle(color: Colors.white60)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const GameScreen(mode: GameMode.vsComputer),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFB300),
-              foregroundColor: const Color(0xFF261200),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text("Play vs Computer", style: TextStyle(fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFB300)),
+            child: const Text("Return to Menu", style: TextStyle(color: Colors.black)),
           ),
         ],
       ),
@@ -145,11 +370,18 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
   void dispose() {
     _pulseController.dispose();
     _searchTimer?.cancel();
+    _pollTimer?.cancel();
+    _countdownTimer?.cancel();
+    for (final s in _socketSubs) {
+      s.cancel();
+    }
     super.dispose();
   }
 
   void _cancelMatchmaking() {
-    // TODO: Send cancel queue event to backend (e.g. MatchmakingService.cancelQueue())
+    if (_roomCode != null) {
+      ApiService().leaveRoom(roomCode: _roomCode!).catchError((_) => <String, dynamic>{});
+    }
     Navigator.pop(context);
   }
 
@@ -178,18 +410,18 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
               // Top Header
               _buildHeader(context),
 
-              // Matchmaking Core
+              // Matchmaking Core Content
               Expanded(
                 child: Center(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         // Selected Mode Pill Badge
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(30),
                             gradient: LinearGradient(
@@ -224,62 +456,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
                           ),
                         ),
 
-                        const SizedBox(height: 36),
-
-                        // Pulsing Matchmaking Radar / Ring
-                        AnimatedBuilder(
-                          animation: _pulseAnimation,
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: _pulseAnimation.value,
-                              child: Container(
-                                width: 140,
-                                height: 140,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: RadialGradient(
-                                    colors: [
-                                      mode.accentColor.withValues(alpha: 0.28),
-                                      Colors.transparent,
-                                    ],
-                                  ),
-                                  border: Border.all(
-                                    color: const Color(0xFFFFD700).withValues(alpha: 0.7),
-                                    width: 2.2,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: mode.glowColor.withValues(alpha: 0.45),
-                                      blurRadius: 28,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: Container(
-                                    width: 90,
-                                    height: 90,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: const Color(0xFF0E224F),
-                                      border: Border.all(
-                                        color: const Color(0xFFFFD700),
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      mode.icon,
-                                      color: const Color(0xFFFFD700),
-                                      size: 44,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-
-                        const SizedBox(height: 36),
+                        const SizedBox(height: 18),
 
                         // Title
                         const Text(
@@ -287,9 +464,9 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 20,
+                            fontSize: 19,
                             fontWeight: FontWeight.w900,
-                            letterSpacing: 1.5,
+                            letterSpacing: 1.4,
                             shadows: [
                               Shadow(
                                 color: Color(0x66FFD700),
@@ -299,18 +476,28 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
                             ],
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
 
-                        // Status subtitle
+                        // Status Subtitle
                         Text(
                           _statusText,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Color(0xFF90A4AE),
+                          style: TextStyle(
+                            color: _opponentJoined ? const Color(0xFF00E676) : const Color(0xFF90A4AE),
                             fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
+
+                        const SizedBox(height: 22),
+
+                        // 2 Player Pods (Host VS Opponent)
+                        _buildPlayerDuelArena(mode),
+
+                        const SizedBox(height: 22),
+
+                        // Live Room Code Capsule (Shareable with friend)
+                        if (_roomCode != null) _buildRoomCodeCapsule(),
 
                         const SizedBox(height: 18),
 
@@ -394,36 +581,11 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
                           ),
                         ),
 
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 18),
 
-                        // Notice card for backend implementation
-                        Container(
-                          constraints: const BoxConstraints(maxWidth: 400),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0A1630).withValues(alpha: 0.8),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: const Color(0xFFFFD700).withValues(alpha: 0.25),
-                            ),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.info_outline_rounded, color: Color(0xFFFFD700), size: 20),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  "Matchmaking queue simulated for demo. Ready to connect live multiplayer backend (WebSockets / Socket.IO).",
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 11.5,
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        // Smart Bot Fallback Option (Visible after 15s)
+                        if (_secondsElapsed >= 15 && !_opponentJoined)
+                          _buildSmartBotFallbackCard(),
                       ],
                     ),
                   ),
@@ -435,7 +597,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
                 child: SizedBox(
                   width: double.infinity,
-                  height: 50,
+                  height: 48,
                   child: OutlinedButton(
                     key: const Key('cancel_matchmaking_button'),
                     onPressed: _cancelMatchmaking,
@@ -463,6 +625,253 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Two Player Pods Arena with VS Emblem
+  Widget _buildPlayerDuelArena(OnlineGameMode mode) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Player 1 (You)
+        _buildPlayerPod(
+          name: widget.isHost ? "Host (You)" : "You",
+          isReady: true,
+          color: const Color(0xFFE53935),
+          isPulse: false,
+        ),
+
+        const SizedBox(width: 14),
+
+        // Glowing VS Emblem
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const RadialGradient(
+              colors: [Color(0xFFFFD700), Color(0xFFE65100)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFFD700).withValues(alpha: 0.5),
+                blurRadius: 12,
+              ),
+            ],
+          ),
+          child: const Text(
+            "VS",
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+            ),
+          ),
+        ),
+
+        const SizedBox(width: 14),
+
+        // Player 2 (Opponent or Waiting)
+        _buildPlayerPod(
+          name: _opponentJoined ? (_opponentName ?? "Opponent") : "Searching...",
+          isReady: _opponentJoined,
+          color: const Color(0xFF1E88E5),
+          isPulse: !_opponentJoined,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPlayerPod({
+    required String name,
+    required bool isReady,
+    required Color color,
+    required bool isPulse,
+  }) {
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        final scale = isPulse ? _pulseAnimation.value : 1.0;
+        return Transform.scale(
+          scale: scale,
+          child: Column(
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF0A1838),
+                  border: Border.all(
+                    color: isReady ? const Color(0xFFFFD700) : Colors.white24,
+                    width: 2.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isReady
+                          ? const Color(0xFFFFD700).withValues(alpha: 0.45)
+                          : Colors.transparent,
+                      blurRadius: 14,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: isReady
+                      ? Icon(Icons.person_rounded, color: color, size: 40)
+                      : const SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFD700)),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isReady ? const Color(0xFF00C853) : const Color(0xFF37474F),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  isReady ? "READY" : "WAITING",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 9,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Live Room Code Card with Copy & Share
+  Widget _buildRoomCodeCapsule() {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 360),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D1C3C),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFFFD700).withValues(alpha: 0.65),
+          width: 1.4,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.2),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.vpn_key_rounded, color: Color(0xFFFFD700), size: 18),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "ROOM CODE",
+                    style: TextStyle(
+                      color: Color(0xFFFFD700),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    _roomCode ?? "...",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.0,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          ElevatedButton.icon(
+            onPressed: _copyRoomCode,
+            icon: Icon(_isCopied ? Icons.check_rounded : Icons.copy_rounded, size: 14),
+            label: Text(_isCopied ? "COPIED" : "COPY"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _isCopied ? const Color(0xFF00C853) : const Color(0xFFFFB300),
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Smart Bot Fallback Card when waiting takes longer than 15s
+  Widget _buildSmartBotFallbackCard() {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 380),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF142448),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFFFB300),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.smart_toy_rounded, color: Color(0xFFFFD700), size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "No live opponent found yet. Play vs Smart Bot?",
+                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 36,
+            child: ElevatedButton(
+              onPressed: _playVsSmartBot,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFB300),
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text(
+                "PLAY VS SMART BOT (${widget.selectedMode.title})",
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

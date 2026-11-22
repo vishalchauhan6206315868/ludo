@@ -8,6 +8,7 @@ import '../services/ludo_socket_service.dart';
 import '../services/sound_haptic_service.dart';
 import '../models/game_state.dart';
 import '../models/ludo_player.dart';
+import '../models/online_game_mode.dart';
 import '../widgets/board/ludo_board_widget.dart';
 import '../widgets/dice/animated_dice.dart';
 import '../widgets/player_card.dart';
@@ -26,6 +27,7 @@ class GameScreen extends StatefulWidget {
   final bool isOnlineMatch;
   final bool isHost;
   final int mySeatIndex;
+  final OnlineModeType? onlineModeType;
 
   const GameScreen({
     super.key,
@@ -39,6 +41,7 @@ class GameScreen extends StatefulWidget {
     this.isOnlineMatch = false,
     this.isHost = true,
     this.mySeatIndex = 0,
+    this.onlineModeType,
   });
 
   @override
@@ -100,6 +103,7 @@ class _GameScreenState extends State<GameScreen>
       isOnlineMatch: widget.isOnlineMatch || (widget.sessionId != null && widget.sessionId!.isNotEmpty),
       isHost: widget.isHost,
       mySeatIndex: widget.mySeatIndex,
+      onlineModeType: widget.onlineModeType,
     );
     _controller.onDiceTravelRequested = _startDiceTravelTo;
     _controller.addListener(_onGameStateChanged);

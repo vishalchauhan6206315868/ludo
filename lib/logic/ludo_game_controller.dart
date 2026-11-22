@@ -5,6 +5,7 @@ import '../constants/ludo_path.dart';
 import '../core/network/api_service.dart';
 import '../models/game_state.dart';
 import '../models/ludo_player.dart';
+import '../models/online_game_mode.dart';
 import '../models/token.dart';
 import '../services/game_storage_service.dart';
 import '../services/ludo_socket_service.dart';
@@ -90,6 +91,8 @@ class LudoGameController extends ChangeNotifier {
   /// Most recent settled dice roll value across turns (used for seamless display)
   int lastSettledDiceValue = 1;
 
+  final OnlineModeType? onlineModeType;
+
   LudoGameController({
     GameMode mode = GameMode.twoPlayer,
     GameState? initialState,
@@ -101,6 +104,7 @@ class LudoGameController extends ChangeNotifier {
     this.isOnlineMatch = false,
     this.isHost = true,
     this.mySeatIndex = 0,
+    this.onlineModeType,
   }) {
     if (initialState != null) {
       state = initialState;
@@ -996,6 +1000,24 @@ class LudoGameController extends ChangeNotifier {
               extraTurn = true;
               capturedOpponent = true;
               _safeNotifyListeners();
+
+              // In 1 KILL WIN mode: first capture claims instant victory!
+              if (onlineModeType == OnlineModeType.oneKillWin) {
+                if (!state.winners.contains(state.currentPlayer)) {
+                  state.winners.add(state.currentPlayer);
+                  state.currentPlayer.rank = 1;
+                  state.phase = TurnPhase.gameOver;
+                  state.statusMessage =
+                      "VICTORY! ${state.currentPlayer.name} achieved 1-Kill Win!";
+                  SoundHapticService.onVictory();
+                  GameStorageService.saveGame(state);
+                  _safeNotifyListeners();
+                  return const MoveResult(
+                    captured: true,
+                    gameOver: true,
+                  );
+                }
+              }
             }
           }
         }
