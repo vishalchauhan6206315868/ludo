@@ -110,7 +110,10 @@ class LudoGameController extends ChangeNotifier {
   }) {
     if (initialState != null) {
       state = initialState;
-      if (state.phase == TurnPhase.waitingForPlayerHandoff) {
+      if (isOnlineMatch) {
+        state.statusMessage = "Connecting to match...";
+        _startOnlineSync();
+      } else if (state.phase == TurnPhase.waitingForPlayerHandoff) {
         state.phase = TurnPhase.waitingForRoll;
         _startTurnTimer();
       } else if (state.currentPlayer.isBot) {
@@ -1538,6 +1541,21 @@ class LudoGameController extends ChangeNotifier {
     }));
     _onlineSubs.add(_socket.on('dice_rolled').listen((e) {
       if (_isThisSession(e)) _enqueueOnline(() => _onlineHandleDice(e));
+    }));
+    _onlineSubs.add(_socket.on('dice_roll_result').listen((e) {
+      if (_isThisSession(e)) _enqueueOnline(() => _onlineHandleDice(e));
+    }));
+    _onlineSubs.add(_socket.on('match_started').listen((e) {
+      if (e['roomCode']?.toString().toUpperCase() == roomCode?.toUpperCase()) {
+        final sid = e['sessionId']?.toString();
+        if (sid != null && sid.isNotEmpty && (sessionId == null || sessionId!.isEmpty)) {
+          sessionId = sid;
+          final st = e['session'] ?? e['state'];
+          if (st is Map) {
+            _onlineApplyFullState(Map<String, dynamic>.from(st), force: true);
+          }
+        }
+      }
     }));
     _onlineSubs.add(_socket.on('token_moved').listen((e) {
       if (_isThisSession(e)) _enqueueOnline(() => _onlineHandleMove(e));

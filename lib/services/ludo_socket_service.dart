@@ -30,7 +30,7 @@ class LudoSocketService {
   /// Every event the server can push.
   static const serverEvents = <String>[
     'room_created', 'player_joined', 'player_left', 'room_left', 'room_cancelled', 'room_state',
-    'match_started', 'game_state', 'dice_rolled', 'token_moved', 'turn_changed', 'turn_timeout',
+    'match_started', 'game_state', 'dice_rolled', 'dice_roll_result', 'token_moved', 'turn_changed', 'turn_timeout',
     'player_surrendered', 'player_disconnected', 'player_reconnected', 'match_finished',
   ];
 

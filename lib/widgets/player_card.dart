@@ -126,7 +126,7 @@ class PlayerCard extends StatelessWidget {
                 ),
             ],
           ),
-          child: isCurrentTurn
+          child: (controller.isOnlineMatch || isCurrentTurn)
               ? null
               : Icon(
                   Icons.casino_outlined,
@@ -146,7 +146,13 @@ class PlayerCard extends StatelessWidget {
       }
     }
 
-    final bool showActiveDice = isCurrentTurn && !hideActiveDice;
+    final bool showPodDice = controller.isOnlineMatch
+        ? (isCurrentTurn ? !hideActiveDice : true)
+        : (isCurrentTurn && !hideActiveDice);
+    final int diceDisplayValue = isCurrentTurn
+        ? (state.currentDiceValue ?? controller.lastSettledDiceValue)
+        : (controller.lastSettledDiceValue > 0 ? controller.lastSettledDiceValue : 1);
+
     final Widget diceWidget = KeyedSubtree(
       key: diceSlotKey,
       child: Stack(
@@ -154,21 +160,21 @@ class PlayerCard extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           emptySlotWidget,
-          if (showActiveDice)
+          if (showPodDice)
             AnimatedDice(
-              value: state.currentDiceValue ?? controller.lastSettledDiceValue,
-              isRolling: state.phase == TurnPhase.throwingDice,
+              value: diceDisplayValue,
+              isRolling: isCurrentTurn && (state.phase == TurnPhase.throwingDice),
               canRoll: canRoll,
               isTopPlayer: isTop,
               isHuman: !player.isBot,
               boardSize: boardSize,
               boardKey: boardKey,
-              onRoll: controller.onPhysicalDiceThrowStart,
+              onRoll: canRoll ? controller.onPhysicalDiceThrowStart : null,
               deferThrowToParent: controller.isOnlineMatch,
               handoffOnSettle: handoffOnSettle,
               onBoardSettle: onBoardSettle,
               onThrowComplete: (finalValue) {
-                if (!player.isBot) {
+                if (!player.isBot && isCurrentTurn) {
                   controller.onPhysicalDiceThrowComplete(finalValue);
                 }
               },
