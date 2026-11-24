@@ -146,12 +146,10 @@ class PlayerCard extends StatelessWidget {
       }
     }
 
-    final bool showPodDice = controller.isOnlineMatch
-        ? (isCurrentTurn ? !hideActiveDice : true)
-        : (isCurrentTurn && !hideActiveDice);
-    final int diceDisplayValue = isCurrentTurn
-        ? (state.currentDiceValue ?? controller.lastSettledDiceValue)
-        : (controller.lastSettledDiceValue > 0 ? controller.lastSettledDiceValue : 1);
+    // Exactly one player's dice is visible at a time (the active turn player).
+    // The other player's slot remains completely empty until their turn arrives.
+    final bool showPodDice = isCurrentTurn && !hideActiveDice;
+    final int diceDisplayValue = state.currentDiceValue ?? controller.lastSettledDiceValue;
 
     final Widget diceWidget = KeyedSubtree(
       key: diceSlotKey,

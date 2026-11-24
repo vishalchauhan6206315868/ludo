@@ -1675,6 +1675,28 @@ class LudoGameController extends ChangeNotifier {
       ack = await _socket.rollDice(activeSid);
     }
 
+    if (ack.ok) {
+      final resData = ack.data['data'] is Map
+          ? Map<String, dynamic>.from(ack.data['data'] as Map)
+          : ack.data;
+      final diceVal = (resData['diceValue'] as num?)?.toInt() ??
+          (resData['dice'] as num?)?.toInt();
+      if (diceVal != null && diceVal >= 1 && diceVal <= 6 && _onlineRollPending) {
+        final myUserId = await AuthService.getUserUid();
+        final event = <String, dynamic>{
+          'sessionId': activeSid,
+          'playerId': myUserId ?? resData['playerId'] ?? resData['userId'],
+          'diceValue': diceVal,
+          'movableTokenIds': resData['movableTokenIds'] ?? resData['movableTokens'] ?? <dynamic>[],
+          'turnPassed': resData['turnPassed'] == true,
+          'threeSixes': resData['threeSixes'] == true,
+          'state': resData['state'] ?? resData['session'],
+        };
+        await _onlineHandleDice(event);
+        return;
+      }
+    }
+
     if (!ack.ok) {
       debugPrint('[ONLINE] Socket roll failed (${ack.code}), attempting REST ApiService.rollDice');
       try {
@@ -1743,6 +1765,23 @@ class LudoGameController extends ChangeNotifier {
     LudoAck ack = LudoAck.err('NOT_CONNECTED');
     if (_socket.isConnected) {
       ack = await _socket.moveToken(activeSid, tokenId);
+    }
+
+    if (ack.ok) {
+      final resData = ack.data['data'] is Map
+          ? Map<String, dynamic>.from(ack.data['data'] as Map)
+          : ack.data;
+      if (resData['move'] != null && _onlineMovePending) {
+        final myUserId = await AuthService.getUserUid();
+        final event = <String, dynamic>{
+          'sessionId': activeSid,
+          'playerId': myUserId ?? resData['playerId'] ?? resData['userId'],
+          'move': resData['move'],
+          'state': resData['state'] ?? resData['session'],
+        };
+        await _onlineHandleMove(event);
+        return;
+      }
     }
 
     if (!ack.ok) {
