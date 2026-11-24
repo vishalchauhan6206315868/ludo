@@ -7,15 +7,16 @@ import '../../models/online_game_mode.dart';
 import '../../models/room_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/ludo_socket_service.dart';
+import '../../services/matchmaking_service.dart';
 import '../game_screen.dart';
 
-/// Realtime Online Matchmaking & Room Lobby Screen.
+/// Realtime 1-Click Online Matchmaking & Duel Lobby Screen.
 ///
 /// Features:
-/// - Real backend room creation (/api/rooms/create)
-/// - Live 6-character room code with Copy & Share
+/// - 1-Click automatic pairing across devices (no room code sharing, copying, or typing needed)
+/// - Auto-discovers waiting rooms or creates and hosts a room seamlessly
 /// - Real-time Socket.IO synchronization (player_joined, match_started)
-/// - 2 Player pods (Host & Opponent) with live connection status
+/// - 2 Player pods (You & Opponent) with live pulse radar animation
 /// - 15-second Smart Bot Fallback so players are never left waiting
 /// - Seamless handoff to GameScreen with selected OnlineModeType
 class OnlineMatchmakingScreen extends StatefulWidget {
@@ -41,19 +42,21 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   Timer? _searchTimer;
+  Timer? _heartbeatTimer;
   Timer? _pollTimer;
+  Timer? _countdownTimer;
+
   int _secondsElapsed = 0;
   String _statusText = "Connecting to matchmaking server...";
   bool _navigatedToGame = false;
-  bool _isCopied = false;
 
   // Real room state
   RoomModel? _currentRoom;
   String? _roomCode;
+  bool _isHost = true;
   String? _opponentName;
   bool _opponentJoined = false;
   int _countdownSeconds = 3;
-  Timer? _countdownTimer;
 
   final List<StreamSubscription<dynamic>> _socketSubs = [];
 
@@ -70,6 +73,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
+    _isHost = widget.isHost;
     _currentRoom = widget.initialRoom;
     if (widget.initialRoom != null) {
       _roomCode = widget.initialRoom!.roomCode.toUpperCase();
@@ -105,20 +109,16 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
 
       setState(() {
         _secondsElapsed++;
-        if (_roomCode != null) {
-          if (_secondsElapsed < 15) {
-            _statusText = "Room Code: $_roomCode - Share code with friend!";
-          } else {
-            _statusText = "Room: $_roomCode - Waiting for opponent or Smart Bot";
-          }
+        if (_secondsElapsed <= 2) {
+          _statusText = "Connecting to matchmaking server...";
+        } else if (_secondsElapsed <= 6) {
+          _statusText = "Searching for online opponent in ${widget.selectedMode.title}...";
+        } else if (_secondsElapsed <= 12) {
+          _statusText = "Scanning active lobbies & player queue...";
+        } else if (_secondsElapsed < 15) {
+          _statusText = "Finding best match for your rank...";
         } else {
-          if (_secondsElapsed == 2) {
-            _statusText = "Searching for opponents in ${widget.selectedMode.title}...";
-          } else if (_secondsElapsed == 6) {
-            _statusText = "Creating live game room...";
-          } else if (_secondsElapsed >= 12) {
-            _statusText = "Analyzing skill pool & live lobbies...";
-          }
+          _statusText = "Still searching... Play vs Smart Bot or keep waiting";
         }
       });
     });
@@ -129,34 +129,31 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
       // 1. Ensure active backend session
       await AuthService.ensureBackendSession();
 
-      if (widget.isHost && _currentRoom == null) {
-        // 2. Call backend /api/rooms/create with 'twoPlayer'
-        var response = await ApiService().createRoom(
-          maxPlayers: 2,
-          gameMode: 'twoPlayer',
+      if (_currentRoom == null) {
+        setState(() {
+          _statusText = "Searching for live opponent in ${widget.selectedMode.title}...";
+        });
+
+        // 2. Automated 1-click matchmaking: find open room or create as host
+        final result = await MatchmakingService.instance.findOrHostMatch(
+          mode: widget.selectedMode,
           entryFee: widget.entryFee,
         );
 
-        // Auto-leave if previously in an active room
-        final rawError = response['message']?.toString().toLowerCase() ?? '';
-        final oldRoomCode = response['data'] is Map ? response['data']['roomCode']?.toString() : null;
-        if ((oldRoomCode != null && oldRoomCode.isNotEmpty) || rawError.contains('already in an active room')) {
-          if (oldRoomCode != null && oldRoomCode.isNotEmpty) {
-            await ApiService().leaveRoom(roomCode: oldRoomCode);
-          }
-          response = await ApiService().createRoom(
-            maxPlayers: 2,
-            gameMode: 'twoPlayer',
-            entryFee: widget.entryFee,
-          );
-        }
+        if (result != null) {
+          _currentRoom = result.room;
+          _roomCode = result.room.roomCode.toUpperCase();
+          _isHost = result.isHost;
 
-        if (response['success'] == true && response['data'] != null) {
-          final data = response['data'];
-          if (data is Map<String, dynamic>) {
-            _currentRoom = RoomModel.fromJson(data);
-            final roomMap = data['room'] is Map ? data['room'] as Map : data;
-            _roomCode = (roomMap['roomCode'] ?? _currentRoom?.roomCode)?.toString().toUpperCase();
+          // If we joined an already waiting host, trigger opponent joined right away
+          if (!_isHost && result.room.players.isNotEmpty) {
+            final hostPlayer = result.room.players[0];
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _onOpponentJoined(hostPlayer);
+            });
+          } else if (_isHost) {
+            // As host, keep heartbeat alive while waiting
+            _startHostHeartbeat();
           }
         }
       }
@@ -164,19 +161,27 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
       // 3. Connect to live Socket.IO channel
       await _setupSocketListeners();
 
-      // 4. Fallback periodic polling every 3 seconds in case WebSocket drops
+      // 4. Fallback periodic polling every 2 seconds in case WebSocket drops
       _setupFallbackPolling();
     } catch (e) {
       debugPrint("Matchmaking initialization notice: $e");
-    } finally {
-      if (mounted) {
-        setState(() {
-          if (_roomCode != null) {
-            _statusText = "Room Code: $_roomCode - Waiting for opponent...";
-          }
-        });
-      }
     }
+  }
+
+  void _startHostHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 4), (timer) async {
+      if (!mounted || _opponentJoined || _navigatedToGame || _roomCode == null || !_isHost) {
+        timer.cancel();
+        return;
+      }
+      final myUid = await AuthService.getUserUid() ?? (await AuthService.getUserEmail());
+      MatchmakingService.instance.announceHeartbeat(
+        mode: widget.selectedMode,
+        roomCode: _roomCode!,
+        hostId: myUid,
+      );
+    });
   }
 
   Future<void> _setupSocketListeners() async {
@@ -185,11 +190,13 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     final connected = await svc.ensureConnected();
 
     if (connected && mounted) {
-      // Join room socket room channel
+      // Join room socket channel
       await svc.request('join_room', {'roomCode': _roomCode});
 
       bool forThisRoom(Map<String, dynamic> e) {
-        final code = (e['roomCode'] ?? (e['room'] is Map ? e['room']['roomCode'] : null))?.toString().toUpperCase();
+        final code = (e['roomCode'] ?? (e['room'] is Map ? e['room']['roomCode'] : null))
+            ?.toString()
+            .toUpperCase();
         return code == _roomCode;
       }
 
@@ -199,7 +206,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           final name = e['player']?['name']?.toString() ??
               e['playerName']?.toString() ??
               (e['player'] is String ? e['player'].toString() : null);
-          _onOpponentJoined(name ?? "Opponent");
+          _onOpponentJoined(name ?? "Challenger");
         }
       }));
 
@@ -209,13 +216,13 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           final roomData = e['room'];
           if (roomData is Map && (roomData['players'] as List?)?.length == 2) {
             final players = roomData['players'] as List;
-            final mySeat = widget.isHost ? 0 : 1;
+            final mySeat = _isHost ? 0 : 1;
             final other = players.firstWhere(
               (p) => (p is Map) && p['seatIndex'] != mySeat,
               orElse: () => null,
             );
             if (other is Map) {
-              _onOpponentJoined(other['name']?.toString() ?? "Opponent");
+              _onOpponentJoined(other['name']?.toString() ?? "Challenger");
             }
           }
         }
@@ -239,14 +246,14 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
 
   void _setupFallbackPolling() {
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
       if (!mounted || _opponentJoined || _navigatedToGame || _roomCode == null) return;
       try {
         final res = await ApiService().getRoomDetails(roomCode: _roomCode!);
         if (res['success'] == true && res['data'] != null) {
           final room = RoomModel.fromJson(res['data']);
           if (room.players.length >= 2) {
-            final opp = widget.isHost
+            final opp = _isHost
                 ? (room.players.length > 1 ? room.players[1] : "Challenger")
                 : (room.players.isNotEmpty ? room.players[0] : "Host");
             _onOpponentJoined(opp);
@@ -258,13 +265,24 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
 
   void _onOpponentJoined(String? name) {
     if (_opponentJoined || _navigatedToGame || !mounted) return;
+
+    _heartbeatTimer?.cancel();
+    if (_roomCode != null) {
+      MatchmakingService.instance.announceClaimed(
+        mode: widget.selectedMode,
+        roomCode: _roomCode!,
+      );
+    }
+
     setState(() {
       _opponentJoined = true;
-      _opponentName = name ?? (widget.isHost ? "Opponent" : "Host");
-      _statusText = "Opponent Connected! Match starting in $_countdownSeconds...";
+      _opponentName = name ?? (_isHost ? "Challenger" : "Host");
+      _statusText = "Opponent Found! Match starting in $_countdownSeconds...";
     });
 
-    HapticFeedback.mediumImpact();
+    try {
+      HapticFeedback.mediumImpact();
+    } catch (_) {}
 
     // Start 3-second visual countdown to launch
     _countdownSeconds = 3;
@@ -277,7 +295,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
       setState(() {
         _countdownSeconds--;
         if (_countdownSeconds > 0) {
-          _statusText = "Opponent Connected! Match starting in $_countdownSeconds...";
+          _statusText = "Opponent Found! Match starting in $_countdownSeconds...";
         } else {
           _statusText = "Match Launching...";
         }
@@ -294,6 +312,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     _navigatedToGame = true;
 
     _searchTimer?.cancel();
+    _heartbeatTimer?.cancel();
     _pollTimer?.cancel();
     _countdownTimer?.cancel();
     for (final s in _socketSubs) {
@@ -309,8 +328,8 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           sessionId: sessionId,
           roomCode: _roomCode,
           isOnlineMatch: true,
-          isHost: widget.isHost,
-          mySeatIndex: widget.isHost ? 0 : 1,
+          isHost: _isHost,
+          mySeatIndex: _isHost ? 0 : 1,
           onlineModeType: widget.selectedMode.modeType,
         ),
       ),
@@ -322,6 +341,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     _navigatedToGame = true;
 
     _searchTimer?.cancel();
+    _heartbeatTimer?.cancel();
     _pollTimer?.cancel();
     _countdownTimer?.cancel();
     for (final s in _socketSubs) {
@@ -330,6 +350,10 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     _socketSubs.clear();
 
     if (_roomCode != null) {
+      MatchmakingService.instance.announceCancelled(
+        mode: widget.selectedMode,
+        roomCode: _roomCode!,
+      );
       ApiService().leaveRoom(roomCode: _roomCode!).catchError((_) => <String, dynamic>{});
     }
 
@@ -344,177 +368,6 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     );
   }
 
-  void _showDirectJoinDialog() {
-    final codeController = TextEditingController();
-    bool isJoining = false;
-    String? errorMessage;
-
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            backgroundColor: const Color(0xFF0C1938),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
-              side: const BorderSide(color: Color(0xFFFFD700), width: 1.8),
-            ),
-            title: const Row(
-              children: [
-                Icon(Icons.vpn_key_rounded, color: Color(0xFFFFD700), size: 24),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    "Join Online Lobby",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  "Enter the 6-character room code shared by your friend:",
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: codeController,
-                  textCapitalization: TextCapitalization.characters,
-                  maxLength: 6,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFFFFD700),
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 4.0,
-                  ),
-                  decoration: InputDecoration(
-                    counterText: "",
-                    filled: true,
-                    fillColor: const Color(0xFF070F22),
-                    hintText: "e.g. 83N2HD",
-                    hintStyle: const TextStyle(color: Colors.white30, fontSize: 16, letterSpacing: 1.5),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.2),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFFFEA79), width: 2.0),
-                    ),
-                  ),
-                ),
-                if (errorMessage != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    errorMessage!,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: isJoining ? null : () => Navigator.pop(ctx),
-                child: const Text("CANCEL", style: TextStyle(color: Colors.white60)),
-              ),
-              ElevatedButton(
-                onPressed: isJoining
-                    ? null
-                    : () async {
-                        final code = codeController.text.trim().toUpperCase();
-                        if (code.length < 4) {
-                          setDialogState(() => errorMessage = "Please enter a valid room code.");
-                          return;
-                        }
-                        setDialogState(() {
-                          isJoining = true;
-                          errorMessage = null;
-                        });
-
-                        try {
-                          await AuthService.ensureBackendSession();
-                          if (_roomCode != null && _roomCode != code) {
-                            await ApiService().leaveRoom(roomCode: _roomCode!).catchError((_) => <String, dynamic>{});
-                          }
-                          final res = await ApiService().joinRoom(roomCode: code);
-                          if (!ctx.mounted) return;
-
-                          if (res['success'] == true && res['data'] != null) {
-                            Navigator.pop(ctx);
-                            final room = RoomModel.fromJson(res['data']);
-                            setState(() {
-                              _currentRoom = room;
-                              _roomCode = room.roomCode.toUpperCase();
-                            });
-                            _setupSocketListeners();
-                            final opp = room.players.isNotEmpty ? room.players[0] : "Host";
-                            _onOpponentJoined(opp);
-                            return;
-                          } else {
-                            setDialogState(() {
-                              isJoining = false;
-                              errorMessage = res['message']?.toString() ?? "Could not join room. Check code.";
-                            });
-                          }
-                        } catch (e) {
-                          if (ctx.mounted) {
-                            setDialogState(() {
-                              isJoining = false;
-                              errorMessage = "Connection error. Please try again.";
-                            });
-                          }
-                        }
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFB300),
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: isJoining
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.black)),
-                      )
-                    : const Text("JOIN LOBBY", style: TextStyle(fontWeight: FontWeight.w900)),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _copyRoomCode() {
-    if (_roomCode == null) return;
-    Clipboard.setData(ClipboardData(text: _roomCode!));
-    setState(() => _isCopied = true);
-    HapticFeedback.lightImpact();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Room code $_roomCode copied! Share with your friend."),
-        backgroundColor: const Color(0xFF00C853),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _isCopied = false);
-    });
-  }
-
   void _showRoomCancelledAlert() {
     showDialog(
       context: context,
@@ -525,9 +378,10 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: Color(0xFFFF5252)),
         ),
-        title: const Text("Room Cancelled", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text("Room Cancelled",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         content: const Text(
-          "The room was cancelled by the host or session timed out.",
+          "The online session was cancelled or timed out.",
           style: TextStyle(color: Colors.white70, fontSize: 13),
         ),
         actions: [
@@ -548,6 +402,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
   void dispose() {
     _pulseController.dispose();
     _searchTimer?.cancel();
+    _heartbeatTimer?.cancel();
     _pollTimer?.cancel();
     _countdownTimer?.cancel();
     for (final s in _socketSubs) {
@@ -558,6 +413,12 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
 
   void _cancelMatchmaking() {
     if (_roomCode != null) {
+      if (_isHost) {
+        MatchmakingService.instance.announceCancelled(
+          mode: widget.selectedMode,
+          roomCode: _roomCode!,
+        );
+      }
       ApiService().leaveRoom(roomCode: _roomCode!).catchError((_) => <String, dynamic>{});
     }
     Navigator.pop(context);
@@ -661,49 +522,20 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
                           _statusText,
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: _opponentJoined ? const Color(0xFF00E676) : const Color(0xFF90A4AE),
+                            color: _opponentJoined
+                                ? const Color(0xFF00E676)
+                                : const Color(0xFF90A4AE),
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
 
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 26),
 
-                        // 2 Player Pods (Host VS Opponent)
+                        // 2 Player Pods (You VS Opponent / Searching)
                         _buildPlayerDuelArena(mode),
 
-                        const SizedBox(height: 22),
-
-                        // Live Room Code Capsule (Shareable with friend)
-                        if (_roomCode != null) ...[
-                          _buildRoomCodeCapsule(),
-                          const SizedBox(height: 12),
-                        ],
-
-                        // Quick "Join Friend's Room Instead" button if still searching
-                        if (!_opponentJoined) ...[
-                          TextButton.icon(
-                            key: const Key('matchmaking_join_friend_room_button'),
-                            onPressed: _showDirectJoinDialog,
-                            icon: const Icon(
-                              Icons.vpn_key_rounded,
-                              color: Color(0xFFFFD700),
-                              size: 15,
-                            ),
-                            label: const Text(
-                              "Have friend's room code? Join instead",
-                              style: TextStyle(
-                                color: Color(0xFFFFD700),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 28),
 
                         // Search timer & online player stats
                         Container(
@@ -785,7 +617,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
                           ),
                         ),
 
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 22),
 
                         // Smart Bot Fallback Option (Visible after 15s)
                         if (_secondsElapsed >= 15 && !_opponentJoined)
@@ -840,17 +672,17 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
       children: [
         // Player 1 (You)
         _buildPlayerPod(
-          name: widget.isHost ? "Host (You)" : "You",
+          name: _isHost ? "Host (You)" : "You",
           isReady: true,
           color: const Color(0xFFE53935),
           isPulse: false,
         ),
 
-        const SizedBox(width: 14),
+        const SizedBox(width: 16),
 
         // Glowing VS Emblem
         Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(11),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: const RadialGradient(
@@ -873,7 +705,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           ),
         ),
 
-        const SizedBox(width: 14),
+        const SizedBox(width: 16),
 
         // Player 2 (Opponent or Waiting)
         _buildPlayerPod(
@@ -901,8 +733,8 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           child: Column(
             children: [
               Container(
-                width: 76,
-                height: 76,
+                width: 80,
+                height: 80,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: const Color(0xFF0A1838),
@@ -921,24 +753,30 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
                 ),
                 child: Center(
                   child: isReady
-                      ? Icon(Icons.person_rounded, color: color, size: 40)
+                      ? Icon(Icons.person_rounded, color: color, size: 44)
                       : const SizedBox(
-                          width: 26,
-                          height: 26,
+                          width: 28,
+                          height: 28,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
+                            strokeWidth: 2.6,
                             valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFD700)),
                           ),
                         ),
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 100),
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
               ),
               const SizedBox(height: 3),
@@ -961,73 +799,6 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           ),
         );
       },
-    );
-  }
-
-  /// Live Room Code Card with Copy & Share
-  Widget _buildRoomCodeCapsule() {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 360),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D1C3C),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFFFD700).withValues(alpha: 0.65),
-          width: 1.4,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFFD700).withValues(alpha: 0.2),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.vpn_key_rounded, color: Color(0xFFFFD700), size: 18),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "ROOM CODE",
-                    style: TextStyle(
-                      color: Color(0xFFFFD700),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    _roomCode ?? "...",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2.0,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          ElevatedButton.icon(
-            onPressed: _copyRoomCode,
-            icon: Icon(_isCopied ? Icons.check_rounded : Icons.copy_rounded, size: 14),
-            label: Text(_isCopied ? "COPIED" : "COPY"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isCopied ? const Color(0xFF00C853) : const Color(0xFFFFB300),
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

@@ -1,9 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/network/api_service.dart';
 import '../../models/online_game_mode.dart';
-import '../../models/room_model.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/online/online_game_mode_card.dart';
 import 'online_matchmaking_screen.dart';
@@ -868,159 +866,6 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
     );
   }
 
-  void _showJoinRoomCodeDialog(BuildContext context) {
-    final codeController = TextEditingController();
-    bool isJoining = false;
-    String? errorMessage;
-
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            backgroundColor: const Color(0xFF0C1938),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
-              side: const BorderSide(color: Color(0xFFFFD700), width: 1.8),
-            ),
-            title: const Row(
-              children: [
-                Icon(Icons.vpn_key_rounded, color: Color(0xFFFFD700), size: 24),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    "Join Online Lobby",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  "Enter the 6-character room code shared by your friend:",
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: codeController,
-                  textCapitalization: TextCapitalization.characters,
-                  maxLength: 6,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFFFFD700),
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 4.0,
-                  ),
-                  decoration: InputDecoration(
-                    counterText: "",
-                    filled: true,
-                    fillColor: const Color(0xFF070F22),
-                    hintText: "e.g. AB89X2",
-                    hintStyle: const TextStyle(color: Colors.white30, fontSize: 16, letterSpacing: 1.5),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.2),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFFFEA79), width: 2.0),
-                    ),
-                  ),
-                ),
-                if (errorMessage != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    errorMessage!,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: isJoining ? null : () => Navigator.pop(ctx),
-                child: const Text("CANCEL", style: TextStyle(color: Colors.white60)),
-              ),
-              ElevatedButton(
-                onPressed: isJoining
-                    ? null
-                    : () async {
-                        final code = codeController.text.trim().toUpperCase();
-                        if (code.length < 4) {
-                          setDialogState(() => errorMessage = "Please enter a valid room code.");
-                          return;
-                        }
-
-                        setDialogState(() {
-                          isJoining = true;
-                          errorMessage = null;
-                        });
-
-                        try {
-                          await AuthService.ensureBackendSession();
-                          final res = await ApiService().joinRoom(roomCode: code);
-                          if (!ctx.mounted) return;
-
-                          if (res['success'] == true && res['data'] != null) {
-                            final room = RoomModel.fromJson(res['data']);
-                            Navigator.pop(ctx);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => OnlineMatchmakingScreen(
-                                  selectedMode: _selectedMode,
-                                  entryFee: room.entryFee,
-                                  initialRoom: room,
-                                  isHost: false,
-                                ),
-                              ),
-                            );
-                            return;
-                          } else {
-                            setDialogState(() {
-                              isJoining = false;
-                              errorMessage = res['message']?.toString() ?? "Could not join room. Check code.";
-                            });
-                          }
-                        } catch (e) {
-                          if (ctx.mounted) {
-                            setDialogState(() {
-                              isJoining = false;
-                              errorMessage = "Connection error. Please try again.";
-                            });
-                          }
-                        }
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFB300),
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: isJoining
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.black)),
-                      )
-                    : const Text("JOIN LOBBY", style: TextStyle(fontWeight: FontWeight.w900)),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
   /// Bottom pinned action bar with blue 3D "NEXT" button & exterior pawns/dice
   Widget _buildBottomBar() {
     return Container(
@@ -1066,88 +911,14 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
                 ),
               ),
 
-              // Dual Action Buttons: JOIN (Secondary) & NEXT (Primary)
+              // Single Primary 3D NEXT / PLAY ONLINE Button
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  children: [
-                    _JoinCodeButton(
-                      onPressed: () => _showJoinRoomCodeDialog(context),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _NextButton(
-                        onPressed: _onNext,
-                      ),
-                    ),
-                  ],
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: _NextButton(
+                  onPressed: _onNext,
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Compact secondary button to join an existing room with code
-class _JoinCodeButton extends StatelessWidget {
-  final VoidCallback onPressed;
-
-  const _JoinCodeButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 52,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: const Color(0xFFFFD700),
-          width: 1.6,
-        ),
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF4A148C),
-            Color(0xFF2E0854),
-            Color(0xFF1A0033),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF4A148C).withValues(alpha: 0.5),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          key: const Key('online_game_selection_join_code_button'),
-          borderRadius: BorderRadius.circular(26),
-          onTap: onPressed,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.vpn_key_rounded, color: Color(0xFFFFD700), size: 18),
-                SizedBox(width: 4),
-                Text(
-                  "JOIN",
-                  style: TextStyle(
-                    color: Color(0xFFFFD700),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ),
