@@ -53,6 +53,8 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
   // Real room state
   RoomModel? _currentRoom;
   String? _roomCode;
+  String? _sessionId;
+  bool _isStartingMatch = false;
   bool _isHost = true;
   String? _opponentName;
   bool _opponentJoined = false;
@@ -75,6 +77,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
 
     _isHost = widget.isHost;
     _currentRoom = widget.initialRoom;
+    _sessionId = widget.initialRoom?.sessionId;
     if (widget.initialRoom != null) {
       _roomCode = widget.initialRoom!.roomCode.toUpperCase();
       if (widget.initialRoom!.players.length >= 2) {
@@ -231,7 +234,11 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
       // Listen to match_started event
       _socketSubs.add(svc.on('match_started').listen((e) {
         if (forThisRoom(e)) {
-          _launchGameSession(e['sessionId']?.toString());
+          final sid = e['sessionId']?.toString();
+          if (sid != null && sid.isNotEmpty) {
+            _sessionId = sid;
+          }
+          _launchGameSession(_sessionId);
         }
       }));
 
@@ -284,6 +291,11 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
       HapticFeedback.mediumImpact();
     } catch (_) {}
 
+    // If host, immediately request backend to start the game session
+    if (_isHost) {
+      _triggerMatchStart();
+    }
+
     // Start 3-second visual countdown to launch
     _countdownSeconds = 3;
     _countdownTimer?.cancel();
@@ -302,9 +314,67 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
       });
       if (_countdownSeconds <= 0) {
         t.cancel();
-        _launchGameSession(_currentRoom?.sessionId);
+        if (_sessionId != null && _sessionId!.isNotEmpty) {
+          _launchGameSession(_sessionId);
+        } else {
+          _fetchAndLaunchMatch();
+        }
       }
     });
+  }
+
+  Future<void> _triggerMatchStart() async {
+    if (_roomCode == null || _isStartingMatch || _navigatedToGame) return;
+    _isStartingMatch = true;
+    try {
+      final svc = LudoSocketService.instance;
+      String? sid;
+      if (await svc.ensureConnected()) {
+        final ack = await svc.startMatch(_roomCode!);
+        if (ack.ok) {
+          sid = ack.data['sessionId']?.toString();
+        }
+      }
+      if (sid == null || sid.isEmpty) {
+        final res = await ApiService().startGame(roomCode: _roomCode!);
+        if (res['success'] == true && res['data'] is Map) {
+          final data = res['data'] as Map;
+          final session = data['session'];
+          sid = data['sessionId']?.toString() ??
+              (session is Map ? (session['_id'] ?? session['id'])?.toString() : null);
+        }
+      }
+      if (sid != null && sid.isNotEmpty) {
+        _sessionId = sid;
+      }
+    } catch (e) {
+      debugPrint("Error starting match: $e");
+    } finally {
+      _isStartingMatch = false;
+    }
+  }
+
+  Future<void> _fetchAndLaunchMatch() async {
+    if (_navigatedToGame || !mounted || _roomCode == null) return;
+    try {
+      final res = await ApiService().startGame(roomCode: _roomCode!);
+      if (res['success'] == true && res['data'] is Map) {
+        final data = res['data'] as Map;
+        final session = data['session'];
+        _sessionId = data['sessionId']?.toString() ??
+            (session is Map ? (session['_id'] ?? session['id'])?.toString() : null);
+      }
+      if (_sessionId == null || _sessionId!.isEmpty) {
+        final roomRes = await ApiService().getRoomDetails(roomCode: _roomCode!);
+        if (roomRes['success'] == true && roomRes['data'] is Map) {
+          final r = RoomModel.fromJson(roomRes['data']);
+          _sessionId = r.sessionId;
+        }
+      }
+    } catch (e) {
+      debugPrint("Fetch match error: $e");
+    }
+    _launchGameSession(_sessionId);
   }
 
   void _launchGameSession(String? sessionId) {
@@ -320,12 +390,14 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     }
     _socketSubs.clear();
 
+    final effectiveSessionId = _sessionId ?? sessionId ?? _currentRoom?.sessionId;
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => GameScreen(
           mode: GameMode.twoPlayer,
-          sessionId: sessionId,
+          sessionId: effectiveSessionId,
           roomCode: _roomCode,
           isOnlineMatch: true,
           isHost: _isHost,

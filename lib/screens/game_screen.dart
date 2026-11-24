@@ -700,23 +700,37 @@ class _GameScreenState extends State<GameScreen>
                         margin: const EdgeInsets.all(8),
                         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 14),
                         decoration: BoxDecoration(
-                          color: Colors.redAccent.withValues(alpha: 0.92),
+                          color: _controller.onlineConnection == LudoConnectionStatus.connecting
+                              ? const Color(0xFF0C1833).withValues(alpha: 0.94)
+                              : Colors.redAccent.withValues(alpha: 0.92),
                           borderRadius: BorderRadius.circular(20),
+                          border: _controller.onlineConnection == LudoConnectionStatus.connecting
+                              ? Border.all(color: const Color(0xFFFFD700), width: 1.2)
+                              : null,
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             if (_controller.onlineConnection != LudoConnectionStatus.unauthorized)
-                              const SizedBox(
+                              SizedBox(
                                 width: 14,
                                 height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    _controller.onlineConnection == LudoConnectionStatus.connecting
+                                        ? const Color(0xFFFFD700)
+                                        : Colors.white,
+                                  ),
+                                ),
                               ),
                             const SizedBox(width: 8),
                             Text(
                               _controller.onlineConnection == LudoConnectionStatus.unauthorized
                                   ? "Session expired. Please log in again."
-                                  : "Connection lost. Reconnecting...",
+                                  : _controller.onlineConnection == LudoConnectionStatus.connecting
+                                      ? "Connecting to match server..."
+                                      : "Connection lost. Reconnecting...",
                               style: const TextStyle(
                                   color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
                             ),

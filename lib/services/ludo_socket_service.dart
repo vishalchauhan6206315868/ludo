@@ -92,7 +92,7 @@ class LudoSocketService {
     final s = io.io(
       baseUrl,
       io.OptionBuilder()
-          .setTransports(['websocket'])
+          .setTransports(['websocket', 'polling'])
           .setAuth({'token': token})
           .enableForceNew()
           .enableReconnection()

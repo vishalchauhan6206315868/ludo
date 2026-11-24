@@ -6,6 +6,7 @@ import '../core/network/api_service.dart';
 import '../models/game_state.dart';
 import '../models/ludo_player.dart';
 import '../models/online_game_mode.dart';
+import '../models/room_model.dart';
 import '../models/token.dart';
 import '../services/game_storage_service.dart';
 import '../services/ludo_socket_service.dart';
@@ -48,7 +49,7 @@ class LudoGameController extends ChangeNotifier {
   final Map<PlayerColor, int> _baseNoSixCount = {};
   final Map<PlayerColor, int> _baseNoSixThreshold = {};
 
-  final String? sessionId;
+  String? sessionId;
   final String? roomCode;
   final bool isTeamUpVsBot;
   final bool isOnlineMatch;
@@ -1475,8 +1476,45 @@ class LudoGameController extends ChangeNotifier {
   int? _seatOfUser(String? userId) => userId == null ? null : _onlineSeatByUser[userId];
 
   void _startOnlineSync() {
+    // If sessionId is missing but roomCode is available, fetch or start session
+    if ((sessionId == null || sessionId!.isEmpty) && (roomCode != null && roomCode!.isNotEmpty)) {
+      _resolveSessionFromRoomCode();
+      return;
+    }
+
+    if (sessionId == null || sessionId!.isEmpty) return;
+    _attachOnlineSync();
+  }
+
+  Future<void> _resolveSessionFromRoomCode() async {
+    try {
+      final res = await ApiService().startGame(roomCode: roomCode!);
+      if (res['success'] == true && res['data'] is Map) {
+        final data = res['data'] as Map;
+        final session = data['session'];
+        sessionId = data['sessionId']?.toString() ??
+            (session is Map ? (session['_id'] ?? session['id'])?.toString() : null);
+      }
+      if (sessionId == null || sessionId!.isEmpty) {
+        final roomRes = await ApiService().getRoomDetails(roomCode: roomCode!);
+        if (roomRes['success'] == true && roomRes['data'] is Map) {
+          final r = RoomModel.fromJson(roomRes['data']);
+          sessionId = r.sessionId;
+        }
+      }
+    } catch (e) {
+      debugPrint('[ONLINE] resolve session error: $e');
+    }
+
+    if (sessionId != null && sessionId!.isNotEmpty && !_disposed) {
+      _attachOnlineSync();
+    }
+  }
+
+  void _attachOnlineSync() {
     if (sessionId == null || sessionId!.isEmpty) return;
     onlineConnection = _socket.status;
+    _safeNotifyListeners();
 
     _onlineSubs.add(_socket.statusStream.listen((s) {
       onlineConnection = s;
