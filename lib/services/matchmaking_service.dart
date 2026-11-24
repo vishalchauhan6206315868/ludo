@@ -26,6 +26,7 @@ class MatchmakingResult {
 /// - Pairs incoming players into waiting rooms within 1-2 seconds
 /// - Creates a waiting room as host if no active player is currently waiting
 /// - Periodic heartbeat keeps host rooms active for immediate pairing
+/// - Automatic collision resolution merges parallel hosts into one lobby
 class MatchmakingService {
   MatchmakingService._();
   static final MatchmakingService instance = MatchmakingService._();
@@ -79,16 +80,21 @@ class MatchmakingService {
                   !_claimedOrDeadRooms.contains(roomCode)) {
                 // Try joining this waiting room
                 final joinRes = await ApiService().joinRoom(roomCode: roomCode);
-                if (joinRes['success'] == true && joinRes['data'] != null) {
+                final msg = joinRes['message']?.toString().toLowerCase() ?? '';
+                if (joinRes['success'] == true &&
+                    joinRes['data'] != null &&
+                    !msg.contains('already in this room')) {
                   final room = RoomModel.fromJson(joinRes['data']);
-                  _claimedOrDeadRooms.add(roomCode);
-                  // Announce claimed so other clients skip it
-                  unawaited(announceClaimed(mode: mode, roomCode: roomCode));
-                  return MatchmakingResult(room: room, isHost: false);
-                } else {
-                  // Failed to join (full or closed)
-                  _claimedOrDeadRooms.add(roomCode);
+                  // Validate that at least 2 players exist in the room or joined successfully
+                  if (room.players.length >= 2 || room.status == 'in_progress' || room.status == 'waiting') {
+                    _claimedOrDeadRooms.add(roomCode);
+                    // Announce claimed so other clients skip it
+                    unawaited(announceClaimed(mode: mode, roomCode: roomCode));
+                    return MatchmakingResult(room: room, isHost: false);
+                  }
                 }
+                // If it failed or was already-in-room or closed, mark dead and try next or host
+                _claimedOrDeadRooms.add(roomCode);
               }
             }
           } catch (_) {}
@@ -98,7 +104,20 @@ class MatchmakingService {
       debugPrint("Matchmaking queue search notice: $e");
     }
 
-    // 2. No open room found: Create room as Host
+    // 2. Proactively clear any active/stale room for this player before hosting
+    try {
+      final activeRes = await ApiService().getMyActiveRoom();
+      if (activeRes['success'] == true && activeRes['data'] is Map) {
+        final activeMap = activeRes['data'] as Map;
+        final activeRoom = activeMap['room'];
+        final activeCode = activeRoom is Map ? activeRoom['roomCode']?.toString() : null;
+        if (activeCode != null && activeCode.isNotEmpty) {
+          await ApiService().leaveRoom(roomCode: activeCode);
+        }
+      }
+    } catch (_) {}
+
+    // 3. No open room found: Create room as Host
     try {
       var createRes = await ApiService().createRoom(
         maxPlayers: 2,
@@ -132,6 +151,44 @@ class MatchmakingService {
       debugPrint("Error creating room during matchmaking: $e");
     }
 
+    return null;
+  }
+
+  /// Searches the queue for any active waiting room hosted by another player.
+  /// Used for merging waiting hosts if they clicked around the same time.
+  Future<String?> findWaitingRoomCode({
+    required OnlineGameMode mode,
+    required String? myUid,
+  }) async {
+    final modeId = mode.id;
+    final topic = topicForMode(modeId);
+    try {
+      final url = Uri.parse('$_relayBase/$topic/json?poll=1&since=20s');
+      final resp = await http.get(url).timeout(const Duration(seconds: 3));
+      if (resp.statusCode == 200 && resp.body.trim().isNotEmpty) {
+        final lines = resp.body.trim().split('\n');
+        for (final line in lines.reversed) {
+          if (line.trim().isEmpty) continue;
+          try {
+            final parsed = jsonDecode(line);
+            final rawMsg = parsed['message']?.toString() ?? '';
+            if (rawMsg.isNotEmpty) {
+              final payload = jsonDecode(rawMsg);
+              final status = payload['status']?.toString();
+              final roomCode = payload['roomCode']?.toString().toUpperCase();
+              final hostId = payload['hostId']?.toString();
+              if (status == 'claimed' || status == 'cancelled') continue;
+              if (roomCode != null &&
+                  roomCode.length == 6 &&
+                  hostId != myUid &&
+                  !_claimedOrDeadRooms.contains(roomCode)) {
+                return roomCode;
+              }
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
     return null;
   }
 

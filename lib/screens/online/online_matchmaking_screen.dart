@@ -173,7 +173,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
 
   void _startHostHeartbeat() {
     _heartbeatTimer?.cancel();
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 4), (timer) async {
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       if (!mounted || _opponentJoined || _navigatedToGame || _roomCode == null || !_isHost) {
         timer.cancel();
         return;
@@ -184,6 +184,43 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
         roomCode: _roomCode!,
         hostId: myUid,
       );
+
+      // If waiting for more than 3 seconds without an opponent, check if another player is hosting
+      // and merge into their room to eliminate any race condition between simultaneous clicks
+      if (_secondsElapsed >= 3 && !_opponentJoined) {
+        final otherRoom = await MatchmakingService.instance.findWaitingRoomCode(
+          mode: widget.selectedMode,
+          myUid: myUid,
+        );
+        if (otherRoom != null && otherRoom != _roomCode && mounted && !_opponentJoined) {
+          final oldRoom = _roomCode;
+          final joinRes = await ApiService().joinRoom(roomCode: otherRoom);
+          final msg = joinRes['message']?.toString().toLowerCase() ?? '';
+          if (joinRes['success'] == true &&
+              joinRes['data'] != null &&
+              !msg.contains('already in this room')) {
+            final room = RoomModel.fromJson(joinRes['data']);
+            if (oldRoom != null) {
+              ApiService().leaveRoom(roomCode: oldRoom).catchError((_) => <String, dynamic>{});
+              MatchmakingService.instance.announceCancelled(
+                mode: widget.selectedMode,
+                roomCode: oldRoom,
+              );
+            }
+            _currentRoom = room;
+            _roomCode = room.roomCode.toUpperCase();
+            _isHost = false;
+            timer.cancel();
+            _setupSocketListeners();
+            final hostPlayer = room.players.isNotEmpty ? room.players[0] : "Host";
+            _onOpponentJoined(hostPlayer);
+            MatchmakingService.instance.announceClaimed(
+              mode: widget.selectedMode,
+              roomCode: _roomCode!,
+            );
+          }
+        }
+      }
     });
   }
 
@@ -253,7 +290,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
 
   void _setupFallbackPolling() {
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
+    _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (!mounted || _opponentJoined || _navigatedToGame || _roomCode == null) return;
       try {
         final res = await ApiService().getRoomDetails(roomCode: _roomCode!);

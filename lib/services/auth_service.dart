@@ -80,10 +80,9 @@ class AuthService {
       await prefs.setString(_keyUserEmail, uniqueEmail);
       await prefs.setString(_keyUserPassword, defaultPassword);
       await prefs.setString(_keyUserName, uniqueName);
+      await prefs.remove(_keyUserUid);
       // Clear any cached token from previous shared admin session
-      if (currentEmail == defaultEmail) {
-        await ApiService().clearSession();
-      }
+      await ApiService().clearSession();
     }
   }
 
@@ -104,27 +103,28 @@ class AuthService {
     String? name,
     String? password,
   }) async {
-    // 1. Check if token is already present
-    var token = await ApiService().getToken();
-    if (token != null && token.isNotEmpty) {
-      return token;
-    }
-
     final prefs = await SharedPreferences.getInstance();
     var effectiveEmail = email ?? prefs.getString(_keyUserEmail);
     var effectiveName = name ?? prefs.getString(_keyUserName);
     final effectivePassword = password ?? (prefs.getString(_keyUserPassword) ?? defaultPassword);
 
+    // If using default shared admin credentials or missing unique email, force re-init unique device account
     if (effectiveEmail == null || effectiveEmail.isEmpty || effectiveEmail == defaultEmail) {
       await initSampleData();
-      effectiveEmail = prefs.getString(_keyUserEmail) ?? 'player_${Random().nextInt(9000) + 1000}@ludo.com';
-      effectiveName = prefs.getString(_keyUserName) ?? 'Player';
+      effectiveEmail = prefs.getString(_keyUserEmail);
+      effectiveName = prefs.getString(_keyUserName);
+    }
+
+    // 1. Check if token is already present (only if it's for this unique user)
+    var token = await ApiService().getToken();
+    if (token != null && token.isNotEmpty && prefs.getString(_keyUserEmail) != defaultEmail) {
+      return token;
     }
 
     // Format valid email if user entered username
-    final cleanEmail = effectiveEmail.contains('@')
-        ? effectiveEmail.trim().toLowerCase()
-        : '${effectiveEmail.trim().toLowerCase()}@ludo.com';
+    final cleanEmail = (effectiveEmail ?? 'player_${Random().nextInt(9000) + 1000}@ludo.com').contains('@')
+        ? (effectiveEmail ?? 'player_${Random().nextInt(9000) + 1000}@ludo.com').trim().toLowerCase()
+        : '${(effectiveEmail ?? 'player_${Random().nextInt(9000) + 1000}').trim().toLowerCase()}@ludo.com';
 
     // 2. Try backend login with user credentials
     try {
@@ -133,6 +133,8 @@ class AuthService {
         password: effectivePassword,
       );
       if (loginRes['success'] == true) {
+        final uid = loginRes['data']?['user']?['id']?.toString();
+        if (uid != null && uid.isNotEmpty) await prefs.setString(_keyUserUid, uid);
         token = await ApiService().getToken();
         if (token != null && token.isNotEmpty) return token;
       }
@@ -146,6 +148,8 @@ class AuthService {
         password: effectivePassword,
       );
       if (regRes['success'] == true) {
+        final uid = regRes['data']?['user']?['id']?.toString();
+        if (uid != null && uid.isNotEmpty) await prefs.setString(_keyUserUid, uid);
         token = await ApiService().getToken();
         if (token != null && token.isNotEmpty) return token;
       }
@@ -203,7 +207,11 @@ class AuthService {
       return fbUser.uid;
     }
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyUserUid);
+    final uid = prefs.getString(_keyUserUid);
+    if (uid != null && uid.isNotEmpty) return uid;
+    final devId = prefs.getString('device_unique_id');
+    if (devId != null && devId.isNotEmpty) return 'device_$devId';
+    return prefs.getString(_keyUserEmail);
   }
 
   /// Get active authentication provider type
