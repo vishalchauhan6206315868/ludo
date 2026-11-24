@@ -149,6 +149,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           _currentRoom = result.room;
           _roomCode = result.room.roomCode.toUpperCase();
           _isHost = result.isHost;
+          _assignedSeatIndex = result.isHost ? 0 : (result.room.seatIndex ?? 1);
 
           // If we joined an already waiting host, trigger opponent joined right away
           if (!_isHost && result.room.players.isNotEmpty) {
@@ -212,6 +213,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
             _currentRoom = room;
             _roomCode = room.roomCode.toUpperCase();
             _isHost = false;
+            _assignedSeatIndex = room.seatIndex ?? 1;
             timer.cancel();
             _setupSocketListeners();
             final hostPlayer = room.players.isNotEmpty ? room.players[0] : "Host";
@@ -423,16 +425,9 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
   Future<void> _launchGameSession(String? sessionId) async {
     if (_navigatedToGame || !mounted) return;
 
-    // Guaranteed Host & Seat resolution using current user identity
-    final myUid = await AuthService.getUserUid() ?? (await AuthService.getUserEmail());
-    if (_currentRoom != null && myUid.isNotEmpty && _currentRoom!.host.isNotEmpty) {
-      if (_currentRoom!.host != myUid) {
-        _isHost = false;
-        _assignedSeatIndex = 1;
-      } else {
-        _isHost = true;
-        _assignedSeatIndex = 0;
-      }
+    // Preserve real Host (Seat 0 = Red) vs Challenger (Seat 1 = Green)
+    if (_assignedSeatIndex != null) {
+      _isHost = (_assignedSeatIndex == 0);
     }
 
     String? effectiveSessionId = _sessionId ?? sessionId ?? _currentRoom?.sessionId;

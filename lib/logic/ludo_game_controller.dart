@@ -1880,7 +1880,10 @@ class LudoGameController extends ChangeNotifier {
       final p = Map<String, dynamic>.from(raw);
       final seat = (p['seatIndex'] as num?)?.toInt();
       if (seat == null || seat < 0 || seat >= state.players.length) continue;
-      _onlineSeatByUser[p['userId'].toString()] = seat;
+      if (p['userId'] != null) _onlineSeatByUser[p['userId'].toString()] = seat;
+      if (p['id'] != null) _onlineSeatByUser[p['id'].toString()] = seat;
+      if (p['_id'] != null) _onlineSeatByUser[p['_id'].toString()] = seat;
+      if (p['email'] != null) _onlineSeatByUser[p['email'].toString().toLowerCase()] = seat;
 
       final lp = state.players[seat];
       final serverName = (p['name'] ?? '').toString();
@@ -1904,26 +1907,30 @@ class LudoGameController extends ChangeNotifier {
       }
     }
 
-    AuthService.getUserUid().then((myUid) {
-      if (_disposed || myUid == null) return;
-      if (_onlineSeatByUser.containsKey(myUid)) {
-        final realSeat = _onlineSeatByUser[myUid];
-        if (realSeat != null && realSeat != mySeatIndex) {
-          mySeatIndex = realSeat;
-          for (int i = 0; i < state.players.length; i++) {
-            final p = state.players[i];
-            if (i == mySeatIndex) {
-              if (!p.name.contains('(You)')) {
-                p.name = '${p.name.replaceAll(RegExp(r'\s*\((?:Opponent|You)\)'), '')} (You)';
-              }
-            } else {
-              if (p.name.contains('(You)')) {
-                p.name = p.name.replaceAll(RegExp(r'\s*\(You\)'), ' (Opponent)');
-              }
+    AuthService.getUserUid().then((myUid) async {
+      if (_disposed) return;
+      final myEmail = await AuthService.getUserEmail();
+      int? realSeat;
+      if (myUid != null && _onlineSeatByUser.containsKey(myUid)) {
+        realSeat = _onlineSeatByUser[myUid];
+      } else if (_onlineSeatByUser.containsKey(myEmail.toLowerCase())) {
+        realSeat = _onlineSeatByUser[myEmail.toLowerCase()];
+      }
+      if (realSeat != null && realSeat != mySeatIndex) {
+        mySeatIndex = realSeat;
+        for (int i = 0; i < state.players.length; i++) {
+          final p = state.players[i];
+          if (i == mySeatIndex) {
+            if (!p.name.contains('(You)')) {
+              p.name = '${p.name.replaceAll(RegExp(r'\s*\((?:Opponent|You)\)'), '')} (You)';
+            }
+          } else {
+            if (p.name.contains('(You)')) {
+              p.name = p.name.replaceAll(RegExp(r'\s*\(You\)'), ' (Opponent)');
             }
           }
-          _safeNotifyListeners();
         }
+        _safeNotifyListeners();
       }
     }).catchError((_) {});
   }

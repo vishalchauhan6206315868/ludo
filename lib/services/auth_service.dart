@@ -133,7 +133,8 @@ class AuthService {
         password: effectivePassword,
       );
       if (loginRes['success'] == true) {
-        final uid = loginRes['data']?['user']?['id']?.toString();
+        final u = loginRes['data']?['user'];
+        final uid = u is Map ? (u['_id'] ?? u['id'])?.toString() : null;
         if (uid != null && uid.isNotEmpty) await prefs.setString(_keyUserUid, uid);
         token = await ApiService().getToken();
         if (token != null && token.isNotEmpty) return token;
@@ -148,7 +149,8 @@ class AuthService {
         password: effectivePassword,
       );
       if (regRes['success'] == true) {
-        final uid = regRes['data']?['user']?['id']?.toString();
+        final u = regRes['data']?['user'];
+        final uid = u is Map ? (u['_id'] ?? u['id'])?.toString() : null;
         if (uid != null && uid.isNotEmpty) await prefs.setString(_keyUserUid, uid);
         token = await ApiService().getToken();
         if (token != null && token.isNotEmpty) return token;
