@@ -8,6 +8,7 @@ import '../models/ludo_player.dart';
 import '../models/online_game_mode.dart';
 import '../models/room_model.dart';
 import '../models/token.dart';
+import '../services/auth_service.dart';
 import '../services/game_storage_service.dart';
 import '../services/ludo_socket_service.dart';
 import '../services/sound_haptic_service.dart';
@@ -54,7 +55,7 @@ class LudoGameController extends ChangeNotifier {
   final bool isTeamUpVsBot;
   final bool isOnlineMatch;
   final bool isHost;
-  final int mySeatIndex;
+  int mySeatIndex;
 
   // ---- online match (Socket.IO): the SERVER decides, this phone only shows & requests ----
   final LudoSocketService _socket = LudoSocketService.instance;
@@ -1488,18 +1489,23 @@ class LudoGameController extends ChangeNotifier {
 
   Future<void> _resolveSessionFromRoomCode() async {
     try {
-      final res = await ApiService().startGame(roomCode: roomCode!);
-      if (res['success'] == true && res['data'] is Map) {
-        final data = res['data'] as Map;
-        final session = data['session'];
-        sessionId = data['sessionId']?.toString() ??
-            (session is Map ? (session['_id'] ?? session['id'])?.toString() : null);
+      if (isHost) {
+        final res = await ApiService().startGame(roomCode: roomCode!);
+        if (res['success'] == true && res['data'] is Map) {
+          final data = res['data'] as Map;
+          final session = data['session'];
+          sessionId = data['sessionId']?.toString() ??
+              (session is Map ? (session['_id'] ?? session['id'])?.toString() : null);
+        }
       }
       if (sessionId == null || sessionId!.isEmpty) {
         final roomRes = await ApiService().getRoomDetails(roomCode: roomCode!);
         if (roomRes['success'] == true && roomRes['data'] is Map) {
           final r = RoomModel.fromJson(roomRes['data']);
           sessionId = r.sessionId;
+          if (r.seatIndex != null && r.seatIndex != mySeatIndex) {
+            mySeatIndex = r.seatIndex!;
+          }
         }
       }
     } catch (e) {
@@ -1625,16 +1631,69 @@ class LudoGameController extends ChangeNotifier {
   Future<void> _onlineRequestRoll() async {
     if (_disposed || state.isGameOver || !isMyTurn) return;
     if (state.phase != TurnPhase.waitingForRoll || _onlineRollPending) return;
+
+    final currentSid = sessionId;
+    if (currentSid == null || currentSid.isEmpty) {
+      debugPrint('[ONLINE] sessionId is null, resolving before roll...');
+      if (roomCode != null && roomCode!.isNotEmpty) {
+        await _resolveSessionFromRoomCode();
+      }
+      if (sessionId == null || sessionId!.isEmpty) {
+        state.statusMessage = 'Connecting to match session...';
+        _safeNotifyListeners();
+        return;
+      }
+    }
+
     _onlineRollPending = true;
-    final ack = await _socket.rollDice(sessionId!);
+    final activeSid = sessionId!;
+
+    try {
+      SoundHapticService.playDiceRollSound();
+    } catch (_) {}
+
+    LudoAck ack = LudoAck.err('NOT_CONNECTED');
+    if (_socket.isConnected) {
+      ack = await _socket.rollDice(activeSid);
+    }
+
     if (!ack.ok) {
+      debugPrint('[ONLINE] Socket roll failed (${ack.code}), attempting REST ApiService.rollDice');
+      try {
+        final restRes = await ApiService().rollDice(sessionId: activeSid);
+        if (restRes['success'] == true && restRes['data'] != null) {
+          final data = Map<String, dynamic>.from(restRes['data'] as Map);
+          final diceVal = (data['diceValue'] as num?)?.toInt() ??
+              (data['dice'] as num?)?.toInt();
+          if (diceVal != null && diceVal >= 1 && diceVal <= 6) {
+            final myUserId = await AuthService.getUserUid();
+            final syntheticEvent = <String, dynamic>{
+              'sessionId': activeSid,
+              'playerId': myUserId ?? data['playerId'] ?? data['userId'],
+              'diceValue': diceVal,
+              'movableTokenIds': data['movableTokenIds'] ?? data['movableTokens'] ?? <dynamic>[],
+              'turnPassed': data['turnPassed'] == true,
+              'threeSixes': data['threeSixes'] == true,
+              'state': data['state'] ?? data['session'],
+            };
+            await _onlineHandleDice(syntheticEvent);
+            return;
+          }
+        }
+      } catch (e) {
+        debugPrint('[ONLINE] REST roll fallback error: $e');
+      }
+
       _onlineRollPending = false;
       _onlineShowError(ack);
-      if (ack.code == 'FORBIDDEN' || ack.code == 'CONFLICT' || ack.code == 'BAD_REQUEST') onlineResync();
+      if (ack.code == 'FORBIDDEN' || ack.code == 'CONFLICT' || ack.code == 'BAD_REQUEST') {
+        onlineResync();
+      }
       return;
     }
+
     // the dice_rolled event drives the animation; watchdog in case it never arrives
-    Future.delayed(const Duration(seconds: 6), () {
+    Future.delayed(const Duration(seconds: 4), () {
       if (_disposed || !_onlineRollPending) return;
       _onlineRollPending = false;
       onlineResync();
@@ -1657,14 +1716,46 @@ class LudoGameController extends ChangeNotifier {
   Future<void> _onlineSendMove(int tokenId) async {
     if (_disposed || _onlineMovePending) return;
     _onlineMovePending = true;
-    final ack = await _socket.moveToken(sessionId!, tokenId);
-    if (!ack.ok) {
+    final activeSid = sessionId;
+    if (activeSid == null || activeSid.isEmpty) {
       _onlineMovePending = false;
-      _onlineShowError(ack);
-      if (ack.code == 'FORBIDDEN' || ack.code == 'CONFLICT' || ack.code == 'BAD_REQUEST') onlineResync();
       return;
     }
-    Future.delayed(const Duration(seconds: 6), () {
+
+    LudoAck ack = LudoAck.err('NOT_CONNECTED');
+    if (_socket.isConnected) {
+      ack = await _socket.moveToken(activeSid, tokenId);
+    }
+
+    if (!ack.ok) {
+      debugPrint('[ONLINE] Socket move failed (${ack.code}), attempting REST ApiService.moveToken');
+      try {
+        final restRes = await ApiService().moveToken(sessionId: activeSid, tokenId: tokenId);
+        if (restRes['success'] == true && restRes['data'] != null) {
+          final data = Map<String, dynamic>.from(restRes['data'] as Map);
+          final myUserId = await AuthService.getUserUid();
+          final syntheticEvent = <String, dynamic>{
+            'sessionId': activeSid,
+            'playerId': myUserId ?? data['playerId'] ?? data['userId'],
+            'move': data['move'] ?? {'tokenId': tokenId, 'prevStep': 0, 'newStep': 0},
+            'state': data['state'] ?? data['session'],
+          };
+          await _onlineHandleMove(syntheticEvent);
+          return;
+        }
+      } catch (e) {
+        debugPrint('[ONLINE] REST move fallback error: $e');
+      }
+
+      _onlineMovePending = false;
+      _onlineShowError(ack);
+      if (ack.code == 'FORBIDDEN' || ack.code == 'CONFLICT' || ack.code == 'BAD_REQUEST') {
+        onlineResync();
+      }
+      return;
+    }
+
+    Future.delayed(const Duration(seconds: 4), () {
       if (_disposed || !_onlineMovePending) return;
       _onlineMovePending = false;
       onlineResync();
@@ -1812,6 +1903,29 @@ class LudoGameController extends ChangeNotifier {
         }
       }
     }
+
+    AuthService.getUserUid().then((myUid) {
+      if (_disposed || myUid == null) return;
+      if (_onlineSeatByUser.containsKey(myUid)) {
+        final realSeat = _onlineSeatByUser[myUid];
+        if (realSeat != null && realSeat != mySeatIndex) {
+          mySeatIndex = realSeat;
+          for (int i = 0; i < state.players.length; i++) {
+            final p = state.players[i];
+            if (i == mySeatIndex) {
+              if (!p.name.contains('(You)')) {
+                p.name = '${p.name.replaceAll(RegExp(r'\s*\((?:Opponent|You)\)'), '')} (You)';
+              }
+            } else {
+              if (p.name.contains('(You)')) {
+                p.name = p.name.replaceAll(RegExp(r'\s*\(You\)'), ' (Opponent)');
+              }
+            }
+          }
+          _safeNotifyListeners();
+        }
+      }
+    }).catchError((_) {});
   }
 
   void _onlineApplyFullState(Map<String, dynamic> st, {bool force = false}) {

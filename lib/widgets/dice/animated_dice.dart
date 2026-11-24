@@ -771,7 +771,9 @@ class _AnimatedDiceState extends State<AnimatedDice>
 
     if (widget.deferThrowToParent) {
       widget.onRoll?.call();
-      _pressController.forward(from: 0.0);
+      _pressController.forward(from: 0.0).then((_) {
+        if (mounted) _pressController.reverse();
+      });
       return;
     }
 

@@ -236,7 +236,7 @@ class _GameScreenState extends State<GameScreen>
         final bool isWin;
         if (_controller.isOnlineMatch) {
           // the server decides who won; I am the player on my own seat
-          isWin = _controller.onlineWinnerSeat != null && _controller.onlineWinnerSeat == widget.mySeatIndex;
+          isWin = _controller.onlineWinnerSeat != null && _controller.onlineWinnerSeat == _controller.mySeatIndex;
         } else if (widget.mode == GameMode.teamUp) {
           isWin = _controller.state.winningTeam == 'A';
         } else {

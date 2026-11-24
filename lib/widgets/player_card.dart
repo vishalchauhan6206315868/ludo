@@ -46,13 +46,27 @@ class PlayerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = controller.state;
+    final playerIdx = state.players.indexOf(player);
+    final bool isThisPlayerMySeat = controller.isOnlineMatch
+        ? (playerIdx == controller.mySeatIndex)
+        : (controller.state.mode == GameMode.vsComputer
+            ? (player.color == PlayerColor.yellow)
+            : true);
+
     final canRoll = isCurrentTurn &&
         !player.isSurrendered &&
         state.phase == TurnPhase.waitingForRoll &&
         !player.isBot &&
         !controller.isBotPlaying &&
         !state.currentPlayer.isBot &&
-        controller.isMyTurn;
+        isThisPlayerMySeat;
+
+    final bool showRoleBadge = controller.isOnlineMatch || controller.state.mode == GameMode.vsComputer;
+    final bool isMe = controller.isOnlineMatch
+        ? (playerIdx == controller.mySeatIndex)
+        : (controller.state.mode == GameMode.vsComputer
+            ? (player.color == PlayerColor.yellow)
+            : false);
 
     // Each player pod sits beside its matching board corner:
     // Red (top-left) & Green (top-right) are at the top; Blue & Yellow are at the bottom.
@@ -197,6 +211,37 @@ class PlayerCard extends StatelessWidget {
             size: personIconSize,
           ),
         ),
+        if (showRoleBadge)
+          Positioned(
+            top: -8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 1.0),
+              decoration: BoxDecoration(
+                color: isMe ? const Color(0xFF10B981) : const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(
+                  color: isMe ? const Color(0xFF34D399) : Colors.white24,
+                  width: 0.8,
+                ),
+                boxShadow: [
+                  if (isMe)
+                    BoxShadow(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.4),
+                      blurRadius: 4,
+                    ),
+                ],
+              ),
+              child: Text(
+                isMe ? "YOU" : "OPPONENT",
+                style: TextStyle(
+                  color: isMe ? Colors.white : Colors.white70,
+                  fontSize: 8.0,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ),
+          ),
         if (player.hasFinished)
           const Positioned(
             top: -4,

@@ -56,6 +56,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
   String? _sessionId;
   bool _isStartingMatch = false;
   bool _isHost = true;
+  int? _assignedSeatIndex;
   String? _opponentName;
   bool _opponentJoined = false;
   int _countdownSeconds = 3;
@@ -77,6 +78,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
 
     _isHost = widget.isHost;
     _currentRoom = widget.initialRoom;
+    _assignedSeatIndex = widget.initialRoom?.seatIndex;
     _sessionId = widget.initialRoom?.sessionId;
     if (widget.initialRoom != null) {
       _roomCode = widget.initialRoom!.roomCode.toUpperCase();
@@ -275,6 +277,10 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           if (sid != null && sid.isNotEmpty) {
             _sessionId = sid;
           }
+          final seat = (e['seatIndex'] as num?)?.toInt();
+          if (seat != null) {
+            _assignedSeatIndex = seat;
+          }
           _launchGameSession(_sessionId);
         }
       }));
@@ -414,7 +420,49 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     _launchGameSession(_sessionId);
   }
 
-  void _launchGameSession(String? sessionId) {
+  Future<void> _launchGameSession(String? sessionId) async {
+    if (_navigatedToGame || !mounted) return;
+
+    // Guaranteed Host & Seat resolution using current user identity
+    final myUid = await AuthService.getUserUid() ?? (await AuthService.getUserEmail());
+    if (_currentRoom != null && myUid.isNotEmpty && _currentRoom!.host.isNotEmpty) {
+      if (_currentRoom!.host != myUid) {
+        _isHost = false;
+        _assignedSeatIndex = 1;
+      } else {
+        _isHost = true;
+        _assignedSeatIndex = 0;
+      }
+    }
+
+    String? effectiveSessionId = _sessionId ?? sessionId ?? _currentRoom?.sessionId;
+
+    // Safe session resolution: Ensure sessionId is valid before navigating
+    if ((effectiveSessionId == null || effectiveSessionId.isEmpty) && _roomCode != null) {
+      try {
+        if (_isHost) {
+          final startRes = await ApiService().startGame(roomCode: _roomCode!);
+          if (startRes['success'] == true && startRes['data'] is Map) {
+            final data = startRes['data'] as Map;
+            final session = data['session'];
+            effectiveSessionId = data['sessionId']?.toString() ??
+                (session is Map ? (session['_id'] ?? session['id'])?.toString() : null);
+          }
+        }
+        if (effectiveSessionId == null || effectiveSessionId.isEmpty) {
+          final roomRes = await ApiService().getRoomDetails(roomCode: _roomCode!);
+          if (roomRes['success'] == true && roomRes['data'] is Map) {
+            final r = RoomModel.fromJson(roomRes['data']);
+            effectiveSessionId = r.sessionId;
+            _currentRoom = r;
+            if (r.seatIndex != null) _assignedSeatIndex ??= r.seatIndex;
+          }
+        }
+      } catch (e) {
+        debugPrint("Session resolution before launch notice: $e");
+      }
+    }
+
     if (_navigatedToGame || !mounted) return;
     _navigatedToGame = true;
 
@@ -427,7 +475,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     }
     _socketSubs.clear();
 
-    final effectiveSessionId = _sessionId ?? sessionId ?? _currentRoom?.sessionId;
+    final finalSeat = _assignedSeatIndex ?? _currentRoom?.seatIndex ?? (_isHost ? 0 : 1);
 
     Navigator.pushReplacement(
       context,
@@ -438,7 +486,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           roomCode: _roomCode,
           isOnlineMatch: true,
           isHost: _isHost,
-          mySeatIndex: _isHost ? 0 : 1,
+          mySeatIndex: finalSeat,
           onlineModeType: widget.selectedMode.modeType,
         ),
       ),

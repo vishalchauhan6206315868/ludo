@@ -19,6 +19,8 @@ class LudoAck {
   final String? message;
   final Map<String, dynamic> data;
   const LudoAck(this.ok, {this.code, this.message, this.data = const {}});
+  factory LudoAck.err(String code, [String? message]) => LudoAck(false, code: code, message: message);
+  factory LudoAck.success([Map<String, dynamic> data = const {}]) => LudoAck(true, data: data);
 }
 
 class LudoSocketService {
@@ -159,9 +161,24 @@ class LudoSocketService {
   }
 
   Future<LudoAck> joinSession(String sessionId) => request('join_session', {'sessionId': sessionId});
-  Future<LudoAck> rollDice(String sessionId) => request('dice_roll_requested', {'sessionId': sessionId});
-  Future<LudoAck> moveToken(String sessionId, int tokenId) =>
-      request('token_move_requested', {'sessionId': sessionId, 'tokenId': tokenId});
+  Future<LudoAck> rollDice(String sessionId) async {
+    final ack = await request('dice_roll_requested', {'sessionId': sessionId});
+    if (!ack.ok && (ack.code == 'TIMEOUT' || ack.code == 'NO_HANDLER' || ack.code == 'NOT_CONNECTED')) {
+      final ack2 = await request('roll_dice', {'sessionId': sessionId});
+      if (ack2.ok) return ack2;
+    }
+    return ack;
+  }
+
+  Future<LudoAck> moveToken(String sessionId, int tokenId) async {
+    final ack = await request('token_move_requested', {'sessionId': sessionId, 'tokenId': tokenId});
+    if (!ack.ok && (ack.code == 'TIMEOUT' || ack.code == 'NO_HANDLER' || ack.code == 'NOT_CONNECTED')) {
+      final ack2 = await request('move_token', {'sessionId': sessionId, 'tokenId': tokenId});
+      if (ack2.ok) return ack2;
+    }
+    return ack;
+  }
+
   Future<LudoAck> startMatch(String roomCode) => request('start_match', {'roomCode': roomCode});
 
   static Map<String, dynamic> _asMap(dynamic v) {
