@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../constants/ludo_colors.dart';
@@ -53,6 +54,8 @@ class _GameScreenState extends State<GameScreen>
   late LudoGameController _controller;
   bool _dialogShown = false;
   bool _hasUpdatedLeaderboard = false;
+  bool _connectingBannerDismissed = false;
+  Timer? _connectingDismissTimer;
 
   // Dice board-settle & direct player-to-player flight state
   final GlobalKey _arenaStackKey = GlobalKey();
@@ -107,6 +110,16 @@ class _GameScreenState extends State<GameScreen>
     );
     _controller.onDiceTravelRequested = _startDiceTravelTo;
     _controller.addListener(_onGameStateChanged);
+
+    if (widget.isOnlineMatch || (widget.sessionId != null && widget.sessionId!.isNotEmpty)) {
+      _connectingDismissTimer = Timer(const Duration(milliseconds: 3000), () {
+        if (mounted) {
+          setState(() {
+            _connectingBannerDismissed = true;
+          });
+        }
+      });
+    }
   }
 
   Offset? _globalToArenaLocal(Offset globalPos) {
@@ -298,6 +311,7 @@ class _GameScreenState extends State<GameScreen>
 
   @override
   void dispose() {
+    _connectingDismissTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _diceTravelController.dispose();
     _controller.removeListener(_onGameStateChanged);
@@ -688,7 +702,9 @@ class _GameScreenState extends State<GameScreen>
 
             // 4. Online only: connection status (the match is restored automatically on reconnect)
             if (_controller.isOnlineMatch &&
-                _controller.onlineConnection != LudoConnectionStatus.connected)
+                _controller.onlineConnection != LudoConnectionStatus.connected &&
+                !(_connectingBannerDismissed &&
+                    _controller.onlineConnection == LudoConnectionStatus.connecting))
               Positioned(
                 top: 0,
                 left: 0,

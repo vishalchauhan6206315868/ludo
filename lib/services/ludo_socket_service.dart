@@ -94,6 +94,8 @@ class LudoSocketService {
       io.OptionBuilder()
           .setTransports(['websocket', 'polling'])
           .setAuth({'token': token})
+          .setExtraHeaders({'Authorization': 'Bearer $token', 'token': token})
+          .setQuery({'token': token})
           .enableForceNew()
           .enableReconnection()
           .setReconnectionDelay(1000)
