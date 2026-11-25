@@ -152,7 +152,8 @@ class _RoomLobbyDialogState extends State<RoomLobbyDialog>
         : (room.maxPlayers == 3 || room.gameMode == 'threePlayer'
             ? GameMode.threePlayer
             : GameMode.twoPlayer);
-    final seat = widget.isHost ? 0 : (widget.room.seatIndex ?? room.seatIndex ?? 1);
+    final rawSeat = widget.isHost ? 0 : (widget.room.seatIndex ?? room.seatIndex ?? 1);
+    final seat = (!widget.isHost && rawSeat == 0) ? 1 : rawSeat;
 
     final navigator = Navigator.of(context);
     final route = ModalRoute.of(context);

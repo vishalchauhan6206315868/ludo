@@ -123,7 +123,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
               roomCode: room.roomCode,
               isOnlineMatch: true,
               isHost: data['isHost'] == true,
-              mySeatIndex: room.seatIndex ?? 0,
+              mySeatIndex: room.seatIndex ?? (data['isHost'] == true ? 0 : 1),
             ),
           ),
         );

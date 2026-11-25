@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/widgets.dart';
@@ -200,6 +201,42 @@ class AuthService {
     }
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyUserPhotoUrl);
+  }
+
+  /// Decode User ID from active JWT token payload
+  static String? getUserIdFromJwt(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      var payload = parts[1];
+      while (payload.length % 4 != 0) {
+        payload += '=';
+      }
+      final decodedJson = utf8.decode(base64Url.decode(payload));
+      final map = jsonDecode(decodedJson);
+      if (map is Map) {
+        return (map['id'] ?? map['userId'] ?? map['_id'] ?? map['sub'])?.toString();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Authoritative backend user ID (MongoDB _id) matching backend GameSession/Room players
+  static Future<String?> getBackendUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid = prefs.getString(_keyUserUid);
+    if (uid != null && uid.isNotEmpty && !uid.startsWith('device_')) {
+      return uid;
+    }
+    final token = await ApiService().getToken();
+    if (token != null && token.isNotEmpty) {
+      final jwtUid = getUserIdFromJwt(token);
+      if (jwtUid != null && jwtUid.isNotEmpty) {
+        await prefs.setString(_keyUserUid, jwtUid);
+        return jwtUid;
+      }
+    }
+    return await getUserUid();
   }
 
   /// Get current user UID

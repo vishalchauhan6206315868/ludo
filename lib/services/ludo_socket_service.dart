@@ -30,8 +30,10 @@ class LudoSocketService {
   /// Every event the server can push.
   static const serverEvents = <String>[
     'room_created', 'player_joined', 'player_left', 'room_left', 'room_cancelled', 'room_state',
-    'match_started', 'game_state', 'dice_rolled', 'dice_roll_result', 'token_moved', 'turn_changed', 'turn_timeout',
-    'player_surrendered', 'player_disconnected', 'player_reconnected', 'match_finished',
+    'match_started', 'game_started', 'match_found', 'game_state', 'active_game',
+    'dice_rolled', 'dice_roll_result', 'token_moved', 'turn_changed', 'turn_timeout',
+    'player_surrendered', 'player_disconnected', 'player_reconnected',
+    'match_finished', 'game_over', 'invalid_move', 'game_error',
   ];
 
   io.Socket? _socket;
@@ -41,13 +43,22 @@ class LudoSocketService {
 
   final _statusCtrl = StreamController<LudoConnectionStatus>.broadcast();
   final Map<String, StreamController<Map<String, dynamic>>> _eventCtrls = {};
+  final Set<String> _boundEvents = {};
 
   LudoConnectionStatus get status => _status;
   Stream<LudoConnectionStatus> get statusStream => _statusCtrl.stream;
   bool get isConnected => _status == LudoConnectionStatus.connected;
 
-  Stream<Map<String, dynamic>> on(String event) =>
-      _eventCtrls.putIfAbsent(event, () => StreamController<Map<String, dynamic>>.broadcast()).stream;
+  Stream<Map<String, dynamic>> on(String event) {
+    if (_socket != null && !_boundEvents.contains(event)) {
+      _boundEvents.add(event);
+      _socket!.on(event, (data) {
+        final ctrl = _eventCtrls[event];
+        if (ctrl != null && !ctrl.isClosed) ctrl.add(_asMap(data));
+      });
+    }
+    return _eventCtrls.putIfAbsent(event, () => StreamController<Map<String, dynamic>>.broadcast()).stream;
+  }
 
   void _setStatus(LudoConnectionStatus s) {
     if (_status == s) return;
@@ -124,11 +135,22 @@ class LudoSocketService {
       }
     });
 
+    _boundEvents.clear();
     for (final event in serverEvents) {
+      _boundEvents.add(event);
       s.on(event, (data) {
         final ctrl = _eventCtrls[event];
         if (ctrl != null && !ctrl.isClosed) ctrl.add(_asMap(data));
       });
+    }
+    for (final event in _eventCtrls.keys) {
+      if (!_boundEvents.contains(event)) {
+        _boundEvents.add(event);
+        s.on(event, (data) {
+          final ctrl = _eventCtrls[event];
+          if (ctrl != null && !ctrl.isClosed) ctrl.add(_asMap(data));
+        });
+      }
     }
     s.connect();
   }

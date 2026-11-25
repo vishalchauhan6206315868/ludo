@@ -113,6 +113,9 @@ class LudoGameController extends ChangeNotifier {
     this.mySeatIndex = 0,
     this.onlineModeType,
   }) {
+    if (isOnlineMatch && !isHost && mySeatIndex == 0) {
+      mySeatIndex = 1;
+    }
     if (initialState != null) {
       state = initialState;
       if (isOnlineMatch) {
@@ -1483,10 +1486,19 @@ class LudoGameController extends ChangeNotifier {
     });
   }
 
-  bool _isThisSession(Map<String, dynamic> e) => e['sessionId']?.toString() == sessionId;
+  bool _isThisSession(Map<String, dynamic> e) {
+    if (sessionId == null || sessionId!.isEmpty) return false;
+    final sid = e['sessionId']?.toString() ??
+        e['gameId']?.toString() ??
+        e['state']?['sessionId']?.toString() ??
+        e['state']?['gameId']?.toString() ??
+        e['gameState']?['sessionId']?.toString() ??
+        e['gameState']?['gameId']?.toString();
+    return sid != null && sid.isNotEmpty && sid == sessionId;
+  }
 
   int? _seatOfUser(String? userId) {
-    if (userId == null) return null;
+    if (userId == null || userId.isEmpty) return null;
     final direct = _onlineSeatByUser[userId];
     if (direct != null) return direct;
     for (final entry in _onlineSeatByUser.entries) {
@@ -1548,31 +1560,49 @@ class LudoGameController extends ChangeNotifier {
       if (s == LudoConnectionStatus.connected) onlineResync();
     }));
 
-    _onlineSubs.add(_socket.on('game_state').listen((e) {
-      final st = e['state'];
-      if (st is Map && st['sessionId']?.toString() == sessionId) {
-        final map = Map<String, dynamic>.from(st);
-        _enqueueOnline(() async => _onlineApplyFullState(map, force: true));
+    void handleGameState(Map<String, dynamic> e) {
+      final st = e['state'] ?? e['gameState'] ?? (e['turn'] != null ? e : null);
+      if (st is Map) {
+        final sid = st['sessionId']?.toString() ?? st['gameId']?.toString();
+        if (sid == sessionId || sessionId == null || sessionId!.isEmpty) {
+          if (sid != null && (sessionId == null || sessionId!.isEmpty)) sessionId = sid;
+          final map = Map<String, dynamic>.from(st);
+          _enqueueOnline(() async => _onlineApplyFullState(map, force: true));
+        }
       }
-    }));
+    }
+    _onlineSubs.add(_socket.on('game_state').listen(handleGameState));
+    _onlineSubs.add(_socket.on('active_game').listen(handleGameState));
+
     _onlineSubs.add(_socket.on('dice_rolled').listen((e) {
       if (_isThisSession(e)) _enqueueOnline(() => _onlineHandleDice(e));
     }));
     _onlineSubs.add(_socket.on('dice_roll_result').listen((e) {
       if (_isThisSession(e)) _enqueueOnline(() => _onlineHandleDice(e));
     }));
-    _onlineSubs.add(_socket.on('match_started').listen((e) {
-      if (e['roomCode']?.toString().toUpperCase() == roomCode?.toUpperCase()) {
-        final sid = e['sessionId']?.toString();
+
+    void handleMatchStarted(Map<String, dynamic> e) {
+      if (e['roomCode']?.toString().toUpperCase() == roomCode?.toUpperCase() || _isThisSession(e)) {
+        final sid = e['sessionId']?.toString() ?? e['gameId']?.toString();
         if (sid != null && sid.isNotEmpty && (sessionId == null || sessionId!.isEmpty)) {
           sessionId = sid;
-          final st = e['session'] ?? e['state'];
-          if (st is Map) {
-            _onlineApplyFullState(Map<String, dynamic>.from(st), force: true);
+        }
+        final me = e['me'] ?? e['you'] ?? e['state']?['me'] ?? e['session']?['me'];
+        if (me is Map && me['seatIndex'] != null) {
+          final seat = (me['seatIndex'] as num).toInt();
+          if (seat >= 0 && seat < state.players.length) {
+            mySeatIndex = seat;
           }
         }
+        final st = e['session'] ?? e['state'] ?? e['gameState'];
+        if (st is Map) {
+          _onlineApplyFullState(Map<String, dynamic>.from(st), force: true);
+        }
       }
-    }));
+    }
+    _onlineSubs.add(_socket.on('match_started').listen(handleMatchStarted));
+    _onlineSubs.add(_socket.on('game_started').listen(handleMatchStarted));
+
     _onlineSubs.add(_socket.on('token_moved').listen((e) {
       if (_isThisSession(e)) _enqueueOnline(() => _onlineHandleMove(e));
     }));
@@ -1588,9 +1618,23 @@ class LudoGameController extends ChangeNotifier {
         }
       });
     }));
+
+    void handleMoveError(Map<String, dynamic> e) {
+      if (!_isThisSession(e)) return;
+      _onlineMovePending = false;
+      _onlineRollPending = false;
+      final msg = e['message']?.toString() ?? e['error']?.toString();
+      if (msg != null && msg.isNotEmpty) {
+        state.statusMessage = msg;
+        _safeNotifyListeners();
+      }
+    }
+    _onlineSubs.add(_socket.on('invalid_move').listen(handleMoveError));
+    _onlineSubs.add(_socket.on('game_error').listen(handleMoveError));
+
     _onlineSubs.add(_socket.on('turn_timeout').listen((e) {
       if (!_isThisSession(e)) return;
-      final seat = _seatOfUser(e['userId']?.toString());
+      final seat = _seatOfUser(e['userId']?.toString() ?? e['playerId']?.toString());
       if (seat != null && seat < state.players.length) {
         _lastTimeoutName = state.players[seat].name;
         state.statusMessage = "Time's up for $_lastTimeoutName!";
@@ -1599,11 +1643,11 @@ class LudoGameController extends ChangeNotifier {
     }));
     _onlineSubs.add(_socket.on('player_surrendered').listen((e) {
       if (!_isThisSession(e)) return;
-      final seat = _seatOfUser(e['userId']?.toString());
+      final seat = _seatOfUser(e['userId']?.toString() ?? e['playerId']?.toString());
       if (seat != null && seat < state.players.length) {
         state.players[seat].isSurrendered = true;
         state.statusMessage = '${state.players[seat].name} left the match.';
-        final st = e['state'];
+        final st = e['state'] ?? e['gameState'];
         if (st is Map) {
           _onlineApplyFullState(Map<String, dynamic>.from(st));
         } else {
@@ -1612,23 +1656,30 @@ class LudoGameController extends ChangeNotifier {
       }
     }));
     _onlineSubs.add(_socket.on('player_disconnected').listen((e) {
-      if (e['channel'] != 'session' || e['id']?.toString() != sessionId) return;
-      final seat = _seatOfUser(e['userId']?.toString());
+      if (!_isThisSession(e) && e['id']?.toString() != sessionId) return;
+      final seat = _seatOfUser(e['userId']?.toString() ?? e['playerId']?.toString());
       if (seat == null || seat >= state.players.length) return;
       offlineSeats.add(seat);
       state.statusMessage = '${state.players[seat].name} lost connection...';
       _safeNotifyListeners();
     }));
     _onlineSubs.add(_socket.on('player_reconnected').listen((e) {
-      if (e['sessionId']?.toString() != sessionId) return;
-      final seat = _seatOfUser(e['userId']?.toString());
-      if (seat == null) return;
-      offlineSeats.remove(seat);
-      _safeNotifyListeners();
+      if (!_isThisSession(e)) return;
+      final seat = _seatOfUser(e['userId']?.toString() ?? e['playerId']?.toString());
+      if (seat != null) offlineSeats.remove(seat);
+      final st = e['state'] ?? e['gameState'];
+      if (st is Map) {
+        _onlineApplyFullState(Map<String, dynamic>.from(st));
+      } else {
+        _safeNotifyListeners();
+      }
     }));
-    _onlineSubs.add(_socket.on('match_finished').listen((e) {
+
+    void handleFinished(Map<String, dynamic> e) {
       if (_isThisSession(e)) _enqueueOnline(() async => _onlineHandleFinished(e));
-    }));
+    }
+    _onlineSubs.add(_socket.on('match_finished').listen(handleFinished));
+    _onlineSubs.add(_socket.on('game_over').listen(handleFinished));
 
     // connect (if needed) and fetch the full state of this match
     _socket.ensureConnected().then((ok) {
@@ -1719,10 +1770,11 @@ class LudoGameController extends ChangeNotifier {
       final diceVal = (resData['diceValue'] as num?)?.toInt() ??
           (resData['dice'] as num?)?.toInt();
       if (diceVal != null && diceVal >= 1 && diceVal <= 6 && _onlineRollPending) {
-        final myUserId = await AuthService.getUserUid();
+        final myUserId = await AuthService.getBackendUserId() ?? (await AuthService.getUserUid());
         final event = <String, dynamic>{
           'sessionId': activeSid,
           'playerId': myUserId ?? resData['playerId'] ?? resData['userId'],
+          'seatIndex': mySeatIndex,
           'diceValue': diceVal,
           'movableTokenIds': resData['movableTokenIds'] ?? resData['movableTokens'] ?? <dynamic>[],
           'turnPassed': resData['turnPassed'] == true,
@@ -1743,10 +1795,11 @@ class LudoGameController extends ChangeNotifier {
           final diceVal = (data['diceValue'] as num?)?.toInt() ??
               (data['dice'] as num?)?.toInt();
           if (diceVal != null && diceVal >= 1 && diceVal <= 6) {
-            final myUserId = await AuthService.getUserUid();
+            final myUserId = await AuthService.getBackendUserId() ?? (await AuthService.getUserUid());
             final syntheticEvent = <String, dynamic>{
               'sessionId': activeSid,
               'playerId': myUserId ?? data['playerId'] ?? data['userId'],
+              'seatIndex': mySeatIndex,
               'diceValue': diceVal,
               'movableTokenIds': data['movableTokenIds'] ?? data['movableTokens'] ?? <dynamic>[],
               'turnPassed': data['turnPassed'] == true,
@@ -1812,10 +1865,11 @@ class LudoGameController extends ChangeNotifier {
           ? Map<String, dynamic>.from(ack.data['data'] as Map)
           : ack.data;
       if (resData['move'] != null && _onlineMovePending) {
-        final myUserId = await AuthService.getUserUid();
+        final myUserId = await AuthService.getBackendUserId() ?? (await AuthService.getUserUid());
         final event = <String, dynamic>{
           'sessionId': activeSid,
           'playerId': myUserId ?? resData['playerId'] ?? resData['userId'],
+          'seatIndex': mySeatIndex,
           'move': resData['move'],
           'state': resData['state'] ?? resData['session'],
         };
@@ -1830,10 +1884,11 @@ class LudoGameController extends ChangeNotifier {
         final restRes = await ApiService().moveToken(sessionId: activeSid, tokenId: tokenId);
         if (restRes['success'] == true && restRes['data'] != null) {
           final data = Map<String, dynamic>.from(restRes['data'] as Map);
-          final myUserId = await AuthService.getUserUid();
+          final myUserId = await AuthService.getBackendUserId() ?? (await AuthService.getUserUid());
           final syntheticEvent = <String, dynamic>{
             'sessionId': activeSid,
             'playerId': myUserId ?? data['playerId'] ?? data['userId'],
+            'seatIndex': mySeatIndex,
             'move': data['move'] ?? {'tokenId': tokenId, 'prevStep': 0, 'newStep': 0},
             'state': data['state'] ?? data['session'],
           };
@@ -2069,6 +2124,18 @@ class LudoGameController extends ChangeNotifier {
 
   /// Names, token positions, online flags (everything about the players).
   void _onlineApplyPlayers(Map<String, dynamic> st) {
+    final meBlock = st['me'] ?? st['you'];
+    if (meBlock is Map) {
+      final meSeat = (meBlock['seatIndex'] as num?)?.toInt();
+      if (meSeat != null && meSeat >= 0 && meSeat < state.players.length) {
+        mySeatIndex = meSeat;
+      }
+      final meUid = (meBlock['userId'] ?? meBlock['id'])?.toString();
+      if (meUid != null && meUid.isNotEmpty) {
+        _onlineSeatByUser[meUid] = mySeatIndex;
+      }
+    }
+
     final players = st['players'];
     if (players is! List) return;
     _onlineSeatByUser.clear();
@@ -2082,11 +2149,16 @@ class LudoGameController extends ChangeNotifier {
       if (p['id'] != null) _onlineSeatByUser[p['id'].toString()] = seat;
       if (p['_id'] != null) _onlineSeatByUser[p['_id'].toString()] = seat;
       if (p['email'] != null) _onlineSeatByUser[p['email'].toString().toLowerCase()] = seat;
+      if (p['name'] != null && p['name'].toString().isNotEmpty) {
+        _onlineSeatByUser[p['name'].toString().trim().toLowerCase()] = seat;
+      }
       if (p['user'] != null) {
         if (p['user'] is Map) {
           final uMap = p['user'] as Map;
           if (uMap['_id'] != null) _onlineSeatByUser[uMap['_id'].toString()] = seat;
           if (uMap['id'] != null) _onlineSeatByUser[uMap['id'].toString()] = seat;
+          if (uMap['email'] != null) _onlineSeatByUser[uMap['email'].toString().toLowerCase()] = seat;
+          if (uMap['name'] != null) _onlineSeatByUser[uMap['name'].toString().trim().toLowerCase()] = seat;
         } else {
           _onlineSeatByUser[p['user'].toString()] = seat;
         }
@@ -2120,31 +2192,45 @@ class LudoGameController extends ChangeNotifier {
       }
     }
 
-    AuthService.getUserUid().then((myUid) async {
+    AuthService.getBackendUserId().then((myBackendUid) async {
       if (_disposed) return;
+      final myUid = await AuthService.getUserUid();
       final myEmail = await AuthService.getUserEmail();
+      final myName = await AuthService.getUserName();
+
       int? realSeat;
-      if (myUid != null && _onlineSeatByUser.containsKey(myUid)) {
+      if (myBackendUid != null && _onlineSeatByUser.containsKey(myBackendUid)) {
+        realSeat = _onlineSeatByUser[myBackendUid];
+      } else if (myUid != null && _onlineSeatByUser.containsKey(myUid)) {
         realSeat = _onlineSeatByUser[myUid];
-      } else if (_onlineSeatByUser.containsKey(myEmail.toLowerCase())) {
+      } else if (myEmail.isNotEmpty && _onlineSeatByUser.containsKey(myEmail.toLowerCase())) {
         realSeat = _onlineSeatByUser[myEmail.toLowerCase()];
+      } else if (myName.isNotEmpty && _onlineSeatByUser.containsKey(myName.trim().toLowerCase())) {
+        realSeat = _onlineSeatByUser[myName.trim().toLowerCase()];
       }
+
+      // If joined player (!isHost) but seat is still 0 in a 2-player match, seat must be 1 (Green)
+      if (realSeat == null && !isHost && mySeatIndex == 0 && state.players.length == 2) {
+        realSeat = 1;
+      }
+
       if (realSeat != null && realSeat != mySeatIndex) {
         mySeatIndex = realSeat;
-        for (int i = 0; i < state.players.length; i++) {
-          final p = state.players[i];
-          if (i == mySeatIndex) {
-            if (!p.name.contains('(You)')) {
-              p.name = '${p.name.replaceAll(RegExp(r'\s*\((?:Opponent|You)\)'), '')} (You)';
-            }
-          } else {
-            if (p.name.contains('(You)')) {
-              p.name = p.name.replaceAll(RegExp(r'\s*\(You\)'), ' (Opponent)');
-            }
-          }
-        }
-        _safeNotifyListeners();
+        if (myBackendUid != null) _onlineSeatByUser[myBackendUid] = mySeatIndex;
+        if (myUid != null) _onlineSeatByUser[myUid] = mySeatIndex;
       }
+
+      // Always synchronize player labels based on current mySeatIndex
+      for (int i = 0; i < state.players.length; i++) {
+        final p = state.players[i];
+        final cleanName = p.name.replaceAll(RegExp(r'\s*\((?:Opponent|You|Player \d+)\)'), '').trim();
+        if (i == mySeatIndex) {
+          p.name = '$cleanName (You)';
+        } else {
+          p.name = cleanName.isEmpty ? 'Opponent' : cleanName;
+        }
+      }
+      _safeNotifyListeners();
     }).catchError((_) {});
   }
 

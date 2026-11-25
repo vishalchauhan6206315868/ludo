@@ -272,20 +272,26 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
         }
       }));
 
-      // Listen to match_started event
-      _socketSubs.add(svc.on('match_started').listen((e) {
+      // Listen to match_started and game_started event
+      void handleMatchStarted(Map<String, dynamic> e) {
         if (forThisRoom(e)) {
-          final sid = e['sessionId']?.toString();
+          final sid = e['sessionId']?.toString() ?? e['gameId']?.toString();
           if (sid != null && sid.isNotEmpty) {
             _sessionId = sid;
           }
-          final seat = (e['seatIndex'] as num?)?.toInt();
+          final me = e['me'] ?? e['you'] ?? e['state']?['me'] ?? e['session']?['me'];
+          int? seat = (e['seatIndex'] as num?)?.toInt();
+          if (seat == null && me is Map) {
+            seat = (me['seatIndex'] as num?)?.toInt();
+          }
           if (seat != null) {
             _assignedSeatIndex = seat;
           }
           _launchGameSession(_sessionId);
         }
-      }));
+      }
+      _socketSubs.add(svc.on('match_started').listen(handleMatchStarted));
+      _socketSubs.add(svc.on('game_started').listen(handleMatchStarted));
 
       // Listen to room_cancelled event
       _socketSubs.add(svc.on('room_cancelled').listen((e) {
@@ -470,7 +476,10 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     }
     _socketSubs.clear();
 
-    final finalSeat = _assignedSeatIndex ?? _currentRoom?.seatIndex ?? (_isHost ? 0 : 1);
+    int finalSeat = _assignedSeatIndex ?? _currentRoom?.seatIndex ?? (_isHost ? 0 : 1);
+    if (!_isHost && finalSeat == 0) {
+      finalSeat = 1;
+    }
 
     Navigator.pushReplacement(
       context,

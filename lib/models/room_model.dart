@@ -69,7 +69,7 @@ class RoomModel {
     }
 
     final sid = (outer['sessionId'] ?? roomMap['sessionId'])?.toString();
-    final seat = outer['seatIndex'];
+    final seat = outer['seatIndex'] ?? roomMap['seatIndex'];
 
     return RoomModel(
       id: roomMap['_id']?.toString() ?? roomMap['id']?.toString() ?? '',
