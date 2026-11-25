@@ -803,4 +803,82 @@ class ApiService {
       withAuth: true,
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Nearby Matchmaking Endpoints
+  // ---------------------------------------------------------------------------
+
+  /// Get Nearby Matchmaking Options
+  /// API: GET /api/matchmaking/nearby/options
+  Future<Map<String, dynamic>> getNearbyMatchmakingOptions() async {
+    return await get(
+      ApiConfig.nearbyMatchmakingOptions,
+      withAuth: true,
+    );
+  }
+
+  /// Join Nearby Matchmaking Queue
+  /// API: POST /api/matchmaking/nearby/join
+  Future<Map<String, dynamic>> joinNearbyMatchmaking({
+    required double latitude,
+    required double longitude,
+    double? accuracy,
+    int radiusKm = 5,
+    int entryFee = 0,
+    String gameMode = 'twoPlayer',
+  }) async {
+    final body = <String, dynamic>{
+      'latitude': latitude,
+      'longitude': longitude,
+      'radiusKm': radiusKm,
+      'entryFee': entryFee,
+      'gameMode': gameMode,
+    };
+    if (accuracy != null) body['accuracy'] = accuracy;
+    return await post(
+      ApiConfig.nearbyMatchmakingJoin,
+      body: body,
+      withAuth: true,
+    );
+  }
+
+  /// Update Nearby Location in Matchmaking Queue
+  /// API: POST /api/matchmaking/nearby/location
+  Future<Map<String, dynamic>> updateNearbyLocation({
+    required double latitude,
+    required double longitude,
+    double? accuracy,
+    int? radiusKm,
+  }) async {
+    final body = <String, dynamic>{
+      'latitude': latitude,
+      'longitude': longitude,
+    };
+    if (accuracy != null) body['accuracy'] = accuracy;
+    if (radiusKm != null) body['radiusKm'] = radiusKm;
+    return await post(
+      ApiConfig.nearbyMatchmakingLocation,
+      body: body,
+      withAuth: true,
+    );
+  }
+
+  /// Get Nearby Matchmaking Status
+  /// API: GET /api/matchmaking/nearby/status
+  Future<Map<String, dynamic>> getNearbyMatchmakingStatus() async {
+    return await get(
+      ApiConfig.nearbyMatchmakingStatus,
+      withAuth: true,
+    );
+  }
+
+  /// Leave/Cancel Nearby Matchmaking Queue
+  /// API: POST /api/matchmaking/nearby/leave
+  Future<Map<String, dynamic>> leaveNearbyMatchmaking() async {
+    return await post(
+      ApiConfig.nearbyMatchmakingLeave,
+      body: {},
+      withAuth: true,
+    );
+  }
 }

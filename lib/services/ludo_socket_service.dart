@@ -34,6 +34,8 @@ class LudoSocketService {
     'dice_rolled', 'dice_roll_result', 'token_moved', 'turn_changed', 'turn_timeout',
     'player_surrendered', 'player_disconnected', 'player_reconnected',
     'match_finished', 'game_over', 'invalid_move', 'game_error',
+    'nearby_match_found', 'matchmaking_status', 'matchmaking_waiting',
+    'matchmaking_cancelled', 'matchmaking_expired', 'matchmaking_error',
   ];
 
   io.Socket? _socket;

@@ -9,6 +9,7 @@ import '../../services/auth_service.dart';
 import '../../services/ludo_socket_service.dart';
 import '../../services/matchmaking_service.dart';
 import '../game_screen.dart';
+import 'nearby_matchmaking_screen.dart';
 
 /// Realtime 1-Click Online Matchmaking & Duel Lobby Screen.
 ///
@@ -781,8 +782,11 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
                         const SizedBox(height: 22),
 
                         // Smart Bot Fallback Option (Visible after 15s)
-                        if (_secondsElapsed >= 15 && !_opponentJoined)
+                        if (_secondsElapsed >= 15 && !_opponentJoined) ...[
                           _buildSmartBotFallbackCard(),
+                          const SizedBox(height: 10),
+                          _buildNearbyFallbackCard(),
+                        ],
                       ],
                     ),
                   ),
@@ -1004,6 +1008,64 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
               child: Text(
                 "PLAY VS SMART BOT (${widget.selectedMode.title})",
                 style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNearbyFallbackCard() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D253F),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFF00E5FF).withValues(alpha: 0.5),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.near_me_rounded, color: Color(0xFF00E5FF), size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Looking for players near you? Try Nearby Matchmaking",
+                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 36,
+            child: ElevatedButton(
+              onPressed: () {
+                _cancelMatchmaking();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => NearbyMatchmakingScreen(
+                      entryFee: widget.entryFee,
+                      gameMode: 'twoPlayer',
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00E5FF),
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text(
+                "SEARCH NEARBY PLAYERS (GPS)",
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
               ),
             ),
           ),

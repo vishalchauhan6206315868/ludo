@@ -129,6 +129,15 @@ class ApiConfig {
   static String claimReward(String rewardId) =>
       '/rewards/${rewardId.trim()}/claim';
 
+  // Matchmaking & Nearby Matchmaking Endpoints
+  static const String matchmakingQueue = '/matchmaking/queue';
+  static const String matchmakingStatus = '/matchmaking/status';
+  static const String nearbyMatchmakingOptions = '/matchmaking/nearby/options';
+  static const String nearbyMatchmakingJoin = '/matchmaking/nearby/join';
+  static const String nearbyMatchmakingLeave = '/matchmaking/nearby/leave';
+  static const String nearbyMatchmakingStatus = '/matchmaking/nearby/status';
+  static const String nearbyMatchmakingLocation = '/matchmaking/nearby/location';
+
   // Razorpay Configuration
   static const String razorpayKeyId = String.fromEnvironment(
     'RAZORPAY_KEY_ID',

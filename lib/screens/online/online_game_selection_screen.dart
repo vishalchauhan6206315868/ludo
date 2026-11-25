@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../models/online_game_mode.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/online/online_game_mode_card.dart';
+import 'nearby_matchmaking_screen.dart';
 import 'online_matchmaking_screen.dart';
 
 /// Screen allowing players to select from the 5 Online Game Modes:
@@ -298,6 +299,11 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
                                 _buildEntryFeeSelector(),
 
                                 const SizedBox(height: 12),
+
+                                // Nearby Matchmaking Quick Entry Banner
+                                _buildNearbyPlayersBanner(),
+
+                                const SizedBox(height: 8),
 
                                 // Data-driven list of 5 game modes with staggered animation
                                 ...List.generate(_modes.length, (index) {
@@ -813,6 +819,132 @@ class _OnlineGameSelectionScreenState extends State<OnlineGameSelectionScreen>
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  /// Banner to launch location-based Nearby Matchmaking
+  Widget _buildNearbyPlayersBanner() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF0D253F),
+            Color(0xFF003852),
+            Color(0xFF005662),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF00E5FF).withValues(alpha: 0.5),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            try {
+              HapticFeedback.lightImpact();
+            } catch (_) {}
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => NearbyMatchmakingScreen(
+                  entryFee: _currentEntryFee,
+                  gameMode: 'twoPlayer',
+                ),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF00E5FF), Color(0xFF0091EA)],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00E5FF).withValues(alpha: 0.5),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.near_me_rounded, color: Colors.black87, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Flexible(
+                            child: Text(
+                              'PLAY NEARBY PLAYERS',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFD54F),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'GPS',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Find & challenge players within 1 - 25 km of your location',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.75),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF00E5FF), size: 16),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
