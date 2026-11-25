@@ -39,9 +39,10 @@ class OnlineMatchmakingScreen extends StatefulWidget {
 }
 
 class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  late AnimationController _rotateController;
   Timer? _searchTimer;
   Timer? _heartbeatTimer;
   Timer? _pollTimer;
@@ -76,6 +77,11 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     _pulseAnimation = Tween<double>(begin: 0.94, end: 1.06).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    _rotateController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat();
 
     _isHost = widget.isHost;
     _currentRoom = widget.initialRoom;
@@ -593,6 +599,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
   @override
   void dispose() {
     _pulseController.dispose();
+    _rotateController.dispose();
     _searchTimer?.cancel();
     _heartbeatTimer?.cancel();
     _pollTimer?.cancel();
@@ -621,379 +628,1039 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     final mode = widget.selectedMode;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF060B19),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0A1838),
-              Color(0xFF060E22),
-              Color(0xFF030712),
-            ],
-            stops: [0.0, 0.5, 1.0],
+      backgroundColor: const Color(0xFF020718),
+      body: Stack(
+        children: [
+          // Background with subtle perspective floor and floating ambient glow
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _MatchmakingBackgroundPainter(),
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Top Header
-              _buildHeader(context),
 
-              // Matchmaking Core Content
-              Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Selected Mode Pill Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(30),
-                            gradient: LinearGradient(
-                              colors: mode.gradientColors,
-                            ),
-                            border: Border.all(
-                              color: const Color(0xFFFFD700),
-                              width: 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFFFD700).withValues(alpha: 0.3),
-                                blurRadius: 12,
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(mode.icon, color: const Color(0xFFFFD700), size: 18),
-                              const SizedBox(width: 8),
-                              Text(
-                                mode.title,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 13,
-                                  letterSpacing: 1.0,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+          SafeArea(
+            child: Column(
+              children: [
+                // 1. Top Header (Back, ONLINE LOBBY, Home)
+                _buildHeader(context),
 
-                        const SizedBox(height: 18),
+                // 2. Scrollable Body
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // 3D Ludo Supreme Branding Logo
+                          _buildLudoSupremeLogo(),
 
-                        // Title
-                        const Text(
-                          "SEARCHING FOR PLAYERS",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 19,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.4,
-                            shadows: [
-                              Shadow(
-                                color: Color(0x66FFD700),
-                                offset: Offset(0, 2),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-
-                        // Status Subtitle
-                        Text(
-                          _statusText,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: _opponentJoined
-                                ? const Color(0xFF00E676)
-                                : const Color(0xFF90A4AE),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-
-                        const SizedBox(height: 26),
-
-                        // 2 Player Pods (You VS Opponent / Searching)
-                        _buildPlayerDuelArena(mode),
-
-                        const SizedBox(height: 28),
-
-                        // Search timer & online player stats
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0F1E3D),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.12),
-                            ),
-                          ),
-                          child: Wrap(
-                            alignment: WrapAlignment.center,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            spacing: 14,
-                            runSpacing: 6,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.timer_outlined,
-                                    color: Color(0xFFFFD700),
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    "Elapsed: ${_secondsElapsed}s",
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.monetization_on_rounded,
-                                    color: Color(0xFFFFD700),
-                                    size: 15,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    "Entry: ${widget.entryFee}",
-                                    style: const TextStyle(
-                                      color: Color(0xFFFFD700),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF00E676),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    "${mode.formattedPlayerCount} in queue",
-                                    style: const TextStyle(
-                                      color: Color(0xFFB0BEC5),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 22),
-
-                        // Smart Bot Fallback Option (Visible after 15s)
-                        if (_secondsElapsed >= 15 && !_opponentJoined) ...[
-                          _buildSmartBotFallbackCard(),
                           const SizedBox(height: 10),
-                          _buildNearbyFallbackCard(),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
 
-              // Bottom Cancel Action
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: OutlinedButton(
-                    key: const Key('cancel_matchmaking_button'),
-                    onPressed: _cancelMatchmaking,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFFF8A80),
-                      side: BorderSide(
-                        color: Colors.redAccent.withValues(alpha: 0.6),
-                        width: 1.5,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: const Text(
-                      "CANCEL MATCHMAKING",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        letterSpacing: 1.0,
+                          // Mode Selector Pill (< CLASSIC >)
+                          _buildModeSelectorPill(mode),
+
+                          const SizedBox(height: 18),
+
+                          // Status Heading ("SEARCHING FOR PLAYERS") & Neon Divider
+                          _buildStatusSection(),
+
+                          const SizedBox(height: 22),
+
+                          // The Duel Arena (Host Card vs Opponent Card with 3D Lightning VS)
+                          _buildPlayerDuelArena(mode),
+
+                          const SizedBox(height: 22),
+
+                          // Match Info Capsule (Elapsed Time & Entry Fee) & Live Queue Count
+                          _buildMatchInfoCapsule(mode),
+
+                          // Smart Bot Fallback Option (Visible after 15s)
+                          if (_secondsElapsed >= 15 && !_opponentJoined) ...[
+                            const SizedBox(height: 14),
+                            _buildSmartBotFallbackCard(),
+                            const SizedBox(height: 8),
+                            _buildNearbyFallbackCard(),
+                          ],
+                        ],
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+
+                // 3. Bottom Decorative Floor with 3D Pawns & Dice + Cancel Button
+                _buildBottomSection(),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  /// Two Player Pods Arena with VS Emblem
-  Widget _buildPlayerDuelArena(OnlineGameMode mode) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Player 1 (You)
-        _buildPlayerPod(
-          name: _isHost ? "Host (You)" : "You",
-          isReady: true,
-          color: const Color(0xFFE53935),
-          isPulse: false,
-        ),
-
-        const SizedBox(width: 16),
-
-        // Glowing VS Emblem
-        Container(
-          padding: const EdgeInsets.all(11),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const RadialGradient(
-              colors: [Color(0xFFFFD700), Color(0xFFE65100)],
+  /// Top Navigation Bar with gold borders and crown
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Back Button with Gold Border
+          InkWell(
+            key: const Key('matchmaking_back_button'),
+            borderRadius: BorderRadius.circular(12),
+            onTap: _cancelMatchmaking,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF132A66), Color(0xFF091436)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFFFD700),
+                  width: 1.6,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    spreadRadius: 0.5,
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Color(0xFFFFD700),
+                  size: 20,
+                ),
+              ),
             ),
+          ),
+
+          // Title with Golden Crown & Shiny Gold Font
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.emoji_events_rounded,
+                      color: Color(0xFFFFD700),
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [Color(0xFFFFFDE7), Color(0xFFFFD700), Color(0xFFFFA000)],
+                      ).createShader(bounds),
+                      child: const Text(
+                        "ONLINE LOBBY",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.4,
+                          shadows: [
+                            Shadow(
+                              color: Color(0xFF001040),
+                              offset: Offset(0, 2),
+                              blurRadius: 6,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Home Button with Matching Gold Border
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: _cancelMatchmaking,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF132A66), Color(0xFF091436)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFFFD700),
+                  width: 1.6,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    spreadRadius: 0.5,
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.home_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 3D Ludo Supreme Branding Logo with Crown and 3D Red Die
+  Widget _buildLudoSupremeLogo() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Crown above LUDO
+        const Icon(
+          Icons.emoji_events_rounded,
+          color: Color(0xFFFFD700),
+          size: 26,
+        ),
+        // LUDO + 3D Red Die
+        Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFFFFFFF), Color(0xFFE1F5FE), Color(0xFF81D4FA)],
+              ).createShader(bounds),
+              child: const Text(
+                "LUDO",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2.5,
+                  shadows: [
+                    Shadow(
+                      color: Color(0xFF0D47A1),
+                      offset: Offset(0, 3),
+                      blurRadius: 4,
+                    ),
+                    Shadow(
+                      color: Color(0xFF002171),
+                      offset: Offset(0, 5),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Floating 3D Red Die on top right
+            Positioned(
+              right: -24,
+              top: -6,
+              child: Transform.rotate(
+                angle: 0.22,
+                child: Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF5252), Color(0xFFD50000)],
+                    ),
+                    borderRadius: BorderRadius.circular(5),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black45,
+                        blurRadius: 4,
+                        offset: Offset(1, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 5,
+                      height: 5,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        // SUPREME Ribbon Pill
+        Container(
+          margin: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 3),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFFEA00), Color(0xFFFFB300), Color(0xFFFF8F00)],
+            ),
+            borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFFFD700).withValues(alpha: 0.5),
-                blurRadius: 12,
+                color: const Color(0xFFFF8F00).withValues(alpha: 0.5),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
           child: const Text(
-            "VS",
+            "SUPREME",
             style: TextStyle(
-              color: Colors.black,
+              color: Color(0xFF4E1600),
+              fontSize: 12,
               fontWeight: FontWeight.w900,
-              fontSize: 13,
+              letterSpacing: 2.0,
             ),
           ),
-        ),
-
-        const SizedBox(width: 16),
-
-        // Player 2 (Opponent or Waiting)
-        _buildPlayerPod(
-          name: _opponentJoined ? (_opponentName ?? "Opponent") : "Searching...",
-          isReady: _opponentJoined,
-          color: const Color(0xFF1E88E5),
-          isPulse: !_opponentJoined,
         ),
       ],
     );
   }
 
-  Widget _buildPlayerPod({
-    required String name,
-    required bool isReady,
-    required Color color,
-    required bool isPulse,
-  }) {
-    return AnimatedBuilder(
-      animation: _pulseAnimation,
-      builder: (context, child) {
-        final scale = isPulse ? _pulseAnimation.value : 1.0;
-        return Transform.scale(
-          scale: scale,
-          child: Column(
+  /// Mode Selector Pill (< CLASSIC >)
+  Widget _buildModeSelectorPill(OnlineGameMode mode) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B1938),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFFFFD700),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.25),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.chevron_left_rounded,
+            color: Color(0xFFFFD700),
+            size: 22,
+          ),
+          const SizedBox(width: 4),
+          const Icon(
+            Icons.casino_rounded,
+            color: Color(0xFFFFD700),
+            size: 18,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            mode.title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: Color(0xFFFFD700),
+            size: 22,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Status Section with Yellow-White Italic Gradient & Glowing Divider
+  Widget _buildStatusSection() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ShaderMask(
+          shaderCallback: (bounds) => const LinearGradient(
+            colors: [Colors.white, Color(0xFFFFEB3B), Color(0xFFFFC107)],
+            stops: [0.0, 0.5, 1.0],
+          ).createShader(bounds),
+          child: const Text(
+            "SEARCHING FOR PLAYERS",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              fontStyle: FontStyle.italic,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          _statusText,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _opponentJoined ? const Color(0xFF00E676) : const Color(0xFFB0BEC5),
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        // Glowing Neon Horizontal Divider with center orb
+        SizedBox(
+          width: 240,
+          child: Row(
             children: [
+              Expanded(
+                child: Container(
+                  height: 1.4,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.transparent, Color(0xFF00E5FF)],
+                    ),
+                  ),
+                ),
+              ),
               Container(
-                width: 80,
-                height: 80,
+                width: 6,
+                height: 6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFF0A1838),
-                  border: Border.all(
-                    color: isReady ? const Color(0xFFFFD700) : Colors.white24,
-                    width: 2.2,
-                  ),
+                  color: const Color(0xFF00E5FF),
                   boxShadow: [
                     BoxShadow(
-                      color: isReady
-                          ? const Color(0xFFFFD700).withValues(alpha: 0.45)
-                          : Colors.transparent,
-                      blurRadius: 14,
+                      color: const Color(0xFF00E5FF).withValues(alpha: 0.8),
+                      blurRadius: 6,
+                      spreadRadius: 1,
                     ),
                   ],
                 ),
-                child: Center(
-                  child: isReady
-                      ? Icon(Icons.person_rounded, color: color, size: 44)
-                      : const SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.6,
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFD700)),
-                          ),
-                        ),
-                ),
               ),
-              const SizedBox(height: 8),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 100),
-                child: Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 3),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isReady ? const Color(0xFF00C853) : const Color(0xFF37474F),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  isReady ? "READY" : "WAITING",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 9,
+              Expanded(
+                child: Container(
+                  height: 1.4,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF00E5FF), Colors.transparent],
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-        );
-      },
+        ),
+      ],
+    );
+  }
+
+  /// The Duel Arena (Host Card vs Opponent Card with 3D Lightning VS)
+  Widget _buildPlayerDuelArena(OnlineGameMode mode) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Left Card: Host (You)
+          _buildHostCard(),
+
+          // Center VS with Electric Lightning
+          _buildCenterVS(),
+
+          // Right Card: Opponent (Searching / Found)
+          _buildOpponentCard(),
+        ],
+      ),
+    );
+  }
+
+  /// Host / Player 1 Card (Red Neon Glow)
+  Widget _buildHostCard() {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.topCenter,
+      children: [
+        Container(
+          width: 126,
+          height: 152,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF38080E), Color(0xFF1C0306)],
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: const Color(0xFFFF1E46),
+              width: 2.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF1E46).withValues(alpha: 0.55),
+                blurRadius: 18,
+                spreadRadius: 1,
+              ),
+              const BoxShadow(
+                color: Colors.black45,
+                blurRadius: 8,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 10),
+              // Circular avatar
+              Container(
+                width: 62,
+                height: 62,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF5A0812),
+                  border: Border.all(
+                    color: const Color(0xFFFF5252),
+                    width: 2.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF1E46).withValues(alpha: 0.35),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.person_rounded,
+                    color: Color(0xFFFF7070),
+                    size: 38,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Player Name
+              Text(
+                _isHost ? "Host (You)" : "You",
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 6),
+              // READY Pill Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF00E676), Color(0xFF00A844)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF00E676).withValues(alpha: 0.4),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_rounded, color: Colors.white, size: 12),
+                    SizedBox(width: 3),
+                    Text(
+                      "READY",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 9.5,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Mini Golden Crown on top of card
+        Positioned(
+          top: -12,
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF1C0306),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.5),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.emoji_events_rounded,
+              color: Color(0xFFFFD700),
+              size: 20,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 3D Center VS with Fiery Lightning Bolt Burst
+  Widget _buildCenterVS() {
+    return ScaleTransition(
+      scale: _pulseAnimation,
+      child: SizedBox(
+        width: 68,
+        height: 120,
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            // Fiery electric lightning bolt burst
+            CustomPaint(
+              size: const Size(68, 110),
+              painter: _LightningBurstPainter(),
+            ),
+            // 3D Metallic Golden VS
+            ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFFFFDE7), Color(0xFFFFD700), Color(0xFFFF8F00)],
+              ).createShader(bounds),
+              child: const Text(
+                "VS",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  fontStyle: FontStyle.italic,
+                  letterSpacing: 1.5,
+                  shadows: [
+                    Shadow(
+                      color: Color(0xFF8B0000),
+                      offset: Offset(2, 3),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Opponent / Player 2 Card (Cyan Neon Glow / Green when ready)
+  Widget _buildOpponentCard() {
+    return Container(
+      width: 126,
+      height: 152,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF07214A), Color(0xFF031026)],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: _opponentJoined ? const Color(0xFF00E676) : const Color(0xFF00B0FF),
+          width: 2.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (_opponentJoined ? const Color(0xFF00E676) : const Color(0xFF00B0FF))
+                .withValues(alpha: 0.55),
+            blurRadius: 18,
+            spreadRadius: 1,
+          ),
+          const BoxShadow(
+            color: Colors.black45,
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 10),
+          // Circular Avatar (Radar / Searching or Found Avatar)
+          Container(
+            width: 62,
+            height: 62,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF051733),
+              border: Border.all(
+                color: _opponentJoined ? const Color(0xFF00E676) : const Color(0xFF00E5FF).withValues(alpha: 0.5),
+                width: 2.0,
+              ),
+            ),
+            child: Center(
+              child: _opponentJoined
+                  ? const Icon(
+                      Icons.person_rounded,
+                      color: Color(0xFF00E676),
+                      size: 38,
+                    )
+                  : RotationTransition(
+                      turns: _rotateController,
+                      child: CustomPaint(
+                        size: const Size(44, 44),
+                        painter: _SearchingRadarArcPainter(),
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Player Name / Searching
+          Text(
+            _opponentJoined ? (_opponentName ?? "Opponent") : "Searching...",
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 6),
+          // Badge: WAITING or READY
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _opponentJoined
+                    ? [const Color(0xFF00E676), const Color(0xFF00A844)]
+                    : [const Color(0xFF0288D1), const Color(0xFF01579B)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: (_opponentJoined ? const Color(0xFF00E676) : const Color(0xFF0288D1))
+                      .withValues(alpha: 0.4),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _opponentJoined ? Icons.check_rounded : Icons.access_time_rounded,
+                  color: Colors.white,
+                  size: 11,
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  _opponentJoined ? "READY" : "WAITING",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 9.5,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Match Info Capsule (Elapsed Time & Entry Fee) & Queue Count
+  Widget _buildMatchInfoCapsule(OnlineGameMode mode) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Container(
+            width: 320,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: const Color(0xFF081938).withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: const Color(0xFF00E5FF).withValues(alpha: 0.4),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                  blurRadius: 10,
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Elapsed Time
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.timer_outlined,
+                        color: Color(0xFFFFD700),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              "Elapsed Time",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Color(0xFF90A4AE),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              "${_secondsElapsed}s",
+                              maxLines: 1,
+                              style: const TextStyle(
+                                color: Color(0xFFFFD700),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Vertical Divider
+                Container(
+                  width: 1.2,
+                  height: 30,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  color: Colors.white24,
+                ),
+
+                // Entry Fee
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      const Icon(
+                        Icons.monetization_on_rounded,
+                        color: Color(0xFFFFD700),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              "Entry Fee",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Color(0xFF90A4AE),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              "${widget.entryFee}",
+                              maxLines: 1,
+                              style: const TextStyle(
+                                color: Color(0xFFFFD700),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        // Queue Count
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.people_rounded,
+              color: Color(0xFF00E676),
+              size: 17,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              "${mode.formattedPlayerCount} in queue",
+              style: const TextStyle(
+                color: Color(0xFFCFD8DC),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Bottom Decorative Section with 3D Pawns & Dice + Candy Red Cancel Button
+  Widget _buildBottomSection() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Decorative Row: Left (Red Pawn + Dice) and Right (Green Pawn + Dice)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Left: Red Pawn & White Die
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const _PawnFigure(color: Color(0xFFE53935), height: 42),
+                  const SizedBox(width: 4),
+                  Transform.rotate(
+                    angle: -0.18,
+                    child: const _Mini3DDie(
+                      size: 26,
+                      color: Colors.white,
+                      dotColor: Colors.black87,
+                      pips: 3,
+                    ),
+                  ),
+                ],
+              ),
+
+              // Right: Green Pawn & White/Blue Die
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Transform.rotate(
+                    angle: 0.18,
+                    child: const _Mini3DDie(
+                      size: 26,
+                      color: Colors.white,
+                      dotColor: Color(0xFF1E88E5),
+                      pips: 4,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const _PawnFigure(color: Color(0xFF00E676), height: 42),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // CANCEL MATCHMAKING Button
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          child: InkWell(
+            key: const Key('cancel_matchmaking_button'),
+            borderRadius: BorderRadius.circular(30),
+            onTap: _cancelMatchmaking,
+            child: Container(
+              height: 52,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF2626), Color(0xFFCC0000), Color(0xFF8B0000)],
+                ),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(
+                  color: const Color(0xFFFFD700),
+                  width: 2.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF1744).withValues(alpha: 0.5),
+                    blurRadius: 14,
+                    spreadRadius: 1,
+                  ),
+                  BoxShadow(
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.35),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 12,
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      Icons.close_rounded,
+                      color: Color(0xFFCC0000),
+                      size: 16,
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    "CANCEL MATCHMAKING",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      letterSpacing: 1.2,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black54,
+                          offset: Offset(0, 2),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1103,40 +1770,263 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
       ),
     );
   }
+}
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF091530).withValues(alpha: 0.85),
-        border: Border(
-          bottom: BorderSide(
-            color: const Color(0xFFFFD700).withValues(alpha: 0.2),
-            width: 1.0,
-          ),
-        ),
+/// 3D Pawn Figure Component
+class _PawnFigure extends StatelessWidget {
+  final Color color;
+  final double height;
+  const _PawnFigure({required this.color, required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(height * 0.6, height),
+      painter: _PawnPainter(color: color),
+    );
+  }
+}
+
+class _PawnPainter extends CustomPainter {
+  final Color color;
+  _PawnPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    final paint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.3, -0.4),
+        radius: 0.9,
+        colors: [
+          Colors.white.withValues(alpha: 0.85),
+          color,
+          Color.alphaBlend(Colors.black.withValues(alpha: 0.55), color),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, w, h));
+
+    // Base
+    final basePath = Path()
+      ..moveTo(w * 0.1, h * 0.95)
+      ..quadraticBezierTo(w * 0.5, h * 0.88, w * 0.9, h * 0.95)
+      ..quadraticBezierTo(w * 0.95, h, w * 0.5, h)
+      ..quadraticBezierTo(w * 0.05, h, w * 0.1, h * 0.95);
+    canvas.drawPath(basePath, paint);
+
+    // Body
+    final bodyPath = Path()
+      ..moveTo(w * 0.25, h * 0.9)
+      ..quadraticBezierTo(w * 0.35, h * 0.5, w * 0.4, h * 0.42)
+      ..lineTo(w * 0.6, h * 0.42)
+      ..quadraticBezierTo(w * 0.65, h * 0.5, w * 0.75, h * 0.9)
+      ..close();
+    canvas.drawPath(bodyPath, paint);
+
+    // Collar
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(w * 0.5, h * 0.4), width: w * 0.45, height: h * 0.08),
+        const Radius.circular(3),
       ),
-      child: Row(
-        children: [
-          IconButton(
-            key: const Key('matchmaking_back_button'),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-            onPressed: _cancelMatchmaking,
-          ),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              "ONLINE LOBBY",
-              style: TextStyle(
-                color: Color(0xFFFFD700),
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
-              ),
-            ),
+      paint,
+    );
+
+    // Head sphere
+    canvas.drawCircle(Offset(w * 0.5, h * 0.2), w * 0.28, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PawnPainter oldDelegate) => oldDelegate.color != color;
+}
+
+/// 3D Mini Die Component
+class _Mini3DDie extends StatelessWidget {
+  final double size;
+  final Color color;
+  final Color dotColor;
+  final int pips;
+
+  const _Mini3DDie({
+    required this.size,
+    required this.color,
+    required this.dotColor,
+    required this.pips,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(size * 0.2),
+        border: Border.all(color: Colors.white70, width: 1.0),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black45,
+            blurRadius: 4,
+            offset: Offset(1, 2),
           ),
         ],
       ),
+      child: Center(
+        child: _buildPips(),
+      ),
     );
   }
+
+  Widget _buildPips() {
+    final dotSize = size * 0.16;
+    Widget dot() => Container(
+          width: dotSize,
+          height: dotSize,
+          decoration: BoxDecoration(
+            color: dotColor,
+            shape: BoxShape.circle,
+          ),
+        );
+
+    if (pips == 3) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          Align(alignment: const Alignment(-0.5, 0), child: dot()),
+          dot(),
+          Align(alignment: const Alignment(0.5, 0), child: dot()),
+        ],
+      );
+    }
+    if (pips == 4) {
+      return Padding(
+        padding: EdgeInsets.all(size * 0.12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [dot(), dot()]),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [dot(), dot()]),
+          ],
+        ),
+      );
+    }
+    return dot();
+  }
+}
+
+/// Fiery Lightning Bolt Burst Painter behind VS Emblem
+class _LightningBurstPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    // Fiery circular aura glow
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFFFF9100).withValues(alpha: 0.7),
+          const Color(0xFFFF3D00).withValues(alpha: 0.35),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: 45));
+    canvas.drawCircle(Offset(cx, cy), 45, glowPaint);
+
+    // Lightning zigzag bolt
+    final boltPaint = Paint()
+      ..color = const Color(0xFFFFEA00)
+      ..style = PaintingStyle.fill;
+
+    final bolt = Path()
+      ..moveTo(cx + 8, cy - 40)
+      ..lineTo(cx - 14, cy - 2)
+      ..lineTo(cx + 2, cy - 2)
+      ..lineTo(cx - 8, cy + 40)
+      ..lineTo(cx + 14, cy + 4)
+      ..lineTo(cx - 2, cy + 4)
+      ..close();
+
+    canvas.drawPath(bolt, boltPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Searching Circular Radar Sweep Arc Painter
+class _SearchingRadarArcPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(2, 2, size.width - 4, size.height - 4);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round
+      ..shader = const SweepGradient(
+        colors: [
+          Colors.transparent,
+          Color(0xFF00E5FF),
+          Color(0xFFFFEA00),
+        ],
+        stops: [0.0, 0.7, 1.0],
+      ).createShader(rect);
+
+    canvas.drawArc(rect, 0, 4.8, false, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Background with Deep Cosmic Gradient & Perspective Floor
+class _MatchmakingBackgroundPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Deep cosmic gradient
+    final bgPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFF020718),
+          Color(0xFF071438),
+          Color(0xFF020A20),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+
+    // Ambient top-center light aura
+    final auraPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFF1565C0).withValues(alpha: 0.35),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset(size.width * 0.5, size.height * 0.15), radius: size.width * 0.65));
+    canvas.drawCircle(Offset(size.width * 0.5, size.height * 0.15), size.width * 0.65, auraPaint);
+
+    // Perspective grid floor lines on bottom 15%
+    final floorTop = size.height * 0.84;
+    final linePaint = Paint()
+      ..color = const Color(0xFF00E5FF).withValues(alpha: 0.15)
+      ..strokeWidth = 1.0;
+
+    // Horizontal depth lines
+    for (int i = 0; i <= 4; i++) {
+      final y = floorTop + (size.height - floorTop) * (i / 4.0);
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
+    }
+
+    // Perspective rays diverging to bottom
+    final vanishX = size.width * 0.5;
+    final vanishY = floorTop - 20;
+    for (int i = -3; i <= 3; i++) {
+      final targetX = vanishX + (i * (size.width / 5));
+      canvas.drawLine(Offset(vanishX, vanishY), Offset(targetX, size.height), linePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
