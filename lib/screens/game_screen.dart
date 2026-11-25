@@ -160,17 +160,18 @@ class _GameScreenState extends State<GameScreen>
 
     try {
       await _diceTravelController.forward(from: 0.0);
-    } catch (_) {}
-
-    if (mounted) {
-      SoundHapticService.onDiceResult();
-      setState(() {
-        _isDiceTraveling = false;
-        _diceOnBoard = false;
-        _restingDicePos = null;
-        _travelStartPos = null;
-        _travelEndPos = null;
-      });
+    } catch (_) {
+    } finally {
+      if (mounted) {
+        SoundHapticService.onDiceResult();
+        setState(() {
+          _isDiceTraveling = false;
+          _diceOnBoard = false;
+          _restingDicePos = null;
+          _travelStartPos = null;
+          _travelEndPos = null;
+        });
+      }
     }
   }
 
@@ -220,6 +221,13 @@ class _GameScreenState extends State<GameScreen>
     _lastRecordedPhase = state.phase;
 
     if (state.isGameOver || isStartingNewThrow) {
+      _resetDiceOverlay();
+    }
+
+    if (_controller.isOnlineMatch &&
+        state.phase == TurnPhase.waitingForRoll &&
+        !_isDiceTraveling &&
+        _diceOnBoard) {
       _resetDiceOverlay();
     }
 

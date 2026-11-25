@@ -65,6 +65,7 @@ class LudoGameController extends ChangeNotifier {
   int _onlineVersion = -1;
   Completer<void>? _diceSettleCompleter;
   bool _onlineRollPending = false;
+  bool get isRollPending => _onlineRollPending;
   bool _onlineMovePending = false;
   Timer? _onlineCountdown;
   DateTime? _onlineDeadline;
@@ -1578,10 +1579,13 @@ class LudoGameController extends ChangeNotifier {
     _onlineSubs.add(_socket.on('turn_changed').listen((e) {
       if (!_isThisSession(e)) return;
       _enqueueOnline(() async {
-        final v = (e['stateVersion'] as num?)?.toInt() ?? 0;
-        if (v < _onlineVersion) return; // older than what we already show
-        final turn = e['turn'];
-        if (turn is Map) _onlineApplyTurn(Map<String, dynamic>.from(turn), reason: e['reason']?.toString());
+        final v = (e['state']?['stateVersion'] ?? e['stateVersion'] as num?)?.toInt() ?? 0;
+        if (v > 0 && v < _onlineVersion) return; // older than what we already show
+        if (v > _onlineVersion) _onlineVersion = v;
+        final turn = e['turn'] ?? e['state']?['turn'];
+        if (turn is Map) {
+          _onlineApplyTurn(Map<String, dynamic>.from(turn), reason: e['reason']?.toString());
+        }
       });
     }));
     _onlineSubs.add(_socket.on('turn_timeout').listen((e) {
@@ -1646,8 +1650,23 @@ class LudoGameController extends ChangeNotifier {
     if (ack.ok && st is Map) {
       final map = Map<String, dynamic>.from(st);
       _enqueueOnline(() async => _onlineApplyFullState(map, force: true));
-    } else if (!ack.ok && ack.code != 'NOT_CONNECTED' && ack.code != 'TIMEOUT') {
-      _onlineShowError(ack);
+    } else {
+      try {
+        final restRes = await ApiService().getGameSession(sessionId: sessionId!);
+        if (restRes['success'] == true && restRes['data'] != null) {
+          final data = Map<String, dynamic>.from(restRes['data'] as Map);
+          final serverState = data['state'] ?? data;
+          if (serverState is Map) {
+            _enqueueOnline(() async => _onlineApplyFullState(Map<String, dynamic>.from(serverState), force: true));
+            return;
+          }
+        }
+      } catch (err) {
+        debugPrint('[ONLINE] REST fallback getGameSession error: $err');
+      }
+      if (!ack.ok && ack.code != 'NOT_CONNECTED' && ack.code != 'TIMEOUT') {
+        _onlineShowError(ack);
+      }
     }
   }
 
@@ -1767,7 +1786,10 @@ class LudoGameController extends ChangeNotifier {
       return;
     }
     if (state.phase != TurnPhase.waitingForMove || _onlineMovePending) return;
-    if (!onlineMovableTokenIds.contains(token.id)) return;
+    final isTokenMovable = onlineMovableTokenIds.isNotEmpty
+        ? onlineMovableTokenIds.contains(token.id)
+        : (state.currentDiceValue != null && token.canMove(state.currentDiceValue!));
+    if (!isTokenMovable) return;
     await _onlineSendMove(token.id);
   }
 
@@ -1904,10 +1926,17 @@ class LudoGameController extends ChangeNotifier {
       if (_disposed) return;
 
       final st = e['state'];
+      final nextIdx = (st is Map && st['turn'] is Map && st['turn']['seatIndex'] != null)
+          ? (st['turn']['seatIndex'] as num).toInt()
+          : _getNextPlayerIndex(seat);
+
+      if (onDiceTravelRequested != null && state.players.length > nextIdx) {
+        await onDiceTravelRequested!(state.players[nextIdx].color);
+      }
+
       if (st is Map) {
         _onlineApplyFullState(Map<String, dynamic>.from(st));
       } else {
-        final nextIdx = _getNextPlayerIndex(state.currentPlayerIndex);
         state.currentPlayerIndex = nextIdx;
         state.phase = TurnPhase.waitingForRoll;
         state.currentDiceValue = null;
@@ -1915,9 +1944,6 @@ class LudoGameController extends ChangeNotifier {
         state.statusMessage = isMyTurn
             ? 'Your turn! Drag & flick dice to throw.'
             : 'Waiting for ${state.currentPlayer.name} to roll...';
-        if (onDiceTravelRequested != null && state.players.length > nextIdx) {
-          onDiceTravelRequested!(state.players[nextIdx].color);
-        }
         _safeNotifyListeners();
       }
       return;
@@ -1979,8 +2005,19 @@ class LudoGameController extends ChangeNotifier {
       final moveResult = await _executeStepByStepMovement(token, dice, autoAdvanceTurn: false);
       if (_disposed) return;
 
+      final st = e['state'];
+      final bool getsExtraTurn = moveResult.extraTurn || dice == 6;
+      final nextSeat = (st is Map && st['turn'] is Map && st['turn']['seatIndex'] != null)
+          ? (st['turn']['seatIndex'] as num).toInt()
+          : (getsExtraTurn ? seat : _getNextPlayerIndex(seat));
+
+      // Direct flight: return dice from board center to the next or bonus turn player's card slot
+      if (onDiceTravelRequested != null && state.players.length > nextSeat) {
+        await onDiceTravelRequested!(state.players[nextSeat].color);
+      }
+
       // Extra turn handling: rolling 6, goti capture, or home goal gives an extra turn!
-      if (moveResult.extraTurn || dice == 6) {
+      if (getsExtraTurn) {
         state.phase = TurnPhase.waitingForRoll;
         state.currentDiceValue = null;
         state.statusMessage = seat == mySeatIndex

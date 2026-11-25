@@ -503,10 +503,18 @@ class LudoBoardWidget extends StatelessWidget {
 
     for (final player in controller.state.players) {
       for (final token in player.tokens) {
+        final bool isMovable = controller.isOnlineMatch
+            ? (controller.isMyTurn &&
+                controller.state.phase == TurnPhase.waitingForMove &&
+                token.color == controller.state.currentPlayer.color &&
+                (controller.onlineMovableTokenIds.isNotEmpty
+                    ? controller.onlineMovableTokenIds.contains(token.id)
+                    : controller.state.isTokenMovable(token)))
+            : controller.state.isTokenMovable(token);
         final entry = _TokenEntry(
           token: token,
           player: player,
-          isMovable: controller.state.isTokenMovable(token),
+          isMovable: isMovable,
         );
         if (token.hasReachedGoal) {
           goalMap.putIfAbsent(player.color, () => []).add(entry);

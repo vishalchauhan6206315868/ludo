@@ -59,6 +59,7 @@ class PlayerCard extends StatelessWidget {
         !player.isBot &&
         !controller.isBotPlaying &&
         !state.currentPlayer.isBot &&
+        !controller.isRollPending &&
         isThisPlayerMySeat;
 
     final bool showRoleBadge = controller.isOnlineMatch || controller.state.mode == GameMode.vsComputer;
