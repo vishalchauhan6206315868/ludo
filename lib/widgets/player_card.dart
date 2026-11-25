@@ -173,7 +173,7 @@ class PlayerCard extends StatelessWidget {
               boardSize: boardSize,
               boardKey: boardKey,
               onRoll: canRoll ? controller.onPhysicalDiceThrowStart : null,
-              deferThrowToParent: controller.isOnlineMatch,
+              deferThrowToParent: false,
               handoffOnSettle: handoffOnSettle,
               onBoardSettle: onBoardSettle,
               onThrowComplete: (finalValue) {

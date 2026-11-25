@@ -511,6 +511,31 @@ class DiceThrowPhysics {
       settleRotZ: settleRotZ,
     );
   }
+
+  /// Returns a copy of physics with rotations re-aligned to display [targetValue] facing the user (+Z).
+  DiceThrowPhysics withTargetValue(int targetValue) {
+    final (baseRotX, baseRotY) = getBaseOrientationForValue(targetValue);
+    final turnsX = (totalRotX / (2.0 * pi)).round();
+    final turnsY = (totalRotY / (2.0 * pi)).round();
+    final newTotalRotX = (turnsX * 2.0 * pi) + baseRotX;
+    final newTotalRotY = (turnsY * 2.0 * pi) + baseRotY;
+
+    return DiceThrowPhysics(
+      trajectoryWaypoints: trajectoryWaypoints,
+      skidOffset: skidOffset,
+      arcHeight: arcHeight,
+      bounceHeight: bounceHeight,
+      totalRotX: newTotalRotX,
+      totalRotY: newTotalRotY,
+      totalRotZ: totalRotZ,
+      curvePowerX: curvePowerX,
+      curvePowerY: curvePowerY,
+      curvePowerZ: curvePowerZ,
+      settleTiltX: settleTiltX,
+      settleTiltY: settleTiltY,
+      settleRotZ: settleRotZ,
+    );
+  }
 }
 
 class AnimatedDice extends StatefulWidget {
@@ -769,14 +794,6 @@ class _AnimatedDiceState extends State<AnimatedDice>
     }
     _isHolding = false;
 
-    if (widget.deferThrowToParent) {
-      widget.onRoll?.call();
-      _pressController.forward(from: 0.0).then((_) {
-        if (mounted) _pressController.reverse();
-      });
-      return;
-    }
-
     _isDiceAnimating = true;
     _isThrowing = true;
 
@@ -846,12 +863,6 @@ class _AnimatedDiceState extends State<AnimatedDice>
       return;
     }
 
-    if (widget.deferThrowToParent) {
-      _springBackToRest();
-      widget.onRoll?.call();
-      return;
-    }
-
     _isDiceAnimating = true;
     _isThrowing = true;
     widget.onRoll?.call();
@@ -887,6 +898,11 @@ class _AnimatedDiceState extends State<AnimatedDice>
   @override
   void didUpdateWidget(covariant AnimatedDice oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // If dice is in-flight and target value updates from the authoritative source, re-align tumbling target face
+    if (_isThrowing && _currentPhysics != null && widget.value != null && widget.value != oldWidget.value) {
+      _currentPhysics = _currentPhysics!.withTargetValue(widget.value!);
+    }
 
     if (widget.isRolling && !oldWidget.isRolling && !_isThrowing) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

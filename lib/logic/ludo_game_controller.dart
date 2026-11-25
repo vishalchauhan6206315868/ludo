@@ -601,7 +601,9 @@ class LudoGameController extends ChangeNotifier {
     required int roll,
     required bool isHuman,
   }) async {
-    SoundHapticService.playDiceRollSound();
+    if (!isOnlineMatch || !isMyTurn) {
+      SoundHapticService.playDiceRollSound();
+    }
     state.phase = TurnPhase.throwingDice;
     state.currentDiceValue = roll;
     state.statusMessage = "${state.currentPlayer.name} throws the dice!";
@@ -675,6 +677,7 @@ class LudoGameController extends ChangeNotifier {
   /// Initiates physical dice throw from finger drag release or bot/tap
   void onPhysicalDiceThrowStart() {
     if (isOnlineMatch) {
+      _diceSettleCompleter ??= Completer<void>();
       _onlineRequestRoll();
       return;
     }
@@ -1673,10 +1676,13 @@ class LudoGameController extends ChangeNotifier {
 
     _onlineRollPending = true;
     final activeSid = sessionId!;
+    _diceSettleCompleter ??= Completer<void>();
 
-    try {
-      SoundHapticService.playDiceRollSound();
-    } catch (_) {}
+    if (!isMyTurn) {
+      try {
+        SoundHapticService.playDiceRollSound();
+      } catch (_) {}
+    }
 
     LudoAck ack = LudoAck.err('NOT_CONNECTED');
     if (_socket.isConnected) {
@@ -1854,32 +1860,63 @@ class LudoGameController extends ChangeNotifier {
     onlineMovableTokenIds = movable;
 
     // throw animation with the SERVER's number (identical on both phones)
-    _diceSettleCompleter = Completer<void>();
+    _diceSettleCompleter ??= Completer<void>();
     playDiceThrowAnimation(roll: dice, isHuman: true);
     await _diceSettleCompleter!.future.timeout(const Duration(seconds: 4), onTimeout: () {});
     _diceSettleCompleter = null;
     if (_disposed) return;
 
     final name = state.players[seat].name;
-    if (turnPassed) {
-      state.statusMessage = threeSixes ? '3 consecutive Sixes! Turn passed.' : '$name rolled $dice. No moves possible!';
+
+    // Classic Ludo rules validation:
+    // If all tokens are in base and dice != 6, no moves are possible
+    final playerTokens = state.players[seat].tokens;
+    final allInBase = playerTokens.every((t) => t.isInBase);
+    final classicMovable = state.players[seat].getMovableTokens(dice);
+    final bool noLegalMoves = turnPassed || (allInBase && dice != 6) || classicMovable.isEmpty;
+
+    if (noLegalMoves) {
+      state.statusMessage = threeSixes
+          ? '3 consecutive Sixes! Turn passed.'
+          : '$name rolled $dice. No moves possible!';
       state.phase = TurnPhase.animatingMove;
       _safeNotifyListeners();
       await Future.delayed(_stepDelay(900));
+      if (_disposed) return;
+
       final st = e['state'];
-      if (st is Map) _onlineApplyFullState(Map<String, dynamic>.from(st));
+      if (st is Map) {
+        _onlineApplyFullState(Map<String, dynamic>.from(st));
+      } else {
+        final nextIdx = _getNextPlayerIndex(state.currentPlayerIndex);
+        state.currentPlayerIndex = nextIdx;
+        state.phase = TurnPhase.waitingForRoll;
+        state.currentDiceValue = null;
+        onlineMovableTokenIds = const [];
+        state.statusMessage = isMyTurn
+            ? 'Your turn! Drag & flick dice to throw.'
+            : 'Waiting for ${state.currentPlayer.name} to roll...';
+        if (onDiceTravelRequested != null && state.players.length > nextIdx) {
+          onDiceTravelRequested!(state.players[nextIdx].color);
+        }
+        _safeNotifyListeners();
+      }
       return;
     }
 
     state.phase = TurnPhase.waitingForMove;
-    state.statusMessage = mine ? 'You rolled $dice! Tap a glowing goti to move.' : '$name rolled $dice! Moving goti...';
+    final legalTokenIds = classicMovable.map((t) => t.id).toList();
+    onlineMovableTokenIds = legalTokenIds.isNotEmpty ? legalTokenIds : movable;
+    state.statusMessage = mine
+        ? 'You rolled $dice! Tap a glowing goti to move.'
+        : '$name rolled $dice! Moving goti...';
     _safeNotifyListeners();
 
     // only one legal goti: move it automatically (same convenience as offline)
-    if (mine && movable.length == 1) {
-      await Future.delayed(_stepDelay(80));
+    if (mine && onlineMovableTokenIds.length == 1) {
+      await Future.delayed(_stepDelay(120));
       if (!_disposed && state.phase == TurnPhase.waitingForMove) {
-        await _onlineSendMove(movable.first);
+        await _onlineSendMove(onlineMovableTokenIds.first);
       }
     }
   }
@@ -1910,8 +1947,18 @@ class LudoGameController extends ChangeNotifier {
       final dice = prev == -1 ? 6 : (next - prev);
       state.currentDiceValue = dice;
       onlineMovableTokenIds = const [];
-      await _executeStepByStepMovement(token, dice, autoAdvanceTurn: false);
+      final moveResult = await _executeStepByStepMovement(token, dice, autoAdvanceTurn: false);
       if (_disposed) return;
+
+      // Extra turn handling: rolling 6, goti capture, or home goal gives an extra turn!
+      if (moveResult.extraTurn || dice == 6) {
+        state.phase = TurnPhase.waitingForRoll;
+        state.currentDiceValue = null;
+        state.statusMessage = seat == mySeatIndex
+            ? 'Bonus turn! Throw the dice again.'
+            : 'Bonus turn for ${player.name}...';
+        _safeNotifyListeners();
+      }
     }
     // after the animation snap to the exact server positions (fixes any drift) and next turn
     final st = e['state'];
@@ -1992,11 +2039,17 @@ class LudoGameController extends ChangeNotifier {
         for (final t in tokens) {
           if (t is! Map) continue;
           final id = (t['tokenId'] as num).toInt();
-          final step = (t['step'] as num).toInt();
+          final serverStep = (t['step'] as num).toInt();
           final token = lp.tokens.firstWhere((x) => x.id == id, orElse: () => lp.tokens.first);
-          token.step = step;
+          // In Classic Ludo, tokens start in base (-1) until opened with a 6.
+          // Backend defaults step to 0 in database schema.
+          if (serverStep == 0 && !lp.hasEverOpenedToken && token.step < 0) {
+            token.step = -1;
+          } else {
+            token.step = serverStep;
+            if (serverStep >= 0) lp.hasEverOpenedToken = true;
+          }
           token.animStage = TokenAnimStage.idle;
-          if (step >= 0) lp.hasEverOpenedToken = true;
         }
       }
     }

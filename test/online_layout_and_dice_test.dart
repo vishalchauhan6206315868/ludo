@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ludo/logic/ludo_game_controller.dart';
 import 'package:ludo/models/game_state.dart';
 import 'package:ludo/constants/ludo_path.dart';
 import 'package:ludo/screens/game_screen.dart';
