@@ -1968,10 +1968,6 @@ class LudoGameController extends ChangeNotifier {
     final bool noLegalMoves = turnPassed || (allInBase && dice != 6) || classicMovable.isEmpty;
 
     if (noLegalMoves) {
-      if (mine && sessionId != null && sessionId!.isNotEmpty) {
-        // Fast-pass server turn to avoid waiting for any sweeper/timeout timer
-        ApiService().timeoutGame(sessionId: sessionId!).catchError((_) => <String, dynamic>{});
-      }
       state.statusMessage = threeSixes
           ? '3 consecutive Sixes! Turn passed.'
           : '$name rolled $dice. No moves possible!';
@@ -2189,6 +2185,27 @@ class LudoGameController extends ChangeNotifier {
           }
           token.animStage = TokenAnimStage.idle;
         }
+      }
+    }
+
+    final cachedUid = AuthService.cachedBackendUserId;
+    if (cachedUid != null && _onlineSeatByUser.containsKey(cachedUid)) {
+      final s = _onlineSeatByUser[cachedUid]!;
+      if (s >= 0 && s < state.players.length) {
+        mySeatIndex = s;
+      }
+    } else if (!isHost && mySeatIndex == 0 && state.players.length == 2) {
+      mySeatIndex = 1;
+    }
+
+    // Immediately synchronize player labels based on current mySeatIndex
+    for (int i = 0; i < state.players.length; i++) {
+      final p = state.players[i];
+      final cleanName = p.name.replaceAll(RegExp(r'\s*\((?:Opponent|You|Player \d+)\)'), '').trim();
+      if (i == mySeatIndex) {
+        p.name = '$cleanName (You)';
+      } else {
+        p.name = cleanName.isEmpty ? 'Opponent' : cleanName;
       }
     }
 

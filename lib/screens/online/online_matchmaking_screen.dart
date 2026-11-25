@@ -80,6 +80,9 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     _isHost = widget.isHost;
     _currentRoom = widget.initialRoom;
     _assignedSeatIndex = widget.initialRoom?.seatIndex;
+    if (_assignedSeatIndex != null) {
+      _isHost = (_assignedSeatIndex == 0);
+    }
     _sessionId = widget.initialRoom?.sessionId;
     if (widget.initialRoom != null) {
       _roomCode = widget.initialRoom!.roomCode.toUpperCase();
@@ -285,8 +288,21 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           if (seat == null && me is Map) {
             seat = (me['seatIndex'] as num?)?.toInt();
           }
+          if (seat == null) {
+            final players = e['state']?['players'] ?? e['session']?['players'];
+            final myUid = AuthService.cachedBackendUserId;
+            if (players is List && myUid != null && myUid.isNotEmpty) {
+              for (final p in players) {
+                if (p is Map && (p['userId']?.toString() == myUid || p['id']?.toString() == myUid)) {
+                  seat = (p['seatIndex'] as num?)?.toInt();
+                  break;
+                }
+              }
+            }
+          }
           if (seat != null) {
             _assignedSeatIndex = seat;
+            _isHost = (seat == 0);
           }
           _launchGameSession(_sessionId);
         }
@@ -385,6 +401,12 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
         final ack = await svc.startMatch(_roomCode!);
         if (ack.ok) {
           sid = ack.data['sessionId']?.toString();
+          final me = ack.data['me'] ?? ack.data['you'];
+          final seat = (ack.data['seatIndex'] ?? (me is Map ? me['seatIndex'] : null)) as num?;
+          if (seat != null) {
+            _assignedSeatIndex = seat.toInt();
+            _isHost = (_assignedSeatIndex == 0);
+          }
         }
       }
       if (sid == null || sid.isEmpty) {
@@ -394,6 +416,11 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           final session = data['session'];
           sid = data['sessionId']?.toString() ??
               (session is Map ? (session['_id'] ?? session['id'])?.toString() : null);
+          final seat = (data['seatIndex'] as num?)?.toInt();
+          if (seat != null) {
+            _assignedSeatIndex = seat;
+            _isHost = (seat == 0);
+          }
         }
       }
       if (sid != null && sid.isNotEmpty) {
@@ -480,6 +507,9 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     int finalSeat = _assignedSeatIndex ?? _currentRoom?.seatIndex ?? (_isHost ? 0 : 1);
     if (!_isHost && finalSeat == 0) {
       finalSeat = 1;
+    }
+    if (finalSeat == 1) {
+      _isHost = false;
     }
 
     Navigator.pushReplacement(

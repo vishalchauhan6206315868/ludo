@@ -19,6 +19,9 @@ class ApiService {
 
   String? _token;
 
+  /// Cached auth token in memory for synchronous access
+  String? get cachedToken => _token;
+
   /// Get current auth token (from memory or SharedPreferences)
   Future<String?> getToken() async {
     if (_token != null && _token!.isNotEmpty) {

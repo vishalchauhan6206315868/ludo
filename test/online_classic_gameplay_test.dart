@@ -122,5 +122,34 @@ void main() {
       final decodedId = AuthService.getUserIdFromJwt(testToken);
       expect(decodedId, equals('67448cf18899aabbccddeeff'));
     });
+
+    test('Player 2 turn activation, token selection, and legal move for Green tokens', () {
+      final p2Controller = LudoGameController(
+        mode: GameMode.twoPlayer,
+        isOnlineMatch: true,
+        isHost: false,
+        mySeatIndex: 1,
+      );
+
+      // On turn 1 (Green/Player 2)
+      p2Controller.state.currentPlayerIndex = 1;
+      p2Controller.state.phase = TurnPhase.waitingForRoll;
+      expect(p2Controller.isMyTurn, isTrue);
+
+      // Roll a 6:
+      p2Controller.state.currentDiceValue = 6;
+      p2Controller.state.phase = TurnPhase.waitingForMove;
+
+      // Green player's tokens (id 0, 1, 2, 3 in players[1].tokens)
+      final greenTokens = p2Controller.state.players[1].tokens;
+      expect(greenTokens.length, equals(4));
+      expect(greenTokens.first.canMove(6), isTrue);
+
+      // Verify token selection allows player 2's token
+      expect(greenTokens.first.color, equals(PlayerColor.green));
+      expect(p2Controller.state.currentPlayer.color, equals(PlayerColor.green));
+
+      p2Controller.dispose();
+    });
   });
 }

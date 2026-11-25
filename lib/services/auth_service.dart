@@ -221,22 +221,44 @@ class AuthService {
     return null;
   }
 
+  static String? _cachedBackendUserId;
+
+  /// Synchronously returns cached authoritative backend user ID if available
+  static String? get cachedBackendUserId {
+    if (_cachedBackendUserId != null && _cachedBackendUserId!.isNotEmpty) {
+      return _cachedBackendUserId;
+    }
+    final token = ApiService().cachedToken;
+    if (token != null && token.isNotEmpty) {
+      final jwtUid = getUserIdFromJwt(token);
+      if (jwtUid != null && jwtUid.isNotEmpty) {
+        _cachedBackendUserId = jwtUid;
+        return jwtUid;
+      }
+    }
+    return null;
+  }
+
   /// Authoritative backend user ID (MongoDB _id) matching backend GameSession/Room players
   static Future<String?> getBackendUserId() async {
     final prefs = await SharedPreferences.getInstance();
     final uid = prefs.getString(_keyUserUid);
     if (uid != null && uid.isNotEmpty && !uid.startsWith('device_')) {
+      _cachedBackendUserId = uid;
       return uid;
     }
     final token = await ApiService().getToken();
     if (token != null && token.isNotEmpty) {
       final jwtUid = getUserIdFromJwt(token);
       if (jwtUid != null && jwtUid.isNotEmpty) {
+        _cachedBackendUserId = jwtUid;
         await prefs.setString(_keyUserUid, jwtUid);
         return jwtUid;
       }
     }
-    return await getUserUid();
+    final uUid = await getUserUid();
+    if (uUid != null) _cachedBackendUserId = uUid;
+    return uUid;
   }
 
   /// Get current user UID
