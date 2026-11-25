@@ -126,7 +126,7 @@ class PlayerCard extends StatelessWidget {
                 ),
             ],
           ),
-          child: (controller.isOnlineMatch || isCurrentTurn)
+          child: isCurrentTurn
               ? null
               : Icon(
                   Icons.casino_outlined,
@@ -146,12 +146,9 @@ class PlayerCard extends StatelessWidget {
       }
     }
 
-    // In Online match, both players' 3D dice remain visible at all times, with the current
-    // player's dice interactive (canRoll) and inactive player's dice showing their rolled result.
-    // In offline modes, exactly one active dice is shown to preserve classic pass-n-play focus.
-    final bool showPodDice = controller.isOnlineMatch
-        ? (!isCurrentTurn || !hideActiveDice)
-        : (isCurrentTurn && !hideActiveDice);
+    // Exactly one active dice is shown at a time across both online and offline modes;
+    // the inactive player's slot remains empty (as in VS COMPUTER).
+    final bool showPodDice = isCurrentTurn && !hideActiveDice;
     final int diceDisplayValue = (isCurrentTurn && state.currentDiceValue != null)
         ? state.currentDiceValue!
         : (controller.lastSettledDiceValue > 0 ? controller.lastSettledDiceValue : 1);

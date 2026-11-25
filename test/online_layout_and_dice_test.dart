@@ -68,16 +68,14 @@ void main() {
       expect(myTopLeft.dx, greaterThan(100),
           reason: 'My player card must be aligned to the RIGHT');
 
-      // Both players have their 3D dice visible at all times
+      // Exactly one player has the 3D dice visible at a time ("ek time, ek hi player ka dice dikhega, dusre ka khali")
       final diceFinders = find.byType(AnimatedDice);
-      expect(diceFinders, findsNWidgets(2));
+      expect(diceFinders, findsOneWidget);
 
-      // At start (Turn = Seat 0 / Red): My dice can roll, opponent cannot
-      final diceWidgets = tester.widgetList<AnimatedDice>(diceFinders).toList();
-      final myDice = diceWidgets.firstWhere((d) => d.canRoll == true);
-      final oppDice = diceWidgets.firstWhere((d) => d.canRoll == false);
+      // At start (Turn = Seat 0 / Red): My dice is visible and can roll; opponent slot is empty
+      final myDice = tester.widget<AnimatedDice>(diceFinders);
       expect(myDice.canRoll, isTrue);
-      expect(oppDice.canRoll, isFalse);
+      expect(find.byIcon(Icons.casino_outlined), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
@@ -131,15 +129,14 @@ void main() {
       expect(myTopLeft.dy, greaterThan(boardBottomRight.dy),
           reason: 'My player card must be at the BOTTOM below board');
 
-      // Both players have their 3D dice visible at all times
+      // Exactly one player has the 3D dice visible at a time
       final diceFinders = find.byType(AnimatedDice);
-      expect(diceFinders, findsNWidgets(2));
+      expect(diceFinders, findsOneWidget);
 
-      // At start (Turn = Seat 0 / Red): On Device B, Red is opponent, so neither can be rolled by Device B
-      final diceWidgets = tester.widgetList<AnimatedDice>(diceFinders).toList();
-      for (final d in diceWidgets) {
-        expect(d.canRoll, isFalse, reason: 'Device B cannot roll during Red turn');
-      }
+      // At start (Turn = Seat 0 / Red): On Device B, Red is opponent, so Red has the dice (cannot roll by B) and B's slot is empty
+      final oppDice = tester.widget<AnimatedDice>(diceFinders);
+      expect(oppDice.canRoll, isFalse, reason: 'Device B cannot roll during Red turn');
+      expect(find.byIcon(Icons.casino_outlined), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();

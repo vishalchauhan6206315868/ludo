@@ -93,6 +93,10 @@ class LudoGameController extends ChangeNotifier {
   /// Most recent settled dice roll value across turns (used for seamless display)
   int lastSettledDiceValue = 1;
 
+  /// Idempotency deduplication keys to prevent duplicate roll or move executions
+  String? _lastHandledRollKey;
+  String? _lastHandledMoveKey;
+
   final OnlineModeType? onlineModeType;
 
   LudoGameController({
@@ -1849,6 +1853,17 @@ class LudoGameController extends ChangeNotifier {
     seat ??= state.currentPlayerIndex;
     if (seat >= state.players.length) return;
     final dice = (e['diceValue'] as num).toInt();
+
+    // Idempotency: ignore duplicate dice roll executions (ACK vs socket broadcast)
+    final turnId = e['turnId']?.toString();
+    final ver = e['state']?['stateVersion'] ?? e['stateVersion'] ?? _onlineVersion;
+    final rollKey = '${seat}_${dice}_${turnId ?? ver}';
+    if (_lastHandledRollKey == rollKey) {
+      debugPrint('[ONLINE] Duplicate roll event ignored: $rollKey');
+      return;
+    }
+    _lastHandledRollKey = rollKey;
+
     final movable = ((e['movableTokenIds'] as List?) ?? const []).map((x) => (x as num).toInt()).toList();
     final turnPassed = e['turnPassed'] == true;
     final threeSixes = e['threeSixes'] == true;
@@ -1876,6 +1891,10 @@ class LudoGameController extends ChangeNotifier {
     final bool noLegalMoves = turnPassed || (allInBase && dice != 6) || classicMovable.isEmpty;
 
     if (noLegalMoves) {
+      if (mine && sessionId != null && sessionId!.isNotEmpty) {
+        // Fast-pass server turn to avoid waiting for any sweeper/timeout timer
+        ApiService().timeoutGame(sessionId: sessionId!).catchError((_) => <String, dynamic>{});
+      }
       state.statusMessage = threeSixes
           ? '3 consecutive Sixes! Turn passed.'
           : '$name rolled $dice. No moves possible!';
@@ -1939,6 +1958,16 @@ class LudoGameController extends ChangeNotifier {
       final tokenId = (mv['tokenId'] as num).toInt();
       final prev = (mv['prevStep'] as num).toInt();
       final next = (mv['newStep'] as num).toInt();
+
+      // Idempotency: ignore duplicate move executions (ACK vs socket broadcast)
+      final ver = e['state']?['stateVersion'] ?? e['stateVersion'] ?? _onlineVersion;
+      final moveKey = '${seat}_${tokenId}_${prev}_${next}_$ver';
+      if (_lastHandledMoveKey == moveKey) {
+        debugPrint('[ONLINE] Duplicate move event ignored: $moveKey');
+        return;
+      }
+      _lastHandledMoveKey = moveKey;
+
       final player = state.players[seat];
       final token = player.tokens.firstWhere((t) => t.id == tokenId, orElse: () => player.tokens.first);
 
