@@ -1477,7 +1477,15 @@ class LudoGameController extends ChangeNotifier {
 
   bool _isThisSession(Map<String, dynamic> e) => e['sessionId']?.toString() == sessionId;
 
-  int? _seatOfUser(String? userId) => userId == null ? null : _onlineSeatByUser[userId];
+  int? _seatOfUser(String? userId) {
+    if (userId == null) return null;
+    final direct = _onlineSeatByUser[userId];
+    if (direct != null) return direct;
+    for (final entry in _onlineSeatByUser.entries) {
+      if (entry.key.toLowerCase() == userId.toLowerCase()) return entry.value;
+    }
+    return null;
+  }
 
   void _startOnlineSync() {
     // If sessionId is missing but roomCode is available, fetch or start session
@@ -1822,8 +1830,18 @@ class LudoGameController extends ChangeNotifier {
   // ---- what the server announces: play it back ----
 
   Future<void> _onlineHandleDice(Map<String, dynamic> e) async {
-    final seat = _seatOfUser(e['playerId']?.toString());
-    if (seat == null || seat >= state.players.length) return;
+    int? seat = _seatOfUser(e['playerId']?.toString() ?? e['userId']?.toString());
+    if (seat == null) {
+      if (e['turn'] is Map) {
+        seat = (e['turn']['seatIndex'] as num?)?.toInt();
+      } else if (e['state'] is Map && e['state']['turn'] is Map) {
+        seat = (e['state']['turn']['seatIndex'] as num?)?.toInt();
+      } else if (e['seatIndex'] != null) {
+        seat = (e['seatIndex'] as num?)?.toInt();
+      }
+    }
+    seat ??= state.currentPlayerIndex;
+    if (seat >= state.players.length) return;
     final dice = (e['diceValue'] as num).toInt();
     final movable = ((e['movableTokenIds'] as List?) ?? const []).map((x) => (x as num).toInt()).toList();
     final turnPassed = e['turnPassed'] == true;
@@ -1868,9 +1886,19 @@ class LudoGameController extends ChangeNotifier {
 
   Future<void> _onlineHandleMove(Map<String, dynamic> e) async {
     _onlineMovePending = false;
-    final seat = _seatOfUser(e['playerId']?.toString());
+    int? seat = _seatOfUser(e['playerId']?.toString() ?? e['userId']?.toString());
+    if (seat == null) {
+      if (e['turn'] is Map) {
+        seat = (e['turn']['seatIndex'] as num?)?.toInt();
+      } else if (e['state'] is Map && e['state']['turn'] is Map) {
+        seat = (e['state']['turn']['seatIndex'] as num?)?.toInt();
+      } else if (e['seatIndex'] != null) {
+        seat = (e['seatIndex'] as num?)?.toInt();
+      }
+    }
+    seat ??= state.currentPlayerIndex;
     final mv = e['move'];
-    if (mv is Map && seat != null && seat < state.players.length) {
+    if (mv is Map && seat < state.players.length) {
       final tokenId = (mv['tokenId'] as num).toInt();
       final prev = (mv['prevStep'] as num).toInt();
       final next = (mv['newStep'] as num).toInt();
@@ -1941,6 +1969,15 @@ class LudoGameController extends ChangeNotifier {
       if (p['id'] != null) _onlineSeatByUser[p['id'].toString()] = seat;
       if (p['_id'] != null) _onlineSeatByUser[p['_id'].toString()] = seat;
       if (p['email'] != null) _onlineSeatByUser[p['email'].toString().toLowerCase()] = seat;
+      if (p['user'] != null) {
+        if (p['user'] is Map) {
+          final uMap = p['user'] as Map;
+          if (uMap['_id'] != null) _onlineSeatByUser[uMap['_id'].toString()] = seat;
+          if (uMap['id'] != null) _onlineSeatByUser[uMap['id'].toString()] = seat;
+        } else {
+          _onlineSeatByUser[p['user'].toString()] = seat;
+        }
+      }
 
       final lp = state.players[seat];
       final serverName = (p['name'] ?? '').toString();

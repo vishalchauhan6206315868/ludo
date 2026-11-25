@@ -68,10 +68,10 @@ class PlayerCard extends StatelessWidget {
             ? (player.color == PlayerColor.yellow)
             : false);
 
-    // Each player pod sits beside its matching board corner:
-    // Red (top-left) & Green (top-right) are at the top; Blue & Yellow are at the bottom.
-    final bool isTop = (player.color == PlayerColor.red ||
-        player.color == PlayerColor.green);
+    // In Online 2-Player mode, opponent is always at top, and my player is always at bottom.
+    final bool isTop = (controller.isOnlineMatch && state.players.length == 2)
+        ? !isMe
+        : (player.color == PlayerColor.red || player.color == PlayerColor.green);
 
     // Pod dice sits big & prominent in the corner cards ("bada hi rkh")
     final effectiveDiceSize = diceSize != null
@@ -146,10 +146,15 @@ class PlayerCard extends StatelessWidget {
       }
     }
 
-    // Exactly one player's dice is visible at a time (the active turn player).
-    // The other player's slot remains completely empty until their turn arrives.
-    final bool showPodDice = isCurrentTurn && !hideActiveDice;
-    final int diceDisplayValue = state.currentDiceValue ?? controller.lastSettledDiceValue;
+    // In Online match, both players' 3D dice remain visible at all times, with the current
+    // player's dice interactive (canRoll) and inactive player's dice showing their rolled result.
+    // In offline modes, exactly one active dice is shown to preserve classic pass-n-play focus.
+    final bool showPodDice = controller.isOnlineMatch
+        ? (!isCurrentTurn || !hideActiveDice)
+        : (isCurrentTurn && !hideActiveDice);
+    final int diceDisplayValue = (isCurrentTurn && state.currentDiceValue != null)
+        ? state.currentDiceValue!
+        : (controller.lastSettledDiceValue > 0 ? controller.lastSettledDiceValue : 1);
 
     final Widget diceWidget = KeyedSubtree(
       key: diceSlotKey,

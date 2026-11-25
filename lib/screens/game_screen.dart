@@ -741,14 +741,17 @@ class _GameScreenState extends State<GameScreen>
                                 ),
                               ),
                             const SizedBox(width: 8),
-                            Text(
-                              _controller.onlineConnection == LudoConnectionStatus.unauthorized
-                                  ? "Session expired. Please log in again."
-                                  : _controller.onlineConnection == LudoConnectionStatus.connecting
-                                      ? "Connecting to match server..."
-                                      : "Connection lost. Reconnecting...",
-                              style: const TextStyle(
-                                  color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                            Flexible(
+                              child: Text(
+                                _controller.onlineConnection == LudoConnectionStatus.unauthorized
+                                    ? "Session expired. Please log in again."
+                                    : _controller.onlineConnection == LudoConnectionStatus.connecting
+                                        ? "Connecting to match server..."
+                                        : "Connection lost. Reconnecting...",
+                                style: const TextStyle(
+                                    color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ],
                         ),
@@ -948,6 +951,31 @@ class _GameScreenState extends State<GameScreen>
       double? boardDiceSize,
       bool isCompact = false]) {
     final bSize = Size(boardSize, boardSize);
+
+    if (_controller.isOnlineMatch && state.players.length == 2) {
+      final mySeat = _controller.mySeatIndex.clamp(0, 1);
+      final oppSeat = 1 - mySeat;
+      final oppPlayer = state.players[oppSeat];
+      final oppCard = _buildPlayerCard(
+        player: oppPlayer,
+        isCurrentTurn: state.currentPlayerIndex == oppSeat,
+        boardSize: bSize,
+        diceSize: diceSize,
+        boardDiceSize: boardDiceSize,
+        isCompact: isCompact,
+        isRightAligned: false,
+      );
+
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          oppCard,
+          const SizedBox.shrink(),
+        ],
+      );
+    }
+
     final topCard = _buildPlayerCardForColor(
       state,
       PlayerColor.red,
@@ -983,6 +1011,30 @@ class _GameScreenState extends State<GameScreen>
       double? boardDiceSize,
       bool isCompact = false]) {
     final bSize = Size(boardSize, boardSize);
+
+    if (_controller.isOnlineMatch && state.players.length == 2) {
+      final mySeat = _controller.mySeatIndex.clamp(0, 1);
+      final myPlayer = state.players[mySeat];
+      final myCard = _buildPlayerCard(
+        player: myPlayer,
+        isCurrentTurn: state.currentPlayerIndex == mySeat,
+        boardSize: bSize,
+        diceSize: diceSize,
+        boardDiceSize: boardDiceSize,
+        isCompact: isCompact,
+        isRightAligned: true,
+      );
+
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const SizedBox.shrink(),
+          myCard,
+        ],
+      );
+    }
+
     final topCard = _buildPlayerCardForColor(
       state,
       PlayerColor.green,
@@ -1018,6 +1070,40 @@ class _GameScreenState extends State<GameScreen>
       double? boardDiceSize,
       bool isCompact = false]) {
     final bSize = Size(boardSize, boardSize);
+
+    if (_controller.isOnlineMatch && state.players.length == 2) {
+      final mySeat = _controller.mySeatIndex.clamp(0, 1);
+      final oppSeat = 1 - mySeat;
+      final oppPlayer = state.players[oppSeat];
+      final oppCard = _buildPlayerCard(
+        player: oppPlayer,
+        isCurrentTurn: state.currentPlayerIndex == oppSeat,
+        boardSize: bSize,
+        diceSize: diceSize,
+        boardDiceSize: boardDiceSize,
+        isCompact: isCompact,
+        isRightAligned: false,
+      );
+
+      return Center(
+        child: SizedBox(
+          width: boardSize,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: oppCard,
+                ),
+              ),
+              const SizedBox.shrink(),
+            ],
+          ),
+        ),
+      );
+    }
+
     final redCard = _buildPlayerCardForColor(
       state,
       PlayerColor.red,
@@ -1078,6 +1164,39 @@ class _GameScreenState extends State<GameScreen>
       double? boardDiceSize,
       bool isCompact = false]) {
     final bSize = Size(boardSize, boardSize);
+
+    if (_controller.isOnlineMatch && state.players.length == 2) {
+      final mySeat = _controller.mySeatIndex.clamp(0, 1);
+      final myPlayer = state.players[mySeat];
+      final myCard = _buildPlayerCard(
+        player: myPlayer,
+        isCurrentTurn: state.currentPlayerIndex == mySeat,
+        boardSize: bSize,
+        diceSize: diceSize,
+        boardDiceSize: boardDiceSize,
+        isCompact: isCompact,
+        isRightAligned: true,
+      );
+
+      return Center(
+        child: SizedBox(
+          width: boardSize,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const SizedBox.shrink(),
+              Flexible(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: myCard,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final blueCard = _buildPlayerCardForColor(
       state,
       PlayerColor.blue,
