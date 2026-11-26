@@ -8,7 +8,7 @@ class ApiConfig {
   // Production Api Url
   static const String defaultBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://ludoapi-3.onrender.com/api',
+    defaultValue: 'https://ludoapi-jupm.onrender.com/api',
   );
 
   static String? customBaseUrl;
@@ -73,8 +73,10 @@ class ApiConfig {
     if (customBaseUrl != null && customBaseUrl!.trim().isNotEmpty) {
       return customBaseUrl!.trim();
     }
-
-    return _activeBaseUrl ?? defaultBaseUrl;
+    if (_activeBaseUrl != null && _activeBaseUrl!.trim().isNotEmpty) {
+      return _activeBaseUrl!.trim();
+    }
+    return defaultBaseUrl;
   }
 
   // Endpoints

@@ -72,6 +72,10 @@ class LudoSocketService {
   /// Returns true when the socket is connected.
   Future<bool> ensureConnected({Duration timeout = const Duration(seconds: 12)}) async {
     if (isConnected) return true;
+    if (_socket != null && _socket!.connected) {
+      _setStatus(LudoConnectionStatus.connected);
+      return true;
+    }
 
     if (_socket == null || _status == LudoConnectionStatus.idle || _status == LudoConnectionStatus.unauthorized) {
       if (_connecting) {
@@ -89,6 +93,8 @@ class LudoSocketService {
           _connecting = false;
         }
       }
+    } else if (!_socket!.connected && !_connecting) {
+      _socket!.connect();
     }
 
     final end = DateTime.now().add(timeout);
@@ -108,6 +114,7 @@ class LudoSocketService {
       baseUrl,
       io.OptionBuilder()
           .setTransports(['websocket', 'polling'])
+          .setPath('/socket.io/')
           .setAuth({'token': token})
           .setExtraHeaders({'Authorization': 'Bearer $token', 'token': token})
           .setQuery({'token': token})
@@ -121,6 +128,10 @@ class LudoSocketService {
     _socket = s;
 
     s.onConnect((_) => _setStatus(LudoConnectionStatus.connected));
+    s.on('reconnect', (_) => _setStatus(LudoConnectionStatus.connected));
+    s.on('reconnecting', (_) {
+      if (!_manualClose) _setStatus(LudoConnectionStatus.reconnecting);
+    });
     s.onDisconnect((_) {
       if (!_manualClose) _setStatus(LudoConnectionStatus.reconnecting);
     });
@@ -135,6 +146,9 @@ class LudoSocketService {
       } else {
         _setStatus(LudoConnectionStatus.reconnecting);
       }
+    });
+    s.on('connect_timeout', (_) {
+      if (!_manualClose) _setStatus(LudoConnectionStatus.reconnecting);
     });
 
     _boundEvents.clear();

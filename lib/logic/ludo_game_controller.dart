@@ -1567,6 +1567,76 @@ class LudoGameController extends ChangeNotifier {
     return null;
   }
 
+  Timer? _restFallbackTimer;
+  bool _isRestSyncing = false;
+
+  void _startRestFallbackPolling() {
+    if (!isOnlineMatch || _disposed || state.isGameOver) return;
+    if (_restFallbackTimer != null && _restFallbackTimer!.isActive) return;
+
+    // Phase 8: After approximately 3 seconds without successful synchronization,
+    // poll current session state through the authenticated REST API every 3-5 seconds.
+    _restFallbackTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      if (_disposed || !isOnlineMatch || state.isGameOver) {
+        _stopRestFallbackPolling();
+        return;
+      }
+      if (onlineConnection == LudoConnectionStatus.connected) {
+        _stopRestFallbackPolling();
+        return;
+      }
+      if (_isRestSyncing) return; // avoid overlapping REST requests
+      _isRestSyncing = true;
+      try {
+        await _performRestFallbackSync();
+      } catch (err) {
+        debugPrint('[ONLINE] REST fallback poll error: $err');
+      } finally {
+        _isRestSyncing = false;
+      }
+    });
+  }
+
+  void _stopRestFallbackPolling() {
+    _restFallbackTimer?.cancel();
+    _restFallbackTimer = null;
+    _isRestSyncing = false;
+  }
+
+  Future<void> _performRestFallbackSync() async {
+    if (!isOnlineMatch || _disposed || state.isGameOver) return;
+    final myUid = authenticatedUserId ?? AuthService.cachedBackendUserId;
+
+    // 1. If sessionId is available, fetch latest authoritative session state
+    if (sessionId != null && sessionId!.isNotEmpty) {
+      try {
+        final restRes = await ApiService().getGameSession(sessionId: sessionId!);
+        if (restRes['success'] == true && restRes['data'] != null) {
+          final identity = PlayerIdentity.tryParse(restRes, expectedUserId: myUid);
+          if (identity != null) {
+            playerIdentity = identity;
+            mySeatIndex = identity.seatIndex;
+            isHost = identity.isHost;
+            authenticatedUserId = identity.userId;
+          }
+          final data = Map<String, dynamic>.from(restRes['data'] as Map);
+          final serverState = data['state'] ?? data;
+          if (serverState is Map) {
+            _enqueueOnline(() async => _onlineApplyFullState(Map<String, dynamic>.from(serverState), force: true));
+            return;
+          }
+        }
+      } catch (e) {
+        debugPrint('[ONLINE] getGameSession fallback error: $e');
+      }
+    }
+
+    // 2. If sessionId is missing, resolve it via room code
+    if (roomCode != null && roomCode!.isNotEmpty) {
+      await _resolveSessionFromRoomCode();
+    }
+  }
+
   void _startOnlineSync() {
     onlineConnection = _socket.status;
     _safeNotifyListeners();
@@ -1574,6 +1644,10 @@ class LudoGameController extends ChangeNotifier {
     // Attach listeners immediately so incoming broadcast events (game_started, turn_changed, etc.)
     // are never dropped, even if sessionId is still being resolved from roomCode.
     _attachOnlineSync();
+
+    if (onlineConnection != LudoConnectionStatus.connected) {
+      _startRestFallbackPolling();
+    }
 
     // Join room lobby channel if roomCode is available
     if (roomCode != null && roomCode!.isNotEmpty) {
@@ -1704,7 +1778,12 @@ class LudoGameController extends ChangeNotifier {
       onlineConnection = s;
       _safeNotifyListeners();
       // every time we are back online ask the server for the truth (restores the board)
-      if (s == LudoConnectionStatus.connected) onlineResync();
+      if (s == LudoConnectionStatus.connected) {
+        _stopRestFallbackPolling();
+        onlineResync();
+      } else {
+        _startRestFallbackPolling();
+      }
     }));
 
     void handleGameState(Map<String, dynamic> e) {
@@ -2538,6 +2617,7 @@ class LudoGameController extends ChangeNotifier {
 
   void _disposeOnline() {
     _isOnlineSyncAttached = false;
+    _stopRestFallbackPolling();
     for (final s in _onlineSubs) {
       s.cancel();
     }

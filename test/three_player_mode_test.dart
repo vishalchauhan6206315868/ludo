@@ -1,10 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ludo/logic/ludo_game_controller.dart';
 import 'package:ludo/models/game_state.dart';
 import 'package:ludo/models/room_model.dart';
 import 'package:ludo/constants/ludo_path.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   group('3-Player Mode Integration Tests', () {
     test('RoomModel correctly parses 3-Player room payload', () {
       final json = {
