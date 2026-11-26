@@ -91,9 +91,14 @@ class _RoomLobbyDialogState extends State<RoomLobbyDialog>
         if (forThisRoom(e)) _applyRoomPayload(e['room']);
       }));
     }
-    _subs.add(svc.on('match_started').listen((e) {
-      if (forThisRoom(e)) _openGame(e['sessionId']?.toString());
-    }));
+    void handleMatchStart(Map<String, dynamic> e) {
+      if (forThisRoom(e)) {
+        final sid = e['sessionId']?.toString() ?? e['matchId']?.toString() ?? e['gameId']?.toString();
+        _openGame(sid);
+      }
+    }
+    _subs.add(svc.on('match_started').listen(handleMatchStart));
+    _subs.add(svc.on('game_started').listen(handleMatchStart));
     _subs.add(svc.on('room_cancelled').listen((e) {
       if (forThisRoom(e)) _onRoomCancelled();
     }));
@@ -138,7 +143,12 @@ class _RoomLobbyDialogState extends State<RoomLobbyDialog>
   /// Replaces this dialog with the game screen (one single route change).
   void _openGame(String? sessionId) {
     if (_navigated || !mounted || _isLeaving) return;
-    if (sessionId == null || sessionId.isEmpty) return;
+    final effectiveSid = (sessionId != null && sessionId.isNotEmpty && sessionId != 'null')
+        ? sessionId
+        : (_currentRoom.sessionId != null && _currentRoom.sessionId!.isNotEmpty && _currentRoom.sessionId != 'null'
+            ? _currentRoom.sessionId
+            : null);
+    if ((effectiveSid == null || effectiveSid.isEmpty) && _currentRoom.roomCode.isEmpty) return;
     _navigated = true;
     _fallbackTimer?.cancel();
     for (final s in _subs) {
@@ -166,7 +176,7 @@ class _RoomLobbyDialogState extends State<RoomLobbyDialog>
       MaterialPageRoute(
         builder: (_) => GameScreen(
           mode: mode,
-          sessionId: sessionId,
+          sessionId: effectiveSid,
           roomCode: room.roomCode,
           isOnlineMatch: true,
           isHost: isHost,

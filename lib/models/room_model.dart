@@ -49,7 +49,8 @@ class RoomModel {
   int get playerCount => players.length;
   bool get isFull => playerCount >= maxPlayers;
   bool get isWaiting => status.toLowerCase() == 'waiting';
-  bool get hasMatch => sessionId != null && sessionId!.isNotEmpty;
+  bool get hasMatch => sessionId != null && sessionId!.isNotEmpty && sessionId != 'null';
+  bool get hasSession => sessionId != null && sessionId!.isNotEmpty && sessionId != 'null';
 
   /// From a REST response. Accepts the whole body, `data`, or the room itself:
   /// `{data:{room:{...}, sessionId, seatIndex}}`, `{room:{...}}` or `{...room fields}`.
@@ -78,7 +79,19 @@ class RoomModel {
       }
     }
 
-    final sid = (outer['sessionId'] ?? json['sessionId'] ?? roomMap['sessionId'])?.toString();
+    final sid = (outer['sessionId'] ??
+            json['sessionId'] ??
+            outer['matchId'] ??
+            json['matchId'] ??
+            outer['gameId'] ??
+            json['gameId'] ??
+            roomMap['sessionId'] ??
+            roomMap['matchId'] ??
+            roomMap['gameId'] ??
+            (outer['session'] is Map ? (outer['session']['_id'] ?? outer['session']['id']) : null) ??
+            (json['session'] is Map ? (json['session']['_id'] ?? json['session']['id']) : null) ??
+            (roomMap['session'] is Map ? (roomMap['session']['_id'] ?? roomMap['session']['id']) : null))
+        ?.toString();
     final parsedIdentity = PlayerIdentity.tryParse(json) ?? PlayerIdentity.tryParse(outer);
     final seat = parsedIdentity?.seatIndex ?? outer['seatIndex'] ?? json['seatIndex'] ?? roomMap['seatIndex'];
     final rawColor = parsedIdentity?.color ?? outer['assignedColor'] ?? json['assignedColor'] ?? outer['color'] ?? json['color'];
@@ -117,7 +130,13 @@ class RoomModel {
         }
       }
     }
-    final sid = room['sessionId']?.toString();
+    final sid = (room['sessionId'] ??
+            room['matchId'] ??
+            room['gameId'] ??
+            (room['session'] is Map ? (room['session']['_id'] ?? room['session']['id']) : null) ??
+            room['session']?.toString() ??
+            previous?.sessionId)
+        ?.toString();
     final parsedIdentity = PlayerIdentity.tryParse(room) ?? previous?.identity;
     final seat = parsedIdentity?.seatIndex ?? room['seatIndex'] ?? previous?.seatIndex;
     final rawColor = parsedIdentity?.color ?? room['assignedColor'] ?? room['color'] ?? previous?.assignedColor;
@@ -189,7 +208,7 @@ class RoomModel {
       gameMode: gameMode ?? this.gameMode,
       status: status ?? this.status,
       entryFee: entryFee ?? this.entryFee,
-      sessionId: sessionId ?? this.sessionId,
+      sessionId: (sessionId != null && sessionId.isNotEmpty && sessionId != 'null') ? sessionId : this.sessionId,
       seatIndex: seatIndex ?? this.seatIndex,
       assignedColor: assignedColor ?? this.assignedColor,
       identity: identity ?? this.identity,

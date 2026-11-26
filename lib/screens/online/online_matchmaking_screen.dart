@@ -307,7 +307,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
       // Listen to match_started and game_started event
       void handleMatchStarted(Map<String, dynamic> e) {
         if (forThisRoom(e)) {
-          final sid = e['sessionId']?.toString() ?? e['gameId']?.toString();
+          final sid = e['sessionId']?.toString() ?? e['matchId']?.toString() ?? e['gameId']?.toString();
           if (sid != null && sid.isNotEmpty) {
             _sessionId = sid;
           }
@@ -537,16 +537,19 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     // Safe session resolution: Ensure sessionId is valid before navigating
     if ((effectiveSessionId == null || effectiveSessionId.isEmpty) && _roomCode != null) {
       try {
-        if (_isHost) {
-          final startRes = await ApiService().startGame(roomCode: _roomCode!);
-          if (startRes['success'] == true && startRes['data'] is Map) {
-            final data = startRes['data'] as Map;
-            final session = data['session'];
-            effectiveSessionId = data['sessionId']?.toString() ??
-                (session is Map ? (session['_id'] ?? session['id'])?.toString() : null);
-          }
+        final startRes = await ApiService().startGame(roomCode: _roomCode!);
+        if (startRes['success'] == true && startRes['data'] is Map) {
+          final data = startRes['data'] as Map;
+          final session = data['session'];
+          effectiveSessionId = data['sessionId']?.toString() ??
+              data['matchId']?.toString() ??
+              data['gameId']?.toString() ??
+              (session is Map ? (session['_id'] ?? session['id'])?.toString() : null);
         }
-        if (effectiveSessionId == null || effectiveSessionId.isEmpty) {
+      } catch (_) {}
+
+      if (effectiveSessionId == null || effectiveSessionId.isEmpty) {
+        try {
           final roomRes = await ApiService().getRoomDetails(roomCode: _roomCode!);
           if (roomRes['success'] == true && roomRes['data'] is Map) {
             final r = RoomModel.fromJson(roomRes['data']);
@@ -554,9 +557,9 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
             _currentRoom = r;
             if (r.seatIndex != null) _assignedSeatIndex ??= r.seatIndex;
           }
+        } catch (e) {
+          debugPrint("Session resolution before launch notice: $e");
         }
-      } catch (e) {
-        debugPrint("Session resolution before launch notice: $e");
       }
     }
 

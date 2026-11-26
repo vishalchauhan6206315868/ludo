@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ludo/constants/ludo_path.dart';
 import 'package:ludo/models/player_identity.dart';
 import 'package:ludo/models/room_model.dart';
@@ -6,6 +7,10 @@ import 'package:ludo/logic/ludo_game_controller.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
   group('PlayerIdentity Model & Parsing Tests', () {
     test('tryParse parses standard backend player payload', () {

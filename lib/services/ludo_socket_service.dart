@@ -184,6 +184,7 @@ class LudoSocketService {
     return done.future;
   }
 
+  Future<LudoAck> joinRoom(String roomCode) => request('join_room', {'roomCode': roomCode});
   Future<LudoAck> joinSession(String sessionId) => request('join_session', {'sessionId': sessionId});
   Future<LudoAck> rollDice(String sessionId) async {
     final ack = await request('dice_roll_requested', {'sessionId': sessionId});
