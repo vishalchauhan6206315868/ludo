@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/network/api_service.dart';
 import '../models/game_state.dart';
+import '../models/player_identity.dart';
 import '../models/room_model.dart';
 import '../models/user_profile_model.dart';
 import '../services/app_update_service.dart';
@@ -122,8 +123,9 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
               sessionId: room.sessionId,
               roomCode: room.roomCode,
               isOnlineMatch: true,
-              isHost: data['isHost'] == true,
-              mySeatIndex: room.seatIndex ?? (data['isHost'] == true ? 0 : 1),
+              isHost: room.identity?.isHost ?? (data['isHost'] == true),
+              mySeatIndex: room.identity?.seatIndex ?? room.seatIndex ?? (data['isHost'] == true ? 0 : 1),
+              playerIdentity: room.identity ?? PlayerIdentity.tryParse(data),
             ),
           ),
         );
@@ -1625,8 +1627,11 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
         final sessionId = result['sessionId'] as String?;
         final roomCode = result['roomCode'] as String?;
         final isOnlineMatch = result['isOnlineMatch'] as bool? ?? (sessionId != null && sessionId.isNotEmpty);
-        final isHost = result['isHost'] as bool? ?? true;
-        final mySeatIndex = result['mySeatIndex'] as int? ?? (isHost ? 0 : 1);
+        final playerIdentity = result['playerIdentity'] as PlayerIdentity?;
+        final isHost = playerIdentity?.isHost ??
+            (result['isHost'] as bool? ?? (result['mySeatIndex'] == 1 ? false : true));
+        final mySeatIndex = playerIdentity?.seatIndex ??
+            (result['mySeatIndex'] as int? ?? (isHost ? 0 : 1));
         _startGame(
           context,
           mode,
@@ -1636,6 +1641,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
           isOnlineMatch,
           isHost,
           mySeatIndex,
+          playerIdentity,
         );
       }
     }
@@ -1679,6 +1685,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
     bool isOnlineMatch = false,
     bool isHost = true,
     int mySeatIndex = 0,
+    PlayerIdentity? playerIdentity,
   ]) async {
     await Navigator.push(
       context,
@@ -1691,6 +1698,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
           isOnlineMatch: isOnlineMatch,
           isHost: isHost,
           mySeatIndex: mySeatIndex,
+          playerIdentity: playerIdentity,
         ),
       ),
     );

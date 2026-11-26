@@ -152,8 +152,10 @@ class _RoomLobbyDialogState extends State<RoomLobbyDialog>
         : (room.maxPlayers == 3 || room.gameMode == 'threePlayer'
             ? GameMode.threePlayer
             : GameMode.twoPlayer);
-    final rawSeat = widget.isHost ? 0 : (widget.room.seatIndex ?? room.seatIndex ?? 1);
-    final seat = (!widget.isHost && rawSeat == 0) ? 1 : rawSeat;
+    final identity = room.identity ?? widget.room.identity;
+    final isHost = identity?.isHost ?? widget.isHost;
+    final rawSeat = identity?.seatIndex ?? (isHost ? 0 : (widget.room.seatIndex ?? room.seatIndex ?? 1));
+    final seat = (!isHost && rawSeat == 0) ? 1 : rawSeat;
 
     final navigator = Navigator.of(context);
     final route = ModalRoute.of(context);
@@ -167,8 +169,9 @@ class _RoomLobbyDialogState extends State<RoomLobbyDialog>
           sessionId: sessionId,
           roomCode: room.roomCode,
           isOnlineMatch: true,
-          isHost: widget.isHost,
+          isHost: isHost,
           mySeatIndex: seat,
+          playerIdentity: identity,
         ),
       ),
     );

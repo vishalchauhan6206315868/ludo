@@ -10,6 +10,7 @@ import '../services/sound_haptic_service.dart';
 import '../models/game_state.dart';
 import '../models/ludo_player.dart';
 import '../models/online_game_mode.dart';
+import '../models/player_identity.dart';
 import '../widgets/board/ludo_board_widget.dart';
 import '../widgets/dice/animated_dice.dart';
 import '../widgets/player_card.dart';
@@ -28,6 +29,7 @@ class GameScreen extends StatefulWidget {
   final bool isOnlineMatch;
   final bool isHost;
   final int mySeatIndex;
+  final PlayerIdentity? playerIdentity;
   final OnlineModeType? onlineModeType;
 
   const GameScreen({
@@ -42,6 +44,7 @@ class GameScreen extends StatefulWidget {
     this.isOnlineMatch = false,
     this.isHost = true,
     this.mySeatIndex = 0,
+    this.playerIdentity,
     this.onlineModeType,
   });
 
@@ -95,6 +98,10 @@ class _GameScreenState extends State<GameScreen>
         });
       }
     });
+    final effectiveSeat = widget.playerIdentity?.seatIndex ??
+        (widget.isOnlineMatch && !widget.isHost && widget.mySeatIndex == 0 ? 1 : widget.mySeatIndex);
+    final effectiveHost = widget.playerIdentity?.isHost ?? (widget.mySeatIndex == 1 ? false : widget.isHost);
+
     _controller = LudoGameController(
       mode: widget.mode,
       initialState: widget.restoredState,
@@ -104,8 +111,9 @@ class _GameScreenState extends State<GameScreen>
       roomCode: widget.roomCode,
       isTeamUpVsBot: widget.isTeamUpVsBot,
       isOnlineMatch: widget.isOnlineMatch || (widget.sessionId != null && widget.sessionId!.isNotEmpty),
-      isHost: widget.isHost,
-      mySeatIndex: widget.mySeatIndex,
+      isHost: effectiveHost,
+      mySeatIndex: effectiveSeat,
+      playerIdentity: widget.playerIdentity,
       onlineModeType: widget.onlineModeType,
     );
     _controller.onDiceTravelRequested = _startDiceTravelTo;
@@ -254,7 +262,7 @@ class _GameScreenState extends State<GameScreen>
             if (widget.mode == GameMode.vsComputer) {
               isWin = !firstWinner.isBot;
             } else {
-              final userPlayer = _controller.state.players.isNotEmpty ? _controller.state.players.first : null;
+              final userPlayer = _controller.myPlayer;
               isWin = firstWinner == userPlayer;
             }
           } else {

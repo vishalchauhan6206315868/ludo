@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../core/network/api_service.dart';
 import '../models/online_game_mode.dart';
+import '../models/player_identity.dart';
 import '../models/room_model.dart';
 import 'auth_service.dart';
 
@@ -11,10 +12,12 @@ import 'auth_service.dart';
 class MatchmakingResult {
   final RoomModel room;
   final bool isHost;
+  final PlayerIdentity? identity;
 
   const MatchmakingResult({
     required this.room,
     required this.isHost,
+    this.identity,
   });
 }
 
@@ -90,7 +93,8 @@ class MatchmakingService {
                     _claimedOrDeadRooms.add(roomCode);
                     // Announce claimed so other clients skip it
                     unawaited(announceClaimed(mode: mode, roomCode: roomCode));
-                    return MatchmakingResult(room: room, isHost: false);
+                    final identity = PlayerIdentity.tryParse(joinRes, expectedUserId: myUid) ?? room.identity;
+                    return MatchmakingResult(room: room, isHost: false, identity: identity);
                   }
                 }
                 // If it failed or was already-in-room or closed, mark dead and try next or host
@@ -145,7 +149,8 @@ class MatchmakingService {
 
         // Announce this room to the mode's matchmaking queue
         unawaited(announceHeartbeat(mode: mode, roomCode: code, hostId: myUid));
-        return MatchmakingResult(room: room, isHost: true);
+        final identity = PlayerIdentity.tryParse(createRes, expectedUserId: myUid) ?? room.identity;
+        return MatchmakingResult(room: room, isHost: true, identity: identity);
       }
     } catch (e) {
       debugPrint("Error creating room during matchmaking: $e");

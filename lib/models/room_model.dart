@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'player_identity.dart';
 
 /// Model representing a multiplayer Game Room (`/api/rooms/*` responses and socket `room_*` events).
 class RoomModel {
@@ -17,6 +18,13 @@ class RoomModel {
 
   /// This player's seat (0-3) as assigned by the server (from the join response). Host = 0.
   final int? seatIndex;
+
+  /// Normalized assigned color ('RED', 'GREEN', etc.)
+  final String? assignedColor;
+
+  /// Authenticated player identity if returned by the backend
+  final PlayerIdentity? identity;
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -32,6 +40,8 @@ class RoomModel {
     this.entryFee = 0,
     this.sessionId,
     this.seatIndex,
+    this.assignedColor,
+    this.identity,
     this.createdAt,
     this.updatedAt,
   });
@@ -68,8 +78,11 @@ class RoomModel {
       }
     }
 
-    final sid = (outer['sessionId'] ?? roomMap['sessionId'])?.toString();
-    final seat = outer['seatIndex'] ?? roomMap['seatIndex'];
+    final sid = (outer['sessionId'] ?? json['sessionId'] ?? roomMap['sessionId'])?.toString();
+    final parsedIdentity = PlayerIdentity.tryParse(json) ?? PlayerIdentity.tryParse(outer);
+    final seat = parsedIdentity?.seatIndex ?? outer['seatIndex'] ?? json['seatIndex'] ?? roomMap['seatIndex'];
+    final rawColor = parsedIdentity?.color ?? outer['assignedColor'] ?? json['assignedColor'] ?? outer['color'] ?? json['color'];
+    final color = rawColor != null ? PlayerIdentity.normalizeColor(rawColor, seat is num ? seat.toInt() : 0) : null;
 
     return RoomModel(
       id: roomMap['_id']?.toString() ?? roomMap['id']?.toString() ?? '',
@@ -83,6 +96,8 @@ class RoomModel {
       entryFee: _parseInt(roomMap['entryFee'], defaultValue: 0),
       sessionId: (sid == null || sid.isEmpty || sid == 'null') ? null : sid,
       seatIndex: seat is num ? seat.toInt() : null,
+      assignedColor: color,
+      identity: parsedIdentity,
       createdAt: roomMap['createdAt'] != null ? DateTime.tryParse(roomMap['createdAt'].toString()) : null,
       updatedAt: roomMap['updatedAt'] != null ? DateTime.tryParse(roomMap['updatedAt'].toString()) : null,
     );
@@ -103,6 +118,11 @@ class RoomModel {
       }
     }
     final sid = room['sessionId']?.toString();
+    final parsedIdentity = PlayerIdentity.tryParse(room) ?? previous?.identity;
+    final seat = parsedIdentity?.seatIndex ?? room['seatIndex'] ?? previous?.seatIndex;
+    final rawColor = parsedIdentity?.color ?? room['assignedColor'] ?? room['color'] ?? previous?.assignedColor;
+    final color = rawColor != null ? PlayerIdentity.normalizeColor(rawColor, seat is num ? seat.toInt() : 0) : null;
+
     return RoomModel(
       id: room['roomId']?.toString() ?? previous?.id ?? '',
       roomCode: room['roomCode']?.toString() ?? previous?.roomCode ?? '',
@@ -114,7 +134,9 @@ class RoomModel {
       status: room['status']?.toString() ?? previous?.status ?? 'waiting',
       entryFee: _parseInt(room['entryFee'], defaultValue: previous?.entryFee ?? 0),
       sessionId: (sid == null || sid.isEmpty || sid == 'null') ? previous?.sessionId : sid,
-      seatIndex: previous?.seatIndex,
+      seatIndex: seat is num ? seat.toInt() : null,
+      assignedColor: color,
+      identity: parsedIdentity,
       createdAt: previous?.createdAt,
       updatedAt: previous?.updatedAt,
     );
@@ -130,6 +152,8 @@ class RoomModel {
         'status': status,
         'entryFee': entryFee,
         'sessionId': sessionId,
+        'seatIndex': seatIndex,
+        'assignedColor': assignedColor,
         'createdAt': createdAt?.toIso8601String(),
         'updatedAt': updatedAt?.toIso8601String(),
       };
@@ -150,6 +174,8 @@ class RoomModel {
     int? entryFee,
     String? sessionId,
     int? seatIndex,
+    String? assignedColor,
+    PlayerIdentity? identity,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -165,6 +191,8 @@ class RoomModel {
       entryFee: entryFee ?? this.entryFee,
       sessionId: sessionId ?? this.sessionId,
       seatIndex: seatIndex ?? this.seatIndex,
+      assignedColor: assignedColor ?? this.assignedColor,
+      identity: identity ?? this.identity,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/network/api_service.dart';
 import '../../models/game_state.dart';
 import '../../models/online_game_mode.dart';
+import '../../models/player_identity.dart';
 import '../../models/room_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/ludo_socket_service.dart';
@@ -54,6 +55,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
 
   // Real room state
   RoomModel? _currentRoom;
+  PlayerIdentity? _localPlayerIdentity;
   String? _roomCode;
   String? _sessionId;
   bool _isStartingMatch = false;
@@ -83,11 +85,18 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
       duration: const Duration(milliseconds: 2200),
     )..repeat();
 
-    _isHost = widget.isHost;
     _currentRoom = widget.initialRoom;
-    _assignedSeatIndex = widget.initialRoom?.seatIndex;
-    if (_assignedSeatIndex != null) {
-      _isHost = (_assignedSeatIndex == 0);
+    _localPlayerIdentity = widget.initialRoom?.identity;
+    if (_localPlayerIdentity != null) {
+      _assignedSeatIndex = _localPlayerIdentity!.seatIndex;
+      _isHost = _localPlayerIdentity!.isHost;
+    } else {
+      _assignedSeatIndex = widget.initialRoom?.seatIndex;
+      if (_assignedSeatIndex != null) {
+        _isHost = (_assignedSeatIndex == 0);
+      } else {
+        _isHost = widget.isHost;
+      }
     }
     _sessionId = widget.initialRoom?.sessionId;
     if (widget.initialRoom != null) {
@@ -158,8 +167,14 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
         if (result != null) {
           _currentRoom = result.room;
           _roomCode = result.room.roomCode.toUpperCase();
-          _isHost = result.isHost;
-          _assignedSeatIndex = result.isHost ? 0 : (result.room.seatIndex ?? 1);
+          _localPlayerIdentity = result.identity ?? result.room.identity;
+          if (_localPlayerIdentity != null) {
+            _assignedSeatIndex = _localPlayerIdentity!.seatIndex;
+            _isHost = _localPlayerIdentity!.isHost;
+          } else {
+            _isHost = result.isHost;
+            _assignedSeatIndex = result.isHost ? 0 : (result.room.seatIndex ?? 1);
+          }
 
           // If we joined an already waiting host, trigger opponent joined right away
           if (!_isHost && result.room.players.isNotEmpty) {
@@ -222,8 +237,15 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
             }
             _currentRoom = room;
             _roomCode = room.roomCode.toUpperCase();
-            _isHost = false;
-            _assignedSeatIndex = room.seatIndex ?? 1;
+            _localPlayerIdentity = room.identity ??
+                PlayerIdentity.tryParse(joinRes['player'] ?? joinRes['me'] ?? joinRes['data']);
+            if (_localPlayerIdentity != null) {
+              _isHost = _localPlayerIdentity!.isHost;
+              _assignedSeatIndex = _localPlayerIdentity!.seatIndex;
+            } else {
+              _isHost = false;
+              _assignedSeatIndex = room.seatIndex ?? 1;
+            }
             timer.cancel();
             _setupSocketListeners();
             final hostPlayer = room.players.isNotEmpty ? room.players[0] : "Host";
@@ -290,25 +312,33 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
             _sessionId = sid;
           }
           final me = e['me'] ?? e['you'] ?? e['state']?['me'] ?? e['session']?['me'];
-          int? seat = (e['seatIndex'] as num?)?.toInt();
-          if (seat == null && me is Map) {
-            seat = (me['seatIndex'] as num?)?.toInt();
-          }
-          if (seat == null) {
-            final players = e['state']?['players'] ?? e['session']?['players'];
-            final myUid = AuthService.cachedBackendUserId;
-            if (players is List && myUid != null && myUid.isNotEmpty) {
-              for (final p in players) {
-                if (p is Map && (p['userId']?.toString() == myUid || p['id']?.toString() == myUid)) {
-                  seat = (p['seatIndex'] as num?)?.toInt();
-                  break;
+          final myUid = AuthService.cachedBackendUserId;
+          final parsed = PlayerIdentity.tryParse(e, expectedUserId: myUid) ??
+              PlayerIdentity.tryParse(me, expectedUserId: myUid);
+          if (parsed != null) {
+            _localPlayerIdentity = parsed;
+            _assignedSeatIndex = parsed.seatIndex;
+            _isHost = parsed.isHost;
+          } else {
+            int? seat = (e['seatIndex'] as num?)?.toInt();
+            if (seat == null && me is Map) {
+              seat = (me['seatIndex'] as num?)?.toInt();
+            }
+            if (seat == null) {
+              final players = e['state']?['players'] ?? e['session']?['players'];
+              if (players is List && myUid != null && myUid.isNotEmpty) {
+                for (final p in players) {
+                  if (p is Map && (p['userId']?.toString() == myUid || p['id']?.toString() == myUid)) {
+                    seat = (p['seatIndex'] as num?)?.toInt();
+                    break;
+                  }
                 }
               }
             }
-          }
-          if (seat != null) {
-            _assignedSeatIndex = seat;
-            _isHost = (seat == 0);
+            if (seat != null) {
+              _assignedSeatIndex = seat;
+              _isHost = (seat == 0);
+            }
           }
           _launchGameSession(_sessionId);
         }
@@ -403,15 +433,24 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     try {
       final svc = LudoSocketService.instance;
       String? sid;
+      final myUid = AuthService.cachedBackendUserId;
       if (await svc.ensureConnected()) {
         final ack = await svc.startMatch(_roomCode!);
         if (ack.ok) {
           sid = ack.data['sessionId']?.toString();
-          final me = ack.data['me'] ?? ack.data['you'];
-          final seat = (ack.data['seatIndex'] ?? (me is Map ? me['seatIndex'] : null)) as num?;
-          if (seat != null) {
-            _assignedSeatIndex = seat.toInt();
-            _isHost = (_assignedSeatIndex == 0);
+          final identity = PlayerIdentity.tryParse(ack.data, expectedUserId: myUid) ??
+              PlayerIdentity.tryParse(ack.data['me'], expectedUserId: myUid);
+          if (identity != null) {
+            _localPlayerIdentity = identity;
+            _assignedSeatIndex = identity.seatIndex;
+            _isHost = identity.isHost;
+          } else {
+            final me = ack.data['me'] ?? ack.data['you'];
+            final seat = (ack.data['seatIndex'] ?? (me is Map ? me['seatIndex'] : null)) as num?;
+            if (seat != null) {
+              _assignedSeatIndex = seat.toInt();
+              _isHost = (_assignedSeatIndex == 0);
+            }
           }
         }
       }
@@ -422,10 +461,19 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           final session = data['session'];
           sid = data['sessionId']?.toString() ??
               (session is Map ? (session['_id'] ?? session['id'])?.toString() : null);
-          final seat = (data['seatIndex'] as num?)?.toInt();
-          if (seat != null) {
-            _assignedSeatIndex = seat;
-            _isHost = (seat == 0);
+          final identity = PlayerIdentity.tryParse(data, expectedUserId: myUid) ??
+              PlayerIdentity.tryParse(data['me'], expectedUserId: myUid) ??
+              PlayerIdentity.tryParse(data['player'], expectedUserId: myUid);
+          if (identity != null) {
+            _localPlayerIdentity = identity;
+            _assignedSeatIndex = identity.seatIndex;
+            _isHost = identity.isHost;
+          } else {
+            final seat = (data['seatIndex'] as num?)?.toInt();
+            if (seat != null) {
+              _assignedSeatIndex = seat;
+              _isHost = (seat == 0);
+            }
           }
         }
       }
@@ -448,12 +496,26 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
         final session = data['session'];
         _sessionId = data['sessionId']?.toString() ??
             (session is Map ? (session['_id'] ?? session['id'])?.toString() : null);
+        final myUid = AuthService.cachedBackendUserId;
+        final identity = PlayerIdentity.tryParse(data, expectedUserId: myUid) ??
+            PlayerIdentity.tryParse(data['me'], expectedUserId: myUid) ??
+            PlayerIdentity.tryParse(data['player'], expectedUserId: myUid);
+        if (identity != null) {
+          _localPlayerIdentity = identity;
+          _assignedSeatIndex = identity.seatIndex;
+          _isHost = identity.isHost;
+        }
       }
       if (_sessionId == null || _sessionId!.isEmpty) {
         final roomRes = await ApiService().getRoomDetails(roomCode: _roomCode!);
         if (roomRes['success'] == true && roomRes['data'] is Map) {
           final r = RoomModel.fromJson(roomRes['data']);
           _sessionId = r.sessionId;
+          if (r.identity != null) {
+            _localPlayerIdentity = r.identity;
+            _assignedSeatIndex = r.identity!.seatIndex;
+            _isHost = r.identity!.isHost;
+          }
         }
       }
     } catch (e) {
@@ -510,12 +572,13 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
     }
     _socketSubs.clear();
 
-    int finalSeat = _assignedSeatIndex ?? _currentRoom?.seatIndex ?? (_isHost ? 0 : 1);
-    if (!_isHost && finalSeat == 0) {
+    int finalSeat = _localPlayerIdentity?.seatIndex ?? _assignedSeatIndex ?? _currentRoom?.seatIndex ?? (_isHost ? 0 : 1);
+    bool finalIsHost = _localPlayerIdentity?.isHost ?? (_assignedSeatIndex != null ? _assignedSeatIndex == 0 : _isHost);
+    if (!finalIsHost && finalSeat == 0) {
       finalSeat = 1;
     }
     if (finalSeat == 1) {
-      _isHost = false;
+      finalIsHost = false;
     }
 
     Navigator.pushReplacement(
@@ -526,8 +589,9 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           sessionId: effectiveSessionId,
           roomCode: _roomCode,
           isOnlineMatch: true,
-          isHost: _isHost,
+          isHost: finalIsHost,
           mySeatIndex: finalSeat,
+          playerIdentity: _localPlayerIdentity,
           onlineModeType: widget.selectedMode.modeType,
         ),
       ),
@@ -1157,7 +1221,7 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
               const SizedBox(height: 8),
               // Player Name
               Text(
-                _isHost ? "Host (You)" : "You",
+                _isHost ? "Host (You)" : (_opponentName ?? "Host (Opponent)"),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1288,12 +1352,12 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
         ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: _opponentJoined ? const Color(0xFF00E676) : const Color(0xFF00B0FF),
+          color: (!_isHost || _opponentJoined) ? const Color(0xFF00E676) : const Color(0xFF00B0FF),
           width: 2.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: (_opponentJoined ? const Color(0xFF00E676) : const Color(0xFF00B0FF))
+            color: ((!_isHost || _opponentJoined) ? const Color(0xFF00E676) : const Color(0xFF00B0FF))
                 .withValues(alpha: 0.55),
             blurRadius: 18,
             spreadRadius: 1,
@@ -1317,12 +1381,14 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
               shape: BoxShape.circle,
               color: const Color(0xFF051733),
               border: Border.all(
-                color: _opponentJoined ? const Color(0xFF00E676) : const Color(0xFF00E5FF).withValues(alpha: 0.5),
+                color: (!_isHost || _opponentJoined)
+                    ? const Color(0xFF00E676)
+                    : const Color(0xFF00E5FF).withValues(alpha: 0.5),
                 width: 2.0,
               ),
             ),
             child: Center(
-              child: _opponentJoined
+              child: (!_isHost || _opponentJoined)
                   ? const Icon(
                       Icons.person_rounded,
                       color: Color(0xFF00E676),
@@ -1340,7 +1406,9 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
           const SizedBox(height: 8),
           // Player Name / Searching
           Text(
-            _opponentJoined ? (_opponentName ?? "Opponent") : "Searching...",
+            _isHost
+                ? (_opponentJoined ? (_opponentName ?? "Challenger") : "Searching...")
+                : "You (Challenger)",
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -1355,14 +1423,16 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: _opponentJoined
+                colors: (!_isHost || _opponentJoined)
                     ? [const Color(0xFF00E676), const Color(0xFF00A844)]
                     : [const Color(0xFF0288D1), const Color(0xFF01579B)],
               ),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: (_opponentJoined ? const Color(0xFF00E676) : const Color(0xFF0288D1))
+                  color: ((!_isHost || _opponentJoined)
+                          ? const Color(0xFF00E676)
+                          : const Color(0xFF0288D1))
                       .withValues(alpha: 0.4),
                   blurRadius: 6,
                 ),
@@ -1372,13 +1442,15 @@ class _OnlineMatchmakingScreenState extends State<OnlineMatchmakingScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  _opponentJoined ? Icons.check_rounded : Icons.access_time_rounded,
+                  (!_isHost || _opponentJoined)
+                      ? Icons.check_rounded
+                      : Icons.access_time_rounded,
                   color: Colors.white,
                   size: 11,
                 ),
                 const SizedBox(width: 3),
                 Text(
-                  _opponentJoined ? "READY" : "WAITING",
+                  (!_isHost || _opponentJoined) ? "READY" : "WAITING",
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,

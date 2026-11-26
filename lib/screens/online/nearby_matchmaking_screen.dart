@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/game_state.dart';
 import '../../models/online_game_mode.dart';
+import '../../models/player_identity.dart';
 import '../../services/auth_service.dart';
 import '../../services/nearby_matchmaking_service.dart';
 import '../game_screen.dart';
@@ -126,8 +127,11 @@ class _NearbyMatchmakingScreenState extends State<NearbyMatchmakingScreen>
     final match = _service.matchData;
     if (match == null) return;
 
-    final mySeatIndex = match.you['seatIndex'] is int ? match.you['seatIndex'] as int : 1;
-    final isHost = mySeatIndex == 0;
+    final myUid = AuthService.cachedBackendUserId;
+    final identity = PlayerIdentity.tryParse(match.you, expectedUserId: myUid);
+    final mySeatIndex = identity?.seatIndex ??
+        (match.you['seatIndex'] is int ? match.you['seatIndex'] as int : 1);
+    final isHost = identity?.isHost ?? (mySeatIndex == 0);
 
     Navigator.pushReplacement(
       context,
@@ -139,6 +143,7 @@ class _NearbyMatchmakingScreenState extends State<NearbyMatchmakingScreen>
           isOnlineMatch: true,
           isHost: isHost,
           mySeatIndex: mySeatIndex,
+          playerIdentity: identity,
           onlineModeType: OnlineModeType.classic,
         ),
       ),

@@ -6,6 +6,7 @@ import '../core/network/api_service.dart';
 import '../models/game_state.dart';
 import '../models/ludo_player.dart';
 import '../models/online_game_mode.dart';
+import '../models/player_identity.dart';
 import '../models/room_model.dart';
 import '../models/token.dart';
 import '../services/auth_service.dart';
@@ -54,8 +55,30 @@ class LudoGameController extends ChangeNotifier {
   final String? roomCode;
   final bool isTeamUpVsBot;
   final bool isOnlineMatch;
-  final bool isHost;
+  bool isHost;
   int mySeatIndex;
+  PlayerIdentity? playerIdentity;
+  String? authenticatedUserId;
+
+  PlayerColor get myColor => (mySeatIndex >= 0 && mySeatIndex < state.players.length)
+      ? state.players[mySeatIndex].color
+      : (mySeatIndex == 1 ? PlayerColor.green : PlayerColor.red);
+
+  String get myColorName {
+    switch (myColor) {
+      case PlayerColor.red:
+        return 'RED';
+      case PlayerColor.green:
+        return 'GREEN';
+      case PlayerColor.yellow:
+        return 'YELLOW';
+      case PlayerColor.blue:
+        return 'BLUE';
+    }
+  }
+
+  LudoPlayer get myPlayer =>
+      state.players[mySeatIndex.clamp(0, state.players.isEmpty ? 0 : state.players.length - 1)];
 
   // ---- online match (Socket.IO): the SERVER decides, this phone only shows & requests ----
   final LudoSocketService _socket = LudoSocketService.instance;
@@ -111,9 +134,15 @@ class LudoGameController extends ChangeNotifier {
     this.isOnlineMatch = false,
     this.isHost = true,
     this.mySeatIndex = 0,
+    this.playerIdentity,
+    this.authenticatedUserId,
     this.onlineModeType,
   }) {
-    if (isOnlineMatch && !isHost && mySeatIndex == 0) {
+    if (playerIdentity != null) {
+      mySeatIndex = playerIdentity!.seatIndex;
+      isHost = playerIdentity!.isHost;
+      authenticatedUserId = playerIdentity!.userId;
+    } else if (isOnlineMatch && !isHost && mySeatIndex == 0) {
       mySeatIndex = 1;
     }
     if (initialState != null) {
@@ -1697,6 +1726,16 @@ class LudoGameController extends ChangeNotifier {
   Future<void> onlineResync() async {
     if (!isOnlineMatch || _disposed || sessionId == null || sessionId!.isEmpty) return;
     final ack = await _socket.joinSession(sessionId!);
+    final myUid = authenticatedUserId ?? AuthService.cachedBackendUserId;
+    if (ack.ok) {
+      final identity = PlayerIdentity.tryParse(ack.data, expectedUserId: myUid);
+      if (identity != null) {
+        playerIdentity = identity;
+        mySeatIndex = identity.seatIndex;
+        isHost = identity.isHost;
+        authenticatedUserId = identity.userId;
+      }
+    }
     final st = ack.data['state'];
     if (ack.ok && st is Map) {
       final map = Map<String, dynamic>.from(st);
@@ -1705,6 +1744,13 @@ class LudoGameController extends ChangeNotifier {
       try {
         final restRes = await ApiService().getGameSession(sessionId: sessionId!);
         if (restRes['success'] == true && restRes['data'] != null) {
+          final identity = PlayerIdentity.tryParse(restRes, expectedUserId: myUid);
+          if (identity != null) {
+            playerIdentity = identity;
+            mySeatIndex = identity.seatIndex;
+            isHost = identity.isHost;
+            authenticatedUserId = identity.userId;
+          }
           final data = Map<String, dynamic>.from(restRes['data'] as Map);
           final serverState = data['state'] ?? data;
           if (serverState is Map) {
@@ -2120,15 +2166,27 @@ class LudoGameController extends ChangeNotifier {
 
   /// Names, token positions, online flags (everything about the players).
   void _onlineApplyPlayers(Map<String, dynamic> st) {
-    final meBlock = st['me'] ?? st['you'];
-    if (meBlock is Map) {
-      final meSeat = (meBlock['seatIndex'] as num?)?.toInt();
-      if (meSeat != null && meSeat >= 0 && meSeat < state.players.length) {
-        mySeatIndex = meSeat;
+    final myUid = authenticatedUserId ?? AuthService.cachedBackendUserId;
+    final identity = PlayerIdentity.tryParse(st, expectedUserId: myUid);
+    if (identity != null) {
+      playerIdentity = identity;
+      mySeatIndex = identity.seatIndex;
+      isHost = identity.isHost;
+      if (identity.userId.isNotEmpty) {
+        authenticatedUserId = identity.userId;
+        _onlineSeatByUser[identity.userId] = identity.seatIndex;
       }
-      final meUid = (meBlock['userId'] ?? meBlock['id'])?.toString();
-      if (meUid != null && meUid.isNotEmpty) {
-        _onlineSeatByUser[meUid] = mySeatIndex;
+    } else {
+      final meBlock = st['me'] ?? st['you'];
+      if (meBlock is Map) {
+        final meSeat = (meBlock['seatIndex'] ?? meBlock['seat']) as num?;
+        if (meSeat != null && meSeat >= 0 && meSeat < state.players.length) {
+          mySeatIndex = meSeat.toInt();
+        }
+        final meUid = (meBlock['userId'] ?? meBlock['id'])?.toString();
+        if (meUid != null && meUid.isNotEmpty) {
+          _onlineSeatByUser[meUid] = mySeatIndex;
+        }
       }
     }
 
@@ -2233,6 +2291,13 @@ class LudoGameController extends ChangeNotifier {
 
       if (realSeat != null && realSeat != mySeatIndex) {
         mySeatIndex = realSeat;
+        isHost = (realSeat == 0);
+        playerIdentity = PlayerIdentity(
+          userId: myBackendUid ?? myUid ?? '',
+          seatIndex: realSeat,
+          color: realSeat == 1 ? 'GREEN' : 'RED',
+          isHost: isHost,
+        );
         if (myBackendUid != null) _onlineSeatByUser[myBackendUid] = mySeatIndex;
         if (myUid != null) _onlineSeatByUser[myUid] = mySeatIndex;
       }

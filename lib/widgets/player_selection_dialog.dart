@@ -245,8 +245,9 @@ class _PlayerSelectionDialogState extends State<PlayerSelectionDialog> {
                   'sessionId': sessionId,
                   'roomCode': room!.roomCode,
                   'isOnlineMatch': true,
-                  'isHost': true,
-                  'mySeatIndex': 0,
+                  'isHost': room.identity?.isHost ?? true,
+                  'mySeatIndex': room.identity?.seatIndex ?? 0,
+                  'playerIdentity': room.identity,
                 });
               },
             ),
@@ -360,8 +361,9 @@ class _PlayerSelectionDialogState extends State<PlayerSelectionDialog> {
                   'sessionId': sessionId,
                   'roomCode': room!.roomCode,
                   'isOnlineMatch': true,
-                  'isHost': false,
-                  'mySeatIndex': 1,
+                  'isHost': room.identity?.isHost ?? false,
+                  'mySeatIndex': room.identity?.seatIndex ?? (room.seatIndex ?? 1),
+                  'playerIdentity': room.identity,
                 });
               },
             ),
