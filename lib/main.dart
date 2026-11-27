@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'constants/ludo_colors.dart';
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
+import 'services/deep_link_service.dart';
 import 'services/sound_haptic_service.dart';
 
 void main() async {
@@ -16,6 +17,7 @@ void main() async {
     debugPrint("Firebase.initializeApp note: $e");
   }
   await SoundHapticService.init();
+  await DeepLinkService.instance.init();
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -29,6 +31,7 @@ class LudoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: DeepLinkService.navigatorKey,
       title: 'Ludo Supreme',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

@@ -8,6 +8,7 @@ import '../models/room_model.dart';
 import '../models/user_profile_model.dart';
 import '../services/app_update_service.dart';
 import '../services/auth_service.dart';
+import '../services/deep_link_service.dart';
 import '../services/game_storage_service.dart';
 import '../widgets/game_mode_card.dart';
 import '../widgets/home_navigation_sections.dart';
@@ -60,6 +61,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         AppUpdateService.checkForUpdate(context);
+        DeepLinkService.instance.setAppReady(true);
       }
     });
   }

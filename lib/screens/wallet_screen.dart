@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
@@ -15,11 +15,13 @@ import 'rewards_screen.dart';
 class WalletScreen extends StatefulWidget {
   final ApiService? apiService;
   final VoidCallback? onWalletUpdated;
+  final int? profileFallbackCoins;
 
   const WalletScreen({
     super.key,
     this.apiService,
     this.onWalletUpdated,
+    this.profileFallbackCoins,
   });
 
   @override
@@ -47,6 +49,18 @@ class _WalletScreenState extends State<WalletScreen> {
   WalletModel _wallet = const WalletModel();
   List<WalletTransactionModel> _transactions = [];
   WalletPaginationModel _pagination = const WalletPaginationModel();
+
+  // Profile Fallback & Discrepancy flags (Safe Display Only)
+  bool _isUsingProfileFallback = false;
+  bool _hasBalanceDiscrepancy = false;
+  int _profileFallbackBalance = 0;
+
+  int get _displayBalance {
+    if (_isUsingProfileFallback && _wallet.balance == 0) {
+      return _profileFallbackBalance;
+    }
+    return _wallet.balance;
+  }
 
   // Filter: 0 = All, 1 = Credit, 2 = Debit
   int _selectedFilter = 0;
@@ -97,6 +111,14 @@ class _WalletScreenState extends State<WalletScreen> {
       _isUnauthorized = false;
     });
 
+    int profileCoins = widget.profileFallbackCoins ?? 0;
+    if (profileCoins == 0 && widget.apiService == null) {
+      try {
+        final cached = await AuthService.getCachedUserProfile();
+        profileCoins = cached?.coins ?? await AuthService.getUserCoins();
+      } catch (_) {}
+    }
+
     try {
       final results = await Future.wait([
         _apiService.getWallet(),
@@ -119,7 +141,10 @@ class _WalletScreenState extends State<WalletScreen> {
       }
 
       // Check Errors
-      if (walletRes['success'] != true && txRes['success'] != true) {
+      final walletFailed = walletRes['success'] != true;
+      final txFailed = txRes['success'] != true;
+
+      if (walletFailed && txFailed && profileCoins == 0) {
         setState(() {
           _isLoading = false;
           _errorMessage = walletRes['message']?.toString() ??
@@ -131,18 +156,39 @@ class _WalletScreenState extends State<WalletScreen> {
 
       // 1. Parse Wallet Model
       WalletModel parsedWallet = const WalletModel();
-      if (walletRes['success'] == true && walletRes['data'] != null) {
+      bool usingFallback = false;
+      bool discrepancy = false;
+
+      if (!walletFailed && walletRes['data'] != null) {
         parsedWallet = WalletModel.fromApiResponse(walletRes);
+      } else if (profileCoins > 0) {
+        // Safe display fallback when wallet API fails or times out
+        usingFallback = true;
       }
 
       // 2. Parse Transactions Response
       WalletTransactionsResponse parsedTx = const WalletTransactionsResponse();
-      if (txRes['success'] == true) {
+      if (!txFailed) {
         parsedTx = WalletTransactionsResponse.fromApiResponse(txRes);
         // Fallback balance if wallet endpoint didn't provide it
         if (parsedWallet.balance == 0 && parsedTx.balance > 0) {
           parsedWallet = parsedWallet.copyWith(balance: parsedTx.balance);
         }
+      }
+
+      // Detect discrepancy between authoritative wallet balance and profile
+      if (!usingFallback && parsedWallet.balance == 0 && profileCoins > 0) {
+        discrepancy = true;
+      }
+
+      // If valid wallet balance received, sync local profile in background
+      if (!walletFailed && parsedWallet.balance > 0 && widget.apiService == null) {
+        AuthService.updateLocalCoins(parsedWallet.balance);
+      }
+
+      // Trigger background profile refresh to keep both endpoints aligned in production
+      if (widget.apiService == null) {
+        AuthService.fetchUserProfile().catchError((_) => null);
       }
 
       // Notify parent callback if wallet balance updated
@@ -152,14 +198,25 @@ class _WalletScreenState extends State<WalletScreen> {
         _wallet = parsedWallet;
         _transactions = parsedTx.transactions;
         _pagination = parsedTx.pagination;
+        _isUsingProfileFallback = usingFallback;
+        _hasBalanceDiscrepancy = discrepancy;
+        _profileFallbackBalance = profileCoins;
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = "An unexpected error occurred: $e";
-      });
+      if (profileCoins > 0) {
+        setState(() {
+          _isLoading = false;
+          _isUsingProfileFallback = true;
+          _profileFallbackBalance = profileCoins;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = "An unexpected error occurred: $e";
+        });
+      }
     }
   }
 
@@ -557,7 +614,7 @@ class _WalletScreenState extends State<WalletScreen> {
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          _formatNumber(_wallet.balance),
+                          _formatNumber(_displayBalance),
                           style: const TextStyle(
                             fontFamily: 'Roboto',
                             color: Colors.white,
@@ -592,6 +649,64 @@ class _WalletScreenState extends State<WalletScreen> {
               ),
             ],
           ),
+          if (_isUsingProfileFallback) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.amber.withValues(alpha: 0.4),
+                  width: 1,
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.sync_rounded, color: Color(0xFFFFD54F), size: 14),
+                  SizedBox(width: 6),
+                  Text(
+                    "Cached Profile Balance (Wallet syncing...)",
+                    style: TextStyle(
+                      color: Color(0xFFFFD54F),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (_hasBalanceDiscrepancy) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.cyan.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.cyan.withValues(alpha: 0.35),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      color: Color(0xFF00E5FF), size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    "Profile reports $_profileFallbackBalance coins",
+                    style: const TextStyle(
+                      color: Color(0xFF00E5FF),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
 
           // Action Buttons: Row 1 (+ Add Cash & Withdraw)

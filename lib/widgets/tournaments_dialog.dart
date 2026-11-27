@@ -155,15 +155,15 @@ class TournamentsDialog extends StatelessWidget {
                           Color(0xFF1A0022),
                         ],
                         cardBorderColor: const Color(0xFFFF80AB),
-                        prizePool: 50000,
-                        entryFee: 1000,
+                        prizePool: 50,
+                        entryFee: 10,
                         playersInfo: "3 Players • 3 Rounds",
                         actionLabel: "REGISTER",
                         onTap: () {
                           Navigator.of(context).pop();
-                          onJoinTournament?.call("Grand Championship", 50000);
+                          onJoinTournament?.call("Grand Championship", 50);
                           onJoinWithDetails?.call(
-                              "Grand Championship", 50000, 1000);
+                              "Grand Championship", 50, 10);
                         },
                       ),
 
@@ -186,15 +186,15 @@ class TournamentsDialog extends StatelessWidget {
                           Color(0xFF041738),
                         ],
                         cardBorderColor: const Color(0xFF40C4FF),
-                        prizePool: 10000,
-                        entryFee: 250,
+                        prizePool: 10,
+                        entryFee: 25,
                         playersInfo: "4 Players • Fast Match",
                         actionLabel: "PLAY NOW",
                         onTap: () {
                           Navigator.of(context).pop();
                           onJoinTournament?.call("Daily Knockout", 10000);
                           onJoinWithDetails?.call(
-                              "Daily Knockout", 10000, 250);
+                              "Daily Knockout", 10, 25);
                         },
                       ),
 
@@ -217,15 +217,15 @@ class TournamentsDialog extends StatelessWidget {
                           Color(0xFF1B0029),
                         ],
                         cardBorderColor: const Color(0xFFEA80FC),
-                        prizePool: 25000,
-                        entryFee: 500,
+                        prizePool: 25,
+                        entryFee: 50,
                         playersInfo: "4 Players • 15s Timer",
                         actionLabel: "ENTER",
                         onTap: () {
                           Navigator.of(context).pop();
-                          onJoinTournament?.call("Weekend Blitz", 25000);
+                          onJoinTournament?.call("Weekend Blitz", 25);
                           onJoinWithDetails?.call(
-                              "Weekend Blitz", 25000, 500);
+                              "Weekend Blitz", 25, 50);
                         },
                       ),
 

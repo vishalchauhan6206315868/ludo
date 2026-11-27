@@ -8,6 +8,7 @@ import '../models/room_model.dart';
 import '../screens/game_screen.dart';
 import '../services/ludo_socket_service.dart';
 import 'cancel_room_dialog.dart';
+import 'social_share_bottom_sheet.dart';
 
 /// Royal 3D Ludo Supreme Room Lobby Dialog
 /// Displays the 6-character live Room Code from `/api/rooms/create`
@@ -318,27 +319,20 @@ class _RoomLobbyDialogState extends State<RoomLobbyDialog>
     Clipboard.setData(ClipboardData(text: _currentRoom.roomCode));
     HapticFeedback.mediumImpact();
     setState(() => _isCopied = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.greenAccent),
-            const SizedBox(width: 8),
-            Text(
-              "Room Code '${_currentRoom.roomCode}' copied to clipboard!",
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF0F1B38),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
     _copyTimer?.cancel();
     _copyTimer = Timer(const Duration(seconds: 2), () {
       if (mounted) setState(() => _isCopied = false);
     });
+    _openShareBottomSheet(autoCopied: true);
+  }
+
+  void _openShareBottomSheet({bool autoCopied = false}) {
+    HapticFeedback.lightImpact();
+    SocialShareBottomSheet.show(
+      context,
+      room: _currentRoom,
+      autoCopied: autoCopied,
+    );
   }
 
   static const List<Color> _seatColors = [
@@ -536,6 +530,10 @@ class _RoomLobbyDialogState extends State<RoomLobbyDialog>
                                     ),
                                   ),
                                 ),
+                                const SizedBox(height: 10),
+
+                                // Dedicated Share / Invite Friends Button
+                                _buildDedicatedShareButton(),
                                 const SizedBox(height: 12),
 
                                 // 3-in-1 Room Meta Metrics Bar
@@ -836,6 +834,88 @@ class _RoomLobbyDialogState extends State<RoomLobbyDialog>
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Dedicated Share / Invite Friends Button
+  Widget _buildDedicatedShareButton() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFFFD700),
+            Color(0xFFFFA000),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.35),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openShareBottomSheet(autoCopied: false),
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0C1938),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.share_rounded,
+                      color: Color(0xFFFFD700),
+                      size: 15,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    "SHARE / INVITE FRIENDS",
+                    style: TextStyle(
+                      color: Color(0xFF0A1128),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0A1128).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      "WhatsApp, IG & more",
+                      style: TextStyle(
+                        color: Color(0xFF1E293B),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -3924,11 +3924,16 @@ class _InventorySectionViewState extends State<InventorySectionView> {
                                 icon: Icons.monetization_on_rounded,
                                 color: const Color(0xFFFFD700),
                                 actionText: "Manage in Wallet >",
-                                onTap: () {
-                                  Navigator.push(
+                                onTap: () async {
+                                  await Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const WalletScreen()),
+                                    MaterialPageRoute(
+                                      builder: (_) => WalletScreen(
+                                        onWalletUpdated: _fetchInventory,
+                                      ),
+                                    ),
                                   );
+                                  _fetchInventory();
                                 },
                               ),
                               const SizedBox(height: 12),
@@ -3954,11 +3959,16 @@ class _InventorySectionViewState extends State<InventorySectionView> {
                                       icon: Icons.monetization_on_rounded,
                                       color: const Color(0xFFFFD700),
                                       actionText: "Manage in Wallet >",
-                                      onTap: () {
-                                        Navigator.push(
+                                      onTap: () async {
+                                        await Navigator.push(
                                           context,
-                                          MaterialPageRoute(builder: (_) => const WalletScreen()),
+                                          MaterialPageRoute(
+                                            builder: (_) => WalletScreen(
+                                              onWalletUpdated: _fetchInventory,
+                                            ),
+                                          ),
                                         );
+                                        _fetchInventory();
                                       },
                                     ),
                                   ),

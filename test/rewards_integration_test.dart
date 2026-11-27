@@ -85,10 +85,10 @@ class FakeTestApiService implements ApiService {
           'statusCode': 200,
           'message': 'Rewards summary fetched successfully',
           'data': {
-            'totalRewards': 10,
+            'totalRewards': 100,
             'claimedRewards': 1,
             'availableRewards': 9,
-            'totalCoinsEarned': 500,
+            'totalCoinsEarned': 50,
           },
         };
   }
@@ -128,7 +128,7 @@ void main() {
         'title': 'Daily Login Reward',
         'description': 'Login daily and claim your reward',
         'rewardType': 'coins',
-        'rewardValue': 100,
+        'rewardValue': 10,
         'icon': 'daily_login',
         'isClaimed': false,
         'canClaim': true,
@@ -139,7 +139,7 @@ void main() {
       expect(reward.title, equals('Daily Login Reward'));
       expect(reward.description, equals('Login daily and claim your reward'));
       expect(reward.rewardType, equals('coins'));
-      expect(reward.rewardValue, equals(100));
+      expect(reward.rewardValue, equals(10));
       expect(reward.icon, equals('daily_login'));
       expect(reward.isClaimed, isFalse);
       expect(reward.canClaim, isTrue);
@@ -150,7 +150,7 @@ void main() {
         'rewardId': '6ac4affd5c52c8f5e056dedb',
         'title': 'Daily Login Reward',
         'rewardType': 'coins',
-        'rewardValue': 100,
+        'rewardValue': 10,
         'claimedAt': '2026-10-06T08:23:45.000Z',
       };
 
@@ -158,7 +158,7 @@ void main() {
       expect(claim.rewardId, equals('6ac4affd5c52c8f5e056dedb'));
       expect(claim.title, equals('Daily Login Reward'));
       expect(claim.rewardType, equals('coins'));
-      expect(claim.rewardValue, equals(100));
+      expect(claim.rewardValue, equals(10));
       expect(claim.claimedAt, isNotNull);
       expect(claim.claimedAt?.year, equals(2026));
     });
@@ -168,14 +168,14 @@ void main() {
         'totalRewards': 10,
         'claimedRewards': 2,
         'availableRewards': 8,
-        'totalCoinsEarned': 350,
+        'totalCoinsEarned': 35,
       };
 
       final summary = RewardsSummary.fromJson(sampleJson);
       expect(summary.totalRewards, equals(10));
       expect(summary.claimedRewards, equals(2));
       expect(summary.availableRewards, equals(8));
-      expect(summary.totalCoinsEarned, equals(350));
+      expect(summary.totalCoinsEarned, equals(35));
     });
 
     test('RewardItem handles null / missing fields safely with defaults', () {
@@ -213,7 +213,7 @@ void main() {
       expect(find.text('Coins Earned'), findsOneWidget);
       expect(find.text('9'), findsOneWidget); // available
       expect(find.text('1'), findsOneWidget); // claimed
-      expect(find.text('500'), findsOneWidget); // coins earned
+      expect(find.text('50'), findsOneWidget); // coins earned
 
       // Check Reward Items
       expect(find.text('Daily Login Reward'), findsOneWidget);

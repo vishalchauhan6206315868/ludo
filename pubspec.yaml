@@ -42,6 +42,9 @@ dependencies:
   razorpay_flutter: ^1.4.7
   in_app_update: ^4.2.3
   geolocator: ^14.1.2
+  share_plus: ^13.3.1
+  url_launcher: ^6.3.3
+  app_links: ^7.2.2
 
 dev_dependencies:
   flutter_test:
@@ -61,6 +64,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/social/
     - assets/sounds/
 
   # An image asset can refer to one or more resolution-specific "variants", see

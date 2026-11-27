@@ -344,6 +344,20 @@ class AuthService {
     return prefs.getInt(_keyCoins) ?? 1000;
   }
 
+  /// Update cached coin balance locally when verified by backend/wallet API
+  static Future<void> updateLocalCoins(int coins) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyCoins, coins);
+    final rawProfile = prefs.getString(_keyUserProfileJson);
+    if (rawProfile != null && rawProfile.isNotEmpty) {
+      try {
+        final profile = UserProfileModel.fromRawJson(rawProfile);
+        final updated = profile.copyWith(coins: coins);
+        await prefs.setString(_keyUserProfileJson, updated.toRawJson());
+      } catch (_) {}
+    }
+  }
+
   /// Get current user gem balance
   static Future<int> getUserGems() async {
     final prefs = await SharedPreferences.getInstance();
