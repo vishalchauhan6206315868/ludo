@@ -192,7 +192,7 @@ class TournamentsDialog extends StatelessWidget {
                         actionLabel: "PLAY NOW",
                         onTap: () {
                           Navigator.of(context).pop();
-                          onJoinTournament?.call("Daily Knockout", 10000);
+                          onJoinTournament?.call("Daily Knockout", 10);
                           onJoinWithDetails?.call(
                               "Daily Knockout", 10, 25);
                         },
