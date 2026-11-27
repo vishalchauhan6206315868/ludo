@@ -119,39 +119,70 @@ class RoomModel {
   /// From a socket `room_state` / `player_joined` / `player_left` / `room_created` payload
   /// (`{roomId, roomCode, hostId, players:[{userId,name,seatIndex,...}], sessionId, ...}`).
   factory RoomModel.fromSocket(Map<String, dynamic> room, {RoomModel? previous}) {
+    Map<String, dynamic> roomMap = room;
+    if (room['room'] is Map) {
+      roomMap = Map<String, dynamic>.from(room['room'] as Map);
+    } else if (room['data'] is Map) {
+      final d = room['data'];
+      if (d is Map && d['room'] is Map) {
+        roomMap = Map<String, dynamic>.from(d['room'] as Map);
+      } else if (d is Map) {
+        roomMap = Map<String, dynamic>.from(d);
+      }
+    }
+
     final names = <String>[];
     final ids = <String>[];
-    final raw = room['players'];
+    final raw = roomMap['players'] ?? room['players'];
     if (raw is List) {
       for (final e in raw) {
         if (e is Map) {
-          names.add((e['name'] ?? '').toString());
-          ids.add((e['userId'] ?? '').toString());
+          final name = (e['name'] ?? e['user'] ?? '').toString();
+          final uid = (e['userId'] ?? e['playerId'] ?? e['id'] ?? _idOf(e['user']) ?? '').toString();
+          names.add(name.isNotEmpty ? name : uid);
+          ids.add(uid);
+        } else {
+          names.add(e.toString());
+          ids.add(e.toString());
         }
       }
     }
-    final sid = (room['sessionId'] ??
+    final sid = (roomMap['sessionId'] ??
+            room['sessionId'] ??
+            roomMap['matchId'] ??
             room['matchId'] ??
+            roomMap['gameId'] ??
             room['gameId'] ??
+            (roomMap['session'] is Map ? (roomMap['session']['_id'] ?? roomMap['session']['id']) : null) ??
             (room['session'] is Map ? (room['session']['_id'] ?? room['session']['id']) : null) ??
+            roomMap['session']?.toString() ??
             room['session']?.toString() ??
             previous?.sessionId)
         ?.toString();
-    final parsedIdentity = PlayerIdentity.tryParse(room) ?? previous?.identity;
-    final seat = parsedIdentity?.seatIndex ?? room['seatIndex'] ?? previous?.seatIndex;
-    final rawColor = parsedIdentity?.color ?? room['assignedColor'] ?? room['color'] ?? previous?.assignedColor;
+    final parsedIdentity = PlayerIdentity.tryParse(room) ?? PlayerIdentity.tryParse(roomMap) ?? previous?.identity;
+    final seat = parsedIdentity?.seatIndex ?? roomMap['seatIndex'] ?? room['seatIndex'] ?? previous?.seatIndex;
+    final rawColor = parsedIdentity?.color ??
+        roomMap['assignedColor'] ??
+        room['assignedColor'] ??
+        roomMap['color'] ??
+        room['color'] ??
+        previous?.assignedColor;
     final color = rawColor != null ? PlayerIdentity.normalizeColor(rawColor, seat is num ? seat.toInt() : 0) : null;
 
+    final code = (roomMap['roomCode'] ?? room['roomCode'] ?? roomMap['roomId'] ?? room['roomId'] ?? previous?.roomCode ?? '')
+        .toString()
+        .toUpperCase();
+
     return RoomModel(
-      id: room['roomId']?.toString() ?? previous?.id ?? '',
-      roomCode: room['roomCode']?.toString() ?? previous?.roomCode ?? '',
-      host: room['hostId']?.toString() ?? previous?.host ?? '',
+      id: roomMap['_id']?.toString() ?? roomMap['roomId']?.toString() ?? room['roomId']?.toString() ?? previous?.id ?? '',
+      roomCode: code,
+      host: _idOf(roomMap['host']) ?? roomMap['hostId']?.toString() ?? room['hostId']?.toString() ?? previous?.host ?? '',
       players: names,
       playerIds: ids,
-      maxPlayers: _parseInt(room['maxPlayers'], defaultValue: previous?.maxPlayers ?? 2),
-      gameMode: room['gameMode']?.toString() ?? previous?.gameMode ?? 'twoPlayer',
-      status: room['status']?.toString() ?? previous?.status ?? 'waiting',
-      entryFee: _parseInt(room['entryFee'], defaultValue: previous?.entryFee ?? 0),
+      maxPlayers: _parseInt(roomMap['maxPlayers'] ?? room['maxPlayers'], defaultValue: previous?.maxPlayers ?? 2),
+      gameMode: roomMap['gameMode']?.toString() ?? room['gameMode']?.toString() ?? previous?.gameMode ?? 'twoPlayer',
+      status: roomMap['status']?.toString() ?? room['status']?.toString() ?? previous?.status ?? 'waiting',
+      entryFee: _parseInt(roomMap['entryFee'] ?? room['entryFee'], defaultValue: previous?.entryFee ?? 0),
       sessionId: (sid == null || sid.isEmpty || sid == 'null') ? previous?.sessionId : sid,
       seatIndex: seat is num ? seat.toInt() : null,
       assignedColor: color,

@@ -71,7 +71,10 @@ class _RoomLobbyDialogState extends State<RoomLobbyDialog>
 
     // The room was already full when we joined: the server created the match for us.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_currentRoom.hasMatch) _openGame(_currentRoom.sessionId);
+      if (_currentRoom.hasMatch &&
+          (_currentRoom.status.toLowerCase() == 'playing' || _currentRoom.status.toLowerCase() == 'starting')) {
+        _openGame(_currentRoom.sessionId);
+      }
     });
   }
 
@@ -83,13 +86,22 @@ class _RoomLobbyDialogState extends State<RoomLobbyDialog>
 
     bool forThisRoom(Map<String, dynamic> e) {
       final room = e['room'];
-      final code = (e['roomCode'] ?? (room is Map ? room['roomCode'] : null))?.toString().toUpperCase();
+      final data = e['data'];
+      final code = (e['roomCode'] ??
+              e['roomId'] ??
+              (room is Map ? (room['roomCode'] ?? room['roomId']) : null) ??
+              (data is Map ? (data['roomCode'] ?? data['roomId'] ?? (data['room'] is Map ? data['room']['roomCode'] : null)) : null))
+          ?.toString()
+          .toUpperCase();
       return code == _code;
     }
 
     for (final event in ['room_state', 'room_created', 'player_joined', 'player_left']) {
       _subs.add(svc.on(event).listen((e) {
-        if (forThisRoom(e)) _applyRoomPayload(e['room']);
+        if (forThisRoom(e)) {
+          final payload = e['room'] ?? e['data'] ?? e;
+          _applyRoomPayload(payload);
+        }
       }));
     }
     void handleMatchStart(Map<String, dynamic> e) {
@@ -108,20 +120,35 @@ class _RoomLobbyDialogState extends State<RoomLobbyDialog>
     svc.ensureConnected().then((ok) async {
       if (!ok || !mounted) return;
       final ack = await svc.request('join_room', {'roomCode': _code});
-      if (ack.ok) _applyRoomPayload(ack.data['room']);
+      if (ack.ok) {
+        final payload = ack.data['room'] ?? ack.data['data'] ?? ack.data;
+        _applyRoomPayload(payload);
+      }
     });
 
-    // Safety net ONLY while the socket is down (never polls while connected)
-    _fallbackTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      if (!svc.isConnected) _fetchRoomUpdate(manual: false);
+    // Safety net: periodic authoritative REST poll while waiting for players.
+    // If room is not full, poll every 3 seconds to catch any missed socket packets.
+    _fallbackTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted || _navigated) return;
+      if (_currentRoom.players.length < _currentRoom.maxPlayers || !svc.isConnected) {
+        _fetchRoomUpdate(manual: false);
+      }
     });
   }
 
   void _applyRoomPayload(dynamic raw) {
     if (raw is! Map || !mounted || _navigated) return;
-    final updated = RoomModel.fromSocket(Map<String, dynamic>.from(raw), previous: _currentRoom);
+    final map = Map<String, dynamic>.from(raw);
+    final target = (map['room'] is Map)
+        ? Map<String, dynamic>.from(map['room'] as Map)
+        : ((map['data'] is Map && map['data']['room'] is Map)
+            ? Map<String, dynamic>.from(map['data']['room'] as Map)
+            : map);
+
+    final updated = RoomModel.fromSocket(target, previous: _currentRoom);
     setState(() => _currentRoom = updated);
-    if (updated.hasMatch && updated.status.toLowerCase() == 'playing') {
+    if (updated.hasMatch &&
+        (updated.status.toLowerCase() == 'playing' || updated.status.toLowerCase() == 'starting')) {
       _openGame(updated.sessionId);
     }
   }
@@ -258,7 +285,8 @@ class _RoomLobbyDialogState extends State<RoomLobbyDialog>
           _currentRoom = updated.copyWith(seatIndex: _currentRoom.seatIndex);
           if (manual) _isRefreshing = false;
         });
-        if (updated.hasMatch && updated.status.toLowerCase() == 'playing') {
+        if (updated.hasMatch &&
+            (updated.status.toLowerCase() == 'playing' || updated.status.toLowerCase() == 'starting')) {
           _openGame(updated.sessionId);
         }
       } else if (manual) {
