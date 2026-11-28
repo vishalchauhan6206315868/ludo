@@ -87,7 +87,7 @@ class RazorpayPaymentService {
     final options = {
       'key': effectiveKey,
       'amount': amountInPaise,
-      'name': name ?? 'Ludo Supreme',
+      'name': name ?? 'Ludo Supreme Pro',
       'description': description ?? 'Deposit Coins to Wallet',
       'order_id': orderId,
       'timeout': 300, // 5 minutes timeout

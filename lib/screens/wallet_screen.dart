@@ -1911,7 +1911,7 @@ class _WalletScreenState extends State<WalletScreen> {
         key: razorpayKey,
         orderId: orderId,
         amount: amount,
-        name: "Ludo Supreme",
+        name: "Ludo Supreme Pro",
         description: "Deposit â‚¹$amount (Coins: $amount)",
         prefillName: userName,
         prefillEmail: userEmail,

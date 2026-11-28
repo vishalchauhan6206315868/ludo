@@ -181,7 +181,7 @@ class DeveloperCreditDialog extends StatelessWidget {
 
                     // Subtle Subtitle / Brand touch
                     const Text(
-                      "Ludo Supreme • Crafting Exceptional Experiences",
+                      "Ludo Supreme Pro • Crafting Exceptional Experiences",
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Color(0xFF64748B),

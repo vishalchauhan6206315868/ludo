@@ -158,7 +158,7 @@ class AppUpdateService {
                 const SizedBox(height: 10),
 
                 const Text(
-                  'A newer version of Ludo Supreme is available on Google Play with new features, smoother gameplay, and improvements.',
+                  'A newer version of Ludo Supreme Pro is available on Google Play with new features, smoother gameplay, and improvements.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white70,

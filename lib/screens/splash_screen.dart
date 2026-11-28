@@ -402,7 +402,7 @@ class _SplashScreenState extends State<SplashScreen>
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            "LUDO SUPREME",
+                            "LUDO SUPREME PRO",
                             style: TextStyle(
                               fontSize: isCompact ? 20 : 24,
                               fontWeight: FontWeight.w900,

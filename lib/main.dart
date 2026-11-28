@@ -32,7 +32,7 @@ class LudoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: DeepLinkService.navigatorKey,
-      title: 'Ludo Supreme',
+      title: 'Ludo Supreme Pro',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,

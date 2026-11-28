@@ -46,7 +46,7 @@ class SocialShareBottomSheet extends StatefulWidget {
     final feeLabel = room.entryFee > 0 ? '${room.entryFee} Coins' : 'Free Entry';
     final joinUrl = 'https://ludoapi-jupm.onrender.com/join/${room.roomCode}';
 
-    return '''🎲 *Ludo Supreme Match Invitation!* 🏆
+    return '''🎲 *Ludo Supreme Pro Match Invitation!* 🏆
 
 Join my Ludo match!
 
@@ -173,7 +173,7 @@ class _SocialShareBottomSheetState extends State<SocialShareBottomSheet> {
       await SharePlus.instance.share(
         ShareParams(
           text: msg,
-          subject: 'Ludo Supreme Match Invitation',
+          subject: 'Ludo Supreme Pro Match Invitation',
         ),
       );
     } catch (e) {
@@ -209,7 +209,7 @@ class _SocialShareBottomSheetState extends State<SocialShareBottomSheet> {
       await SharePlus.instance.share(
         ShareParams(
           text: fallbackText,
-          subject: 'Ludo Supreme Match Invitation',
+          subject: 'Ludo Supreme Pro Match Invitation',
         ),
       );
     } catch (e) {

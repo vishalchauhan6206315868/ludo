@@ -111,7 +111,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      "Join Ludo Supreme and battle for victory",
+                      "Join Ludo Supreme Pro and battle for victory",
                       style: TextStyle(
                         color: LudoColors.textSecondary,
                         fontSize: 13,

@@ -804,7 +804,7 @@ class _EventSectionViewState extends State<EventSectionView> {
           RewardItem(
             id: 'welcome_bonus',
             title: 'Welcome Bonus',
-            description: 'Welcome to Ludo Supreme! Enjoy your starter bonus',
+            description: 'Welcome to Ludo Supreme Pro! Enjoy your starter bonus',
             rewardType: 'coins',
             rewardValue: 500,
             icon: 'gift',
@@ -866,7 +866,7 @@ class _EventSectionViewState extends State<EventSectionView> {
           RewardItem(
             id: 'welcome_bonus',
             title: 'Welcome Bonus',
-            description: 'Welcome to Ludo Supreme! Enjoy your starter bonus',
+            description: 'Welcome to Ludo Supreme Pro! Enjoy your starter bonus',
             rewardType: 'coins',
             rewardValue: 500,
             icon: 'gift',

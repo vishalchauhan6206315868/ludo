@@ -17,8 +17,6 @@ import '../widgets/player_selection_dialog.dart';
 import '../widgets/profile_dialog.dart';
 import '../widgets/settings_dialog.dart';
 import '../widgets/team_up_setup_dialog.dart';
-import '../widgets/tournaments_dialog.dart';
-import '../widgets/tournament_payment_dialog.dart';
 import 'game_screen.dart';
 import 'leaderboard_screen.dart';
 import 'login_screen.dart';
@@ -358,7 +356,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  "Are you sure you want to exit Ludo Supreme?",
+                  "Are you sure you want to exit Ludo Supreme Pro?",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white70,
@@ -903,26 +901,6 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
     );
   }
 
-  // --- Card 0: TOURNAMENTS (First Row Left) ---
-  Widget _buildTournamentsCard(BuildContext context, [double height = 136]) {
-    return GameModeCard(
-      cardKey: const Key('tournaments_card'),
-      title: "TOURNAMENTS",
-      height: height,
-      isShield: true,
-      glowColor: const Color(0xFFFF1744),
-      accentColor: const Color(0xFFFFD700),
-      cardGradient: const [
-        Color(0xFF880E4F),
-        Color(0xFF5E1335),
-        Color(0xFF38071D),
-        Color(0xFF1F030F),
-      ],
-      illustration: const TournamentsIllustration(),
-      onTap: () => _openTournamentsMode(context),
-    );
-  }
-
   // --- Card 1: PLAY WITH FRIENDS (Second Row Left) ---
   Widget _buildPlayWithFriendsCard(BuildContext context, [double height = 136]) {
     return GameModeCard(
@@ -1018,7 +996,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
     );
   }
 
-  // --- Game Modes Section: 3 in First Row, 3 in Second Row ---
+  // --- Game Modes Section: 2 in First Row (ONLINE, TEAM UP), 3 in Second Row ---
   Widget _buildGameModesSection(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1029,13 +1007,9 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
 
         return Column(
           children: [
-            // FIRST ROW — THREE CARDS HORIZONTALLY: TOURNAMENTS, ONLINE, TEAM UP
+            // FIRST ROW — TWO CARDS HORIZONTALLY: ONLINE, TEAM UP
             Row(
               children: [
-                Expanded(
-                  child: _buildTournamentsCard(context, cardHeight),
-                ),
-                SizedBox(width: spacing),
                 Expanded(
                   child: _buildOnlineCard(context, cardHeight),
                 ),
@@ -1067,62 +1041,6 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
           ],
         );
       },
-    );
-  }
-
-  int _getTournamentEntryFee(String tournamentName) {
-    final lower = tournamentName.toLowerCase();
-    if (lower.contains('grand')) return 1000;
-    if (lower.contains('daily')) return 250;
-    if (lower.contains('blitz') || lower.contains('weekend')) return 500;
-    return 250;
-  }
-
-  void _openTournamentPaymentSheet(
-    BuildContext context,
-    String tournamentName,
-    int prizePool,
-    int entryFee,
-  ) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => TournamentPaymentDialog(
-        tournamentName: tournamentName,
-        prizePool: prizePool,
-        entryFee: entryFee,
-        initialBalance: _userProfile?.coins,
-        onPaymentSuccess: (paidAmount, paymentMethod) async {
-          await _loadUserInfo();
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Joined $tournamentName! Entry Fee: $paidAmount Coins paid via $paymentMethod 🏆',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              backgroundColor: const Color(0xFF1E0845),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-          _startGame(context, GameMode.vsComputer);
-        },
-      ),
-    );
-  }
-
-  void _openTournamentsMode(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => TournamentsDialog(
-        onJoinTournament: (tournamentName, prize) {
-          final entryFee = _getTournamentEntryFee(tournamentName);
-          _openTournamentPaymentSheet(context, tournamentName, prize, entryFee);
-        },
-        onJoinWithDetails: (tournamentName, prize, entryFee) {
-          _openTournamentPaymentSheet(context, tournamentName, prize, entryFee);
-        },
-      ),
     );
   }
 
@@ -1412,7 +1330,7 @@ class _HomeMenuScreenState extends State<HomeMenuScreen> {
             ],
           ),
           child: Text(
-            "SUPREME",
+            "SUPREME PRO",
             style: TextStyle(
               fontSize: isShort ? 12.5 : 14.5,
               fontWeight: FontWeight.w900,

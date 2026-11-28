@@ -94,7 +94,7 @@ class LogoutDialog extends StatelessWidget {
                                       ),
                                     ),
                                     TextSpan(
-                                      text: "Ludo Supreme",
+                                      text: "Ludo Supreme Pro",
                                       style: TextStyle(
                                         color: Color(0xFF0052D4),
                                         fontSize: 18,

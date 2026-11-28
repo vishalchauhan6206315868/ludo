@@ -33,7 +33,7 @@ void main() {
       expect(msg, contains('XK92LP'));
       expect(msg, contains('2 Players Match'));
       expect(msg, contains('500 Coins'));
-      expect(msg, contains('Ludo Supreme Match Invitation!'));
+      expect(msg, contains('Ludo Supreme Pro Match Invitation!'));
       expect(msg, contains('https://ludoapi-jupm.onrender.com/join/XK92LP'));
       expect(msg, contains('Join directly:'));
     });

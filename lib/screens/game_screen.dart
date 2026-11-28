@@ -451,7 +451,7 @@ class _GameScreenState extends State<GameScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
-                      "LUDO SUPREME",
+                      "LUDO SUPREME PRO",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
