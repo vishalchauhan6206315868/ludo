@@ -32,22 +32,22 @@ void main() {
       // Verify 3 Tournament Tiers
       expect(find.text('GRAND CHAMPIONSHIP'), findsOneWidget);
       expect(find.text('KNOCKOUT BRACKET'), findsOneWidget);
-      expect(find.text('50000 COINS'), findsOneWidget);
+      expect(find.text('50 COINS'), findsOneWidget);
 
       expect(find.text('DAILY KNOCKOUT'), findsOneWidget);
       expect(find.text('LIVE NOW'), findsOneWidget);
-      expect(find.text('10000 COINS'), findsOneWidget);
+      expect(find.text('10 COINS'), findsOneWidget);
 
       expect(find.text('WEEKEND BLITZ'), findsOneWidget);
       expect(find.text('SPEED ARENA'), findsOneWidget);
-      expect(find.text('25000 COINS'), findsOneWidget);
+      expect(find.text('25 COINS'), findsOneWidget);
 
       // Tap REGISTER on Grand Championship
       await tester.tap(find.text('REGISTER'));
       await tester.pumpAndSettle();
 
       expect(selectedTournament, 'Grand Championship');
-      expect(selectedPrize, 50000);
+      expect(selectedPrize, 50);
     });
 
     testWidgets('Tapping PLAY NOW triggers Daily Knockout join callback',
@@ -73,7 +73,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(selectedTournament, 'Daily Knockout');
-      expect(selectedPrize, 10000);
+      expect(selectedPrize, 10);
     });
 
     testWidgets('Tapping ENTER triggers Weekend Blitz join callback',
@@ -99,7 +99,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(selectedTournament, 'Weekend Blitz');
-      expect(selectedPrize, 25000);
+      expect(selectedPrize, 25);
     });
 
     testWidgets('Tapping close button dismisses dialog',

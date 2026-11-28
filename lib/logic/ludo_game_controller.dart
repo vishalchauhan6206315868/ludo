@@ -121,6 +121,7 @@ class LudoGameController extends ChangeNotifier {
   /// Idempotency deduplication keys to prevent duplicate roll or move executions
   String? _lastHandledRollKey;
   String? _lastHandledMoveKey;
+  PlayerColor? _lastDiceTravelTargetColor;
 
   final OnlineModeType? onlineModeType;
 
@@ -639,11 +640,10 @@ class LudoGameController extends ChangeNotifier {
     required int roll,
     required bool isHuman,
   }) async {
-    if (!isOnlineMatch || !isMyTurn) {
-      SoundHapticService.playDiceRollSound();
-    }
+    SoundHapticService.playDiceRollSound();
     state.phase = TurnPhase.throwingDice;
     state.currentDiceValue = roll;
+    lastSettledDiceValue = roll;
     state.statusMessage = "${state.currentPlayer.name} throws the dice!";
     _turnTimer?.cancel();
     _safeNotifyListeners();
@@ -2008,11 +2008,12 @@ class LudoGameController extends ChangeNotifier {
     final activeSid = sessionId!;
     _diceSettleCompleter ??= Completer<void>();
 
-    if (!isMyTurn) {
-      try {
-        SoundHapticService.playDiceRollSound();
-      } catch (_) {}
-    }
+    try {
+      SoundHapticService.onDiceTapPress();
+      SoundHapticService.playDiceRollSound();
+    } catch (_) {}
+    state.statusMessage = 'Rolling dice...';
+    _safeNotifyListeners();
 
     LudoAck ack = LudoAck.err('NOT_CONNECTED');
     if (_socket.isConnected) {
@@ -2217,6 +2218,11 @@ class LudoGameController extends ChangeNotifier {
 
     final name = state.players[seat].name;
 
+    if (dice == 6) {
+      SoundHapticService.maybePlayWowSound(chance: 0.35, delayMs: 120);
+    }
+    _trackBaseNoSixAndTriggerMeme(state.players[seat], dice);
+
     // Classic Ludo rules validation:
     // If all tokens are in base and dice != 6, no moves are possible
     final playerTokens = state.players[seat].tokens;
@@ -2239,6 +2245,7 @@ class LudoGameController extends ChangeNotifier {
           : (e['currentTurnSeat'] as num?)?.toInt() ?? _getNextPlayerIndex(seat);
 
       if (onDiceTravelRequested != null && state.players.length > nextIdx) {
+        _lastDiceTravelTargetColor = state.players[nextIdx].color;
         await onDiceTravelRequested!(state.players[nextIdx].color);
       }
 
@@ -2294,8 +2301,7 @@ class LudoGameController extends ChangeNotifier {
       final next = (mv['newStep'] as num).toInt();
 
       // Idempotency: ignore duplicate move executions (ACK vs socket broadcast)
-      final ver = e['state']?['stateVersion'] ?? e['stateVersion'] ?? _onlineVersion;
-      final moveKey = '${seat}_${tokenId}_${prev}_${next}_$ver';
+      final moveKey = '${seat}_${tokenId}_${prev}_$next';
       if (_lastHandledMoveKey == moveKey) {
         debugPrint('[ONLINE] Duplicate move event ignored: $moveKey');
         return;
@@ -2321,6 +2327,7 @@ class LudoGameController extends ChangeNotifier {
 
       // Direct flight: return dice from board center to the next or bonus turn player's card slot
       if (onDiceTravelRequested != null && state.players.length > nextSeat) {
+        _lastDiceTravelTargetColor = state.players[nextSeat].color;
         await onDiceTravelRequested!(state.players[nextSeat].color);
       }
 
@@ -2577,13 +2584,18 @@ class LudoGameController extends ChangeNotifier {
       state.currentDiceValue = null;
       onlineMovableTokenIds = const [];
       if (reason == 'timeout' && _lastTimeoutName != null) {
+        _lastDiceTravelTargetColor = null;
         state.statusMessage = "Time's up for $_lastTimeoutName! ${isMyTurn ? 'Your turn!' : "$name's turn."}";
       } else if (reason == 'extra_turn') {
+        _lastDiceTravelTargetColor = null;
         state.statusMessage = isMyTurn ? 'Bonus turn! Throw the dice again.' : 'Bonus turn for $name...';
       } else {
         state.statusMessage = isMyTurn ? 'Your turn! Drag & flick dice to throw.' : 'Waiting for $name to roll...';
       }
-      if (onDiceTravelRequested != null && state.players.length > seat) {
+      if (onDiceTravelRequested != null &&
+          state.players.length > seat &&
+          _lastDiceTravelTargetColor != state.players[seat].color) {
+        _lastDiceTravelTargetColor = state.players[seat].color;
         onDiceTravelRequested!(state.players[seat].color);
       }
     }
